@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480" role="img">
+  <defs>
+    <clipPath id="f1"><circle cx="690" cy="380" r="32" /></clipPath>
+    <circle cx="690" cy="380" r="32" fill="#ffffff" />
+    <image href="/flags/sg.png" x="658" y="348" width="64" height="64"
+      preserveAspectRatio="xMidYMid slice" clip-path="url(#f1)" /></defs>
+  <rect width="800" height="480" rx="28" fill="#fdf4d8" />
+  
+  <g>
+    <ellipse cx="190" cy="350" rx="66" ry="20" fill="#f0b90b" />
+   <ellipse cx="190" cy="344" rx="66" ry="20" fill="#fae9b3" />
+    <ellipse cx="190" cy="330" rx="66" ry="20" fill="#f0b90b" />
+   <ellipse cx="190" cy="324" rx="66" ry="20" fill="#fae9b3" />
+    <ellipse cx="190" cy="310" rx="66" ry="20" fill="#f0b90b" />
+   <ellipse cx="190" cy="304" rx="66" ry="20" fill="#fae9b3" />
+    <ellipse cx="350" cy="370" rx="74" ry="22" fill="#f0b90b" />
+   <ellipse cx="350" cy="364" rx="74" ry="22" fill="#fae9b3" />
+    <ellipse cx="350" cy="346" rx="74" ry="22" fill="#f0b90b" />
+   <ellipse cx="350" cy="340" rx="74" ry="22" fill="#fae9b3" />
+    <ellipse cx="350" cy="322" rx="74" ry="22" fill="#f0b90b" />
+   <ellipse cx="350" cy="316" rx="74" ry="22" fill="#fae9b3" />
+    <ellipse cx="350" cy="298" rx="74" ry="22" fill="#f0b90b" />
+   <ellipse cx="350" cy="292" rx="74" ry="22" fill="#fae9b3" />
+    <ellipse cx="540" cy="386" rx="82" ry="24" fill="#f0b90b" />
+   <ellipse cx="540" cy="380" rx="82" ry="24" fill="#fae9b3" />
+    <ellipse cx="540" cy="358" rx="82" ry="24" fill="#f0b90b" />
+   <ellipse cx="540" cy="352" rx="82" ry="24" fill="#fae9b3" />
+    <ellipse cx="540" cy="330" rx="82" ry="24" fill="#f0b90b" />
+   <ellipse cx="540" cy="324" rx="82" ry="24" fill="#fae9b3" />
+    <ellipse cx="540" cy="302" rx="82" ry="24" fill="#f0b90b" />
+   <ellipse cx="540" cy="296" rx="82" ry="24" fill="#fae9b3" />
+    <ellipse cx="540" cy="274" rx="82" ry="24" fill="#f0b90b" />
+   <ellipse cx="540" cy="268" rx="82" ry="24" fill="#fae9b3" />
+  </g>
+  <path d="M130 230 L420 150 L420 100 L600 190 L420 280 L420 230 L130 300 Z" fill="#f0b90b" />
+</svg>

@@ -1,0 +1,6 @@
+# TekoTransfer static marketing site (v2)
+# Dev-only design overview pages are not part of this build, so nothing is disallowed.
+User-agent: *
+Allow: /
+
+Sitemap: https://tekotransfer.com/sitemap.xml

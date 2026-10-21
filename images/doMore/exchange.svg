@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480" role="img">
+  <defs>
+    <clipPath id="f1"><circle cx="250" cy="240" r="44" /></clipPath>
+    <circle cx="250" cy="240" r="44" fill="#ffffff" />
+    <image href="/flags/ca.png" x="206" y="196" width="88" height="88"
+      preserveAspectRatio="xMidYMid slice" clip-path="url(#f1)" />
+    <clipPath id="f2"><circle cx="550" cy="240" r="44" /></clipPath>
+    <circle cx="550" cy="240" r="44" fill="#ffffff" />
+    <image href="/flags/gb.png" x="506" y="196" width="88" height="88"
+      preserveAspectRatio="xMidYMid slice" clip-path="url(#f2)" /></defs>
+  <rect width="800" height="480" rx="28" fill="#fdf4d8" />
+  
+  <g fill="none" stroke="#f0b90b" stroke-width="20" stroke-linecap="round">
+    <path d="M180 180 A120 120 0 0 1 400 120" />
+    <path d="M400 210 A120 120 0 0 1 180 270" opacity=".5" />
+  </g>
+  <path d="M400 120 l-52 8 l30 44 z" fill="#f0b90b" />
+  <path d="M180 270 l52 -8 l-30 -44 z" fill="#a37d07" />
+  <g stroke="#1c1c1c" stroke-width="8" stroke-linecap="round">
+    <line x1="330" y1="330" x2="470" y2="330" />
+    <line x1="330" y1="360" x2="430" y2="360" />
+  </g>
+</svg>
