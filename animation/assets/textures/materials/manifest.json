@@ -1,0 +1,1601 @@
+{
+  "version": 1,
+  "generatedBy": "tools/prepare-material-assets.py",
+  "unitNote": "1 world unit = 1 source px",
+  "pipelineRevision": 9,
+  "sources": {
+    "plaster": {
+      "file": "source/plaster.png",
+      "sha256": "85207e29ecec8afe3dbc6e3557603933c56dbfade4634be572fc52eccbd4a9b9",
+      "width": 321,
+      "height": 281,
+      "kind": "reference",
+      "workspacePath": "plaster.png",
+      "sheetLayout": "user reference figure 1 (unchanged source): a small render crop of a fine-speckled, matte, light warm-grey micro-cement/plaster inside corner. Perspective and studio lighting are baked into the pixels. Revision 9 uses it ONLY to calibrate the flat deployed mean colour (the evenly-lit top-face speckle patch); no speckle or source pixel is deployed."
+    },
+    "limestone": {
+      "file": "source/limestone.png",
+      "sha256": "4e9d0f6805eac0f036603acbdc46fec7da89d5ca0aa96c711e749294afe30659",
+      "width": 431,
+      "height": 170,
+      "kind": "reference",
+      "workspacePath": "refs/round5/limestone-dark.png",
+      "sheetLayout": "round-5 user reference: a dark charcoal rough-limestone surface crop (431x170) with a baked diagonal studio-lighting gradient + vignette; the texture is fine pitted stone grain. Revision 9 flat-fields the lighting out to MEASURE the grain statistics, then SYNTHESISES the seamless albedo from those statistics, so no source pixel (and therefore no baked highlight or specular pixel) is copied into the deliverable."
+    },
+    "satin": {
+      "file": "source/satin.png",
+      "sha256": "0ac9effc3b19d46767ac30d08d4891cd70bedf81a4e555164dddb37225b23ed0",
+      "width": 251,
+      "height": 132,
+      "kind": "reference",
+      "workspacePath": "refs/round5/satin-grey.png",
+      "sheetLayout": "round-5 user reference: a smooth neutral-grey satin surface crop (251x132) with a very soft baked vertical tonal gradient (row-band spread ~62 luma) and no visible grain. Revision 9 flat-fields the baked lighting out for the tone/chroma measurement and deploys a smooth albedo with only a very soft low-frequency tonal mottle."
+    }
+  },
+  "materials": {
+    "plaster": {
+      "label": "Plaster",
+      "tilePx": 420,
+      "tilePxNote": "kept at 420 world px per tile: revision 9 deploys a single flat colour with zero grain, so tilePx now only preserves the accepted UV density / manifest schema; the reflective response is model-side and unchanged",
+      "normalConvention": "opengl",
+      "derivationKind": "reference-derived",
+      "derivationMode": "flat",
+      "grainMode": "none",
+      "derivation": "reference-calibrated constant, NOT a texture: the evenly-lit top-face patch [105,10,90,90] of plaster.png is flat-fielded (multi-scale low-frequency illumination removed) and colour-calibrated to the accepted light warm-grey mean luma 165 sRGB (published targetMeanRgbSrgb 167.65/164.68/159.73, deployed constant 168/165/160 after 8-bit rounding). Revision 9 fills the whole 1024 albedo with that ONE constant colour (std exactly 0: no speckle, no grain, no source pixels resampled) and deploys perfectly uniform data maps: ao 255 (std 0), normal (128,128,255) (no slope), roughness 0.92 (std 0), metalness 0, height 128. The reflective liquid-metal look (model constant metalness 1.0 / roughness 0.092 / colour lift / PMREM envMap) is model/preview-side and is untouched by this pipeline.",
+      "detail": {
+        "albedoContrast": 0.6,
+        "roughnessContrast": 0.75,
+        "heightContrast": 0.7
+      },
+      "channels": {
+        "albedo": {
+          "file": "plaster/albedo.png",
+          "width": 1024,
+          "height": 1024,
+          "colorSpace": "srgb",
+          "source": "derived",
+          "processing": [
+            "reference-patch",
+            "flat-field",
+            "colour-calibrated",
+            "constant-fill (zero grain)"
+          ],
+          "derivation": "reference-calibrated constant, NOT a texture: the evenly-lit top-face patch [105,10,90,90] of plaster.png is flat-fielded (multi-scale low-frequency illumination removed) and colour-calibrated to the accepted light warm-grey mean luma 165 sRGB (published targetMeanRgbSrgb 167.65/164.68/159.73, deployed constant 168/165/160 after 8-bit rounding). Revision 9 fills the whole 1024 albedo with that ONE constant colour (std exactly 0: no speckle, no grain, no source pixels resampled) and deploys perfectly uniform data maps: ao 255 (std 0), normal (128,128,255) (no slope), roughness 0.92 (std 0), metalness 0, height 128. The reflective liquid-metal look (model constant metalness 1.0 / roughness 0.092 / colour lift / PMREM envMap) is model/preview-side and is untouched by this pipeline.",
+          "region": [
+            105,
+            10,
+            90,
+            90
+          ],
+          "calibration": {
+            "sourceRegion": [
+              105,
+              10,
+              90,
+              90
+            ],
+            "sourceMeanRgbSrgb": [
+              145.56,
+              145.36,
+              147.6
+            ],
+            "sourceMeanLumaSrgb": 145.67,
+            "flatFieldedMeanRgbSrgb": [
+              145.56,
+              145.35,
+              147.59
+            ],
+            "flatFieldedMeanLumaSrgb": 145.67,
+            "targetLumaSrgb": 165.0,
+            "targetMeanRgbSrgb": [
+              167.65,
+              164.68,
+              159.73
+            ],
+            "flatFieldFactors": [
+              3,
+              12
+            ],
+            "colourGains": [
+              1.1517,
+              1.1329,
+              1.0822
+            ]
+          },
+          "synthesis": "flat constant fill of the calibrated mean colour 168/165/160 sRGB; albedo std 0 (zero grain / zero speckle), no source pixel resampled",
+          "flat": true,
+          "constantSrgb": [
+            168,
+            165,
+            160
+          ],
+          "deployedMeanRgbSrgb": [
+            168,
+            165,
+            160
+          ],
+          "deployedStdLevels": 0.0,
+          "zeroGrain": true,
+          "detailCompression": {
+            "factor": 0.6,
+            "meanBefore": 164.333,
+            "meanAfter": 164.333,
+            "meanShift": 0.0,
+            "stdBefore": 3.3,
+            "stdAfter": 3.3,
+            "stdRatio": 1.0,
+            "channelStdRatios": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "lumaStdBefore": 0.0,
+            "lumaStdAfter": 0.0,
+            "lumaStdRatio": 1.0
+          }
+        },
+        "normal": {
+          "file": "plaster/normal.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat tangent-space normal; the surface has no relief (model samples no normalMap and bumpScale is 0)",
+          "flat": true,
+          "constantRgb": [
+            128,
+            128,
+            255
+          ],
+          "meanSlope": 0.0,
+          "encodedMeanSlope": 0.00555,
+          "stdLevels": 0.0
+        },
+        "roughness": {
+          "file": "plaster/roughness.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "matte plaster: flat roughness 0.92, no modulation (std 0)",
+          "flat": true,
+          "deployedMean": 0.921569,
+          "constantLevel": 235,
+          "stdLevels": 0.0,
+          "detailCompression": {
+            "factor": 0.75,
+            "meanBefore": 235.0,
+            "meanAfter": 235.0,
+            "meanShift": 0.0,
+            "stdBefore": 0.0,
+            "stdAfter": 0.0,
+            "stdRatio": null
+          }
+        },
+        "metalness": {
+          "file": "plaster/metalness.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "dielectric plaster: flat metalness 0",
+          "flat": true,
+          "deployedMean": 0.0,
+          "constantLevel": 0,
+          "stdLevels": 0.0
+        },
+        "ao": {
+          "file": "plaster/ao.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat white ambient occlusion (no speckle darkening): mean 1.0, std 0",
+          "flat": true,
+          "deployedMean": 1.0,
+          "constantLevel": 255,
+          "stdLevels": 0.0
+        },
+        "height": {
+          "file": "plaster/height.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat height mid-grey 128 (no relief): mean 0.502, std 0",
+          "flat": true,
+          "deployedMean": 0.501961,
+          "constantLevel": 128,
+          "stdLevels": 0.0,
+          "detailCompression": {
+            "factor": 0.7,
+            "meanBefore": 128.0,
+            "meanAfter": 128.0,
+            "meanShift": 0.0,
+            "stdBefore": 0.0,
+            "stdAfter": 0.0,
+            "stdRatio": null
+          }
+        }
+      },
+      "tileability": {
+        "note": "mean absolute 8-bit channel delta across the wrap (0..1, lower is better), measured on the final deployed map; internalH/internalV are the mean adjacent-pixel deltas of the same map for reference. Every revision-9 map is seamless by construction (constant fill or an exactly periodic integer-frequency field), and every map publishes measured wrap/internal deltas.",
+        "albedo": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "normal": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "roughness": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "metalness": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "ao": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "height": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        }
+      },
+      "grain": {
+        "present": false,
+        "mode": "none",
+        "albedoOnly": false,
+        "channel": "none",
+        "albedoGrain": false,
+        "normalGrain": false,
+        "roughnessGrain": false,
+        "heightGrain": false,
+        "note": "revision 9 removes every plaster surface grain: the albedo is a single constant colour (std 0) and every data map is uniform, so the surface is perfectly smooth and only the model's reflective kit contributes appearance"
+      },
+      "flatness": {
+        "goal": "perfectly smooth plaster: zero surface grain",
+        "albedo": {
+          "constantSrgb": [
+            168,
+            165,
+            160
+          ],
+          "targetMeanRgbSrgb": [
+            167.65,
+            164.68,
+            159.73
+          ],
+          "stdLevels": 0.0,
+          "minEqualsMax": true
+        },
+        "maps": {
+          "normal": {
+            "deployedMean": 0.667974,
+            "stdLevels": 59.8684,
+            "constantRgb": [
+              128,
+              128,
+              255
+            ],
+            "meanSlope": 0.0,
+            "encodedMeanSlope": 0.00555
+          },
+          "roughness": {
+            "deployedMean": 0.921569,
+            "stdLevels": 0.0,
+            "constantLevel": 235
+          },
+          "metalness": {
+            "deployedMean": 0.0,
+            "stdLevels": 0.0,
+            "constantLevel": 0
+          },
+          "ao": {
+            "deployedMean": 1.0,
+            "stdLevels": 0.0,
+            "constantLevel": 255
+          },
+          "height": {
+            "deployedMean": 0.501961,
+            "stdLevels": 0.0,
+            "constantLevel": 128
+          }
+        },
+        "reflectiveKit": "model/preview-side (constant metalness 1.0, roughness 0.092, colour lift [2.0,2.12,2.36], PMREM envMap, CubeCamera) and untouched",
+        "deployedGrain": false
+      }
+    },
+    "limestone": {
+      "label": "Limestone",
+      "tilePx": 480,
+      "tilePxNote": "kept at 480 world px per tile: the round-5 stone crop is 431 px across, so one tile spans approximately the reference's visible stone width and the synthesised grain keeps the reference's physical grain density; 480 also keeps limestone between plaster (420) and satin (260)",
+      "normalConvention": "opengl",
+      "derivationKind": "reference-derived",
+      "derivationMode": "albedo-grain",
+      "grainMode": "albedo-only-chromatic",
+      "derivation": "reference-derived, SYNTHESISED albedo-only grain: the round-5 dark limestone crop refs/round5/limestone-dark.png is flat-fielded (factors 4,16) to remove the baked diagonal studio lighting + vignette, and the residual grain statistics are measured: flat-fielded mean RGB ~ (44.3, 45.1, 49.0) (dark charcoal family, mean luma ~45.3), luma std ~6.8 levels, high-pass chroma std R-G ~1.0 / G-B ~1.5, grain spectral centroid ~142 cycles per reference width with the measured grain energy 10 / 49 / 36 percent in the 43-86 / 86-151 / 151-216 cycles-per-width bands. The deployed 1024 albedo is then built deterministically as integer-frequency plane waves (exactly periodic, so seamless): a luma field plus TWO independent chroma fields (R-G, G-B; different fixed seeds and different frequency bands), recombined to RGB, with the luma amplitude calibrated to reproduce the measured reference luma std and the chroma amplitudes lifted modestly to a clearly measurable ~2.4/2.8 sRGB levels (reference-measured and deployed values, the lift factor and the measured R-G vs G-B high-pass decorrelation are all published), after the SPEC rev4 x0.60 detail compression (the pre-compression field is pre-scaled by 1/0.60). No source pixel is copied, therefore no baked highlight/specular pixel exists (published highlight cap 96 luma, 0 pixels above it). Normal + height are flat (model normalMap null / bumpScale 0), roughness is a flat matte 0.90 with NO grain modulation, metalness is 0 and ao is flat white.",
+      "detail": {
+        "albedoContrast": 0.6,
+        "roughnessContrast": 0.75,
+        "heightContrast": 0.7
+      },
+      "channels": {
+        "albedo": {
+          "file": "limestone/albedo.png",
+          "width": 1024,
+          "height": 1024,
+          "colorSpace": "srgb",
+          "source": "derived",
+          "processing": [
+            "reference-statistics (flat-fielded)",
+            "colour-calibrated",
+            "synthesised chromatic grain",
+            "resample-free 1024 tile"
+          ],
+          "derivation": "reference-derived, SYNTHESISED albedo-only grain: the round-5 dark limestone crop refs/round5/limestone-dark.png is flat-fielded (factors 4,16) to remove the baked diagonal studio lighting + vignette, and the residual grain statistics are measured: flat-fielded mean RGB ~ (44.3, 45.1, 49.0) (dark charcoal family, mean luma ~45.3), luma std ~6.8 levels, high-pass chroma std R-G ~1.0 / G-B ~1.5, grain spectral centroid ~142 cycles per reference width with the measured grain energy 10 / 49 / 36 percent in the 43-86 / 86-151 / 151-216 cycles-per-width bands. The deployed 1024 albedo is then built deterministically as integer-frequency plane waves (exactly periodic, so seamless): a luma field plus TWO independent chroma fields (R-G, G-B; different fixed seeds and different frequency bands), recombined to RGB, with the luma amplitude calibrated to reproduce the measured reference luma std and the chroma amplitudes lifted modestly to a clearly measurable ~2.4/2.8 sRGB levels (reference-measured and deployed values, the lift factor and the measured R-G vs G-B high-pass decorrelation are all published), after the SPEC rev4 x0.60 detail compression (the pre-compression field is pre-scaled by 1/0.60). No source pixel is copied, therefore no baked highlight/specular pixel exists (published highlight cap 96 luma, 0 pixels above it). Normal + height are flat (model normalMap null / bumpScale 0), roughness is a flat matte 0.90 with NO grain modulation, metalness is 0 and ao is flat white.",
+          "region": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "synthesis": "seamless 1024 albedo synthesised from 260/110/110 integer-frequency plane waves (luma / chroma R-G / chroma G-B), mean RGB 44.3/45.1/49.0, deployed luma std 6.82 (reference-calibrated), deployed chroma std R-G 2.44 / G-B 2.84 (reference-measured 0.89 / 1.14, lifted; independent seeds/bands), R-G vs G-B high-pass corr -0.064, highlight cap 96 luma with 0 pixels above it",
+          "flatFielded": true,
+          "meanLumaSrgb": 45.321,
+          "deployedMeanRgbSrgb": [
+            44.38,
+            45.08,
+            49.02
+          ],
+          "highlightCap": 96,
+          "deployedMaxLuma": 75.93,
+          "pixelsAboveHighlightCap": 0,
+          "chromaStdLevels": {
+            "referenceMeasured": {
+              "rg": 0.887,
+              "gb": 1.139
+            },
+            "deployed": {
+              "rg": 2.445,
+              "gb": 2.84
+            }
+          },
+          "chromaDecorrelation": {
+            "rgVsGb": -0.0637,
+            "lumaVsRg": -0.0118,
+            "lumaVsGb": 0.0115
+          },
+          "detailCompression": {
+            "factor": 0.6,
+            "meanBefore": 46.157,
+            "meanAfter": 46.161,
+            "meanShift": 0.004,
+            "stdBefore": 11.954,
+            "stdAfter": 7.36,
+            "stdRatio": 0.6157,
+            "channelStdRatios": [
+              0.6005,
+              0.6005,
+              0.6005
+            ],
+            "lumaStdBefore": 11.364,
+            "lumaStdAfter": 6.821,
+            "lumaStdRatio": 0.6002
+          }
+        },
+        "normal": {
+          "file": "limestone/normal.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat tangent-space normal: the limestone grain is albedo-only, so the surface has no normal/bump relief (model normalMap null, normalScale [0,0], bumpScale 0)",
+          "flat": true,
+          "constantRgb": [
+            128,
+            128,
+            255
+          ],
+          "meanSlope": 0.0,
+          "encodedMeanSlope": 0.00555,
+          "stdLevels": 0.0
+        },
+        "roughness": {
+          "file": "limestone/roughness.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat matte high roughness 0.90, NO grain modulation (std 0); the model factor 1.0 makes the map mean the whole response",
+          "flat": true,
+          "deployedMean": 0.901961,
+          "constantLevel": 230,
+          "stdLevels": 0.0,
+          "detailCompression": {
+            "factor": 0.75,
+            "meanBefore": 230.0,
+            "meanAfter": 230.0,
+            "meanShift": 0.0,
+            "stdBefore": 0.0,
+            "stdAfter": 0.0,
+            "stdRatio": null
+          }
+        },
+        "metalness": {
+          "file": "limestone/metalness.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "dielectric dark limestone: flat metalness 0",
+          "flat": true,
+          "deployedMean": 0.0,
+          "constantLevel": 0,
+          "stdLevels": 0.0
+        },
+        "ao": {
+          "file": "limestone/ao.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat white ambient occlusion (std 0): the flat maps carry no grain",
+          "flat": true,
+          "deployedMean": 1.0,
+          "constantLevel": 255,
+          "stdLevels": 0.0
+        },
+        "height": {
+          "file": "limestone/height.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat height mid-grey 128 (std 0): the model does not sample it",
+          "flat": true,
+          "deployedMean": 0.501961,
+          "constantLevel": 128,
+          "stdLevels": 0.0,
+          "detailCompression": {
+            "factor": 0.7,
+            "meanBefore": 128.0,
+            "meanAfter": 128.0,
+            "meanShift": 0.0,
+            "stdBefore": 0.0,
+            "stdAfter": 0.0,
+            "stdRatio": null
+          }
+        }
+      },
+      "tileability": {
+        "note": "mean absolute 8-bit channel delta across the wrap (0..1, lower is better), measured on the final deployed map; internalH/internalV are the mean adjacent-pixel deltas of the same map for reference. Every revision-9 map is seamless by construction (constant fill or an exactly periodic integer-frequency field), and every map publishes measured wrap/internal deltas.",
+        "albedo": {
+          "h": 0.0083,
+          "v": 0.008,
+          "internalH": 0.0083,
+          "internalV": 0.0078,
+          "ratioH": 1.008,
+          "ratioV": 1.017
+        },
+        "normal": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "roughness": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "metalness": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "ao": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "height": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        }
+      },
+      "grain": {
+        "present": true,
+        "mode": "albedo-only-chromatic",
+        "grainIsAlbedoOnly": true,
+        "albedoOnly": true,
+        "channel": "albedo only - per-point chromatic / albedo colour noise",
+        "normalContribution": "none: the normal and height maps are flat and the model samples no normalMap (normalScale [0,0]) and no bumpMap (bumpScale 0)",
+        "colourVariation": "per-pixel RGB variation: one correlated luma grain field + two INDEPENDENT chroma fields (R-G and G-B; different fixed seeds AND different frequency bands), recombined to RGB, so the grain is chromatic colour noise, not luminance-only and not geometry",
+        "synthesis": "deterministic integer-frequency plane waves on the 1024 px albedo tile (exactly periodic -> seamless); no reference pixel is copied, so no baked highlight / specular pixel exists in the deliverable",
+        "size": 1024,
+        "frequencyUnit": "cycles per 1024 px tile",
+        "components": {
+          "luma": 260,
+          "chromaRG": 110,
+          "chromaGB": 110
+        },
+        "minFrequency": 24,
+        "maxFrequency": 180,
+        "amplitudeRolloff": 1.0,
+        "seeds": {
+          "luma": 5004711,
+          "chromaRG": 871103,
+          "chromaGB": 314159
+        },
+        "chromaFieldIndependence": {
+          "differentSeeds": true,
+          "bands": {
+            "chromaRG": [
+              24,
+              168
+            ],
+            "chromaGB": [
+              30,
+              180
+            ]
+          },
+          "note": "the R-G and G-B chroma fields use different fixed LCG seeds, so their phases and (kx,ky) orientations are unrelated; the deployed R-G vs G-B high-pass correlation is measured and published in deployed.chromaDecorrelation"
+        },
+        "bandMapping": "the 431 px reference crop spans approximately the tile's 480 world px (tilePx 480), so 'cycles per reference width' and 'cycles per 1024 px tile' are directly comparable. The reference's DEPLOYED-method high-pass spectrum (sigma-2 filter, same as deployed) has centroid ~142 cycles and band energy 10/49/36 percent in the 43-86/86-151/151-216 bands; the synthesis band 24-180 cycles/tile with a 1/f amplitude roll-off is chosen so the deployed map reproduces that measured centroid and band energy (the deployed measured values are published under 'deployed.spectrum'). The reference's 216-513 band (~5.5 percent) is FFT-window leakage at the reference's own Nyquist and is not reproduced.",
+        "chromaCalibration": {
+          "referenceMeasuredHighpassChromaStd": {
+            "rg": 0.887,
+            "gb": 1.139
+          },
+          "deployedTargetTotalChromaStd": {
+            "rg": 2.4,
+            "gb": 2.8
+          },
+          "deployedMeasuredChromaStd": {
+            "total": {
+              "rg": 2.445,
+              "gb": 2.84
+            },
+            "highpass": {
+              "rg": 1.105,
+              "gb": 1.474
+            }
+          },
+          "highpassLiftFactorVsReference": {
+            "rg": 1.246,
+            "gb": 1.294
+          },
+          "lumaCalibration": {
+            "referenceMeasuredLumaStd": 6.818,
+            "deployedTargetLumaStd": 6.818,
+            "note": "luma stays reference-calibrated (not lifted)"
+          },
+          "note": "the reference's measured sigma-2 high-pass chromatic grain (R-G ~0.9 / G-B ~1.1 sRGB levels, totals ~1.1/1.5) is lifted to a clearly measurable deployed total chroma of ~2.4/2.8 levels (~2.3x/1.9x); both the reference-measured and deployed numbers, the deployed sigma-2 high-pass chroma and the R-G vs G-B decorrelation are published"
+        },
+        "reference": {
+          "referenceRegion": [
+            0,
+            0,
+            431,
+            170
+          ],
+          "flatFieldFactors": [
+            4,
+            16
+          ],
+          "rawMeanRgbSrgb": [
+            44.68,
+            45.55,
+            49.27
+          ],
+          "rawMeanLumaSrgb": 45.71,
+          "rawLumaStd": 22.32,
+          "rawLumaPercentiles": [
+            7.23,
+            11.34,
+            26.23,
+            46.23,
+            64.86,
+            79.86,
+            86.5,
+            93.5
+          ],
+          "rawLumaMax": 109.09,
+          "bandMeansRaw": {
+            "rowBands": [
+              72.97,
+              67.41,
+              60.41,
+              51.94,
+              42.6,
+              33.61,
+              25.53,
+              18.6
+            ],
+            "colBands": [
+              30.27,
+              34.73,
+              39.54,
+              44.4,
+              48.96,
+              53.48,
+              58.03,
+              62.3
+            ],
+            "rowSpread": 54.37,
+            "colSpread": 32.03
+          },
+          "flatFieldedMeanRgbSrgb": [
+            44.3,
+            45.13,
+            49.04
+          ],
+          "flatFieldedMeanLumaSrgb": 45.33,
+          "bandMeansFlatFielded": {
+            "rowBands": [
+              46.16,
+              46.12,
+              46.24,
+              46.17,
+              46.16,
+              46.1,
+              46.15,
+              46.14
+            ],
+            "colBands": [
+              46.16,
+              46.15,
+              46.16,
+              46.19,
+              46.11,
+              46.17,
+              46.14,
+              46.17
+            ],
+            "rowSpread": 0.14,
+            "colSpread": 0.08
+          },
+          "grainLumaStd": 6.818,
+          "grainLumaPercentiles": [
+            27.86,
+            34.48,
+            41.65,
+            45.29,
+            48.82,
+            56.46,
+            64.8,
+            77.73
+          ],
+          "grainLumaHighpassStd": 6.588,
+          "grainLumaHighpassPercentiles": [
+            -16.99,
+            -10.44,
+            -3.55,
+            -0.11,
+            3.36,
+            10.79,
+            18.88,
+            31.05
+          ],
+          "chromaRgMean": -0.835,
+          "chromaRgStd": 1.067,
+          "chromaGbMean": -3.904,
+          "chromaGbStd": 1.528,
+          "grainChromaRgStd": 0.887,
+          "grainChromaGbStd": 1.139,
+          "grainSpectrum": {
+            "bands": {
+              "0-9": 0.0,
+              "9-22": 0.0,
+              "22-43": 0.002,
+              "43-86": 0.0992,
+              "86-151": 0.4853,
+              "151-216": 0.3587,
+              "216-513": 0.0548
+            },
+            "centroidCyclesPerWidth": 142.28,
+            "centroidCpp": 0.33011
+          },
+          "bakedHighlightCap": 96.0,
+          "bakedHighlightPixels": 36,
+          "bakedHighlightFraction": 0.000491,
+          "pixelsThatWillBeCopied": 0
+        },
+        "deployed": {
+          "meanRgbSrgb": [
+            44.38,
+            45.08,
+            49.02
+          ],
+          "stdRgbSrgb": [
+            7.03,
+            6.874,
+            7.301
+          ],
+          "meanLumaSrgb": 45.321,
+          "lumaStd": 6.821,
+          "lumaPercentiles": [
+            29.43,
+            34.1,
+            40.74,
+            45.33,
+            49.91,
+            56.5,
+            61.1,
+            66.0
+          ],
+          "lumaMin": 18.23,
+          "lumaMax": 75.93,
+          "minChannel": 18,
+          "maxChannel": 81,
+          "chromaRgMean": -0.701,
+          "chromaRgStd": 2.445,
+          "chromaGbMean": -3.942,
+          "chromaGbStd": 2.84,
+          "highpassLumaStd": 2.951,
+          "highpassChromaRgStd": 1.105,
+          "highpassChromaGbStd": 1.474,
+          "channelHighpassStdRgb": [
+            3.046,
+            2.981,
+            3.225
+          ],
+          "channelHighpassCorrelation": {
+            "rg": 0.933,
+            "rb": 0.8395,
+            "gb": 0.8901
+          },
+          "chromaDecorrelation": {
+            "rgVsGb": -0.0637,
+            "lumaVsRg": -0.0118,
+            "lumaVsGb": 0.0115
+          },
+          "spectrum": {
+            "bands": {
+              "0-9": 0.0,
+              "9-22": 0.0,
+              "22-43": 0.0134,
+              "43-86": 0.1265,
+              "86-151": 0.5142,
+              "151-216": 0.341,
+              "216-513": 0.0036
+            },
+            "centroidCyclesPerWidth": 131.08,
+            "centroidCpp": 0.12801
+          },
+          "adjacentDeltaMaxLevels": 14.0,
+          "adjacentDeltaMeanLevels": 2.055
+        },
+        "preCompression": {
+          "meanRgbSrgb": [
+            44.3,
+            45.13,
+            49.04
+          ],
+          "stdRgbSrgb": [
+            11.707,
+            11.447,
+            12.159
+          ],
+          "meanLumaSrgb": 45.33,
+          "lumaStd": 11.364,
+          "lumaPercentiles": [
+            18.9,
+            26.57,
+            37.66,
+            45.34,
+            53.02,
+            64.03,
+            71.56,
+            79.76
+          ],
+          "lumaMin": 0.0,
+          "lumaMax": 96.23,
+          "minChannel": 0,
+          "maxChannel": 102,
+          "chromaRgMean": -0.835,
+          "chromaRgStd": 4.021,
+          "chromaGbMean": -3.904,
+          "chromaGbStd": 4.685,
+          "highpassLumaStd": 4.909,
+          "highpassChromaRgStd": 1.725,
+          "highpassChromaGbStd": 2.369,
+          "channelHighpassStdRgb": [
+            5.057,
+            4.947,
+            5.356
+          ],
+          "channelHighpassCorrelation": {
+            "rg": 0.9408,
+            "rb": 0.846,
+            "gb": 0.8972
+          },
+          "chromaDecorrelation": {
+            "rgVsGb": -0.0191,
+            "lumaVsRg": -0.005,
+            "lumaVsGb": 0.0032
+          },
+          "spectrum": {
+            "bands": {
+              "0-9": 0.0,
+              "9-22": 0.0,
+              "22-43": 0.0135,
+              "43-86": 0.1269,
+              "86-151": 0.5162,
+              "151-216": 0.342,
+              "216-513": 0.001
+            },
+            "centroidCyclesPerWidth": 130.02,
+            "centroidCpp": 0.12697
+          },
+          "adjacentDeltaMaxLevels": 23.0,
+          "adjacentDeltaMeanLevels": 3.424
+        },
+        "detailCompressionCompensated": true,
+        "compressionFactor": 0.6,
+        "preScaleFactor": 1.666667,
+        "highlightCap": 96,
+        "deployedMaxLuma": 75.93,
+        "pixelsAboveHighlightCap": 0,
+        "bakedHighlights": false,
+        "seamless": true,
+        "tileability": {
+          "albedo": {
+            "h": 0.014,
+            "v": 0.0134,
+            "internalH": 0.0138,
+            "internalV": 0.0131,
+            "ratioH": 1.011,
+            "ratioV": 1.025
+          },
+          "normal": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "roughness": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "metalness": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "ao": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "height": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          }
+        },
+        "note": "grain amplitude is calibrated to the flat-fielded reference statistics AFTER the SPEC rev4 x0.60 albedo compression; both pre- and deployed values are published above. Roughness/metalness/ao/height carry no grain (flat maps)."
+      }
+    },
+    "satin": {
+      "label": "Satin",
+      "tilePx": 260,
+      "tilePxNote": "kept at 260 world px per tile so the smooth satin stays featureless at true scale and the specular response (not texture) defines the surface",
+      "normalConvention": "opengl",
+      "derivationKind": "reference-derived",
+      "derivationMode": "tonal-gradient",
+      "grainMode": "none",
+      "derivation": "reference-derived smooth tone: the round-5 satin crop refs/round5/satin-grey.png is flat-fielded (factors 8,32) to remove the baked vertical studio gradient (raw row-band spread ~62 luma collapses to <0.3), giving the reference's central tone (flat-fielded mean RGB ~ (85.8, 87.7, 91.7), mean luma ~87.6, subtle cool tint R-G ~-1.9 / G-B ~-4.0) and the reference tonal range p1..p99 = 52.6..125.9. The deployed 1024 albedo keeps that neutral/slightly-cool chroma but places the BASE tone at 125 sRGB - the top of the measured reference tonal range (p99 = 125.9) - because the albedo is the metal F0 for metalness 0.85 and the reference's central 87.6 tone rendered as near-black glossy metal in the page (Lead visual review, revision 9.1); it adds ONLY a very soft low-frequency tonal mottle (deterministic exactly periodic integer-frequency field at 1-3 cycles per tile; deployed luma std ~2 levels, no fine grain, no visible tile structure). Revision 9 removes the rev-7/8 normal/height/roughness grain completely: normal + height flat, roughness flat 0.30 (no modulation), ao flat 0.97, metalness flat 0.85 - the reflection-behaviour levels are IDENTICAL to revision 8 (effective roughness 0.80 x 0.30 = 0.242, effective metalness 0.85), so only the grain is removed.",
+      "detail": {
+        "albedoContrast": 0.6,
+        "roughnessContrast": 0.75,
+        "heightContrast": 0.7
+      },
+      "channels": {
+        "albedo": {
+          "file": "satin/albedo.png",
+          "width": 1024,
+          "height": 1024,
+          "colorSpace": "srgb",
+          "source": "derived",
+          "processing": [
+            "reference-patch",
+            "flat-field",
+            "colour-calibrated",
+            "tone-matched",
+            "low-frequency mottle",
+            "resample-free 1024 tile"
+          ],
+          "derivation": "reference-derived smooth tone: the round-5 satin crop refs/round5/satin-grey.png is flat-fielded (factors 8,32) to remove the baked vertical studio gradient (raw row-band spread ~62 luma collapses to <0.3), giving the reference's central tone (flat-fielded mean RGB ~ (85.8, 87.7, 91.7), mean luma ~87.6, subtle cool tint R-G ~-1.9 / G-B ~-4.0) and the reference tonal range p1..p99 = 52.6..125.9. The deployed 1024 albedo keeps that neutral/slightly-cool chroma but places the BASE tone at 125 sRGB - the top of the measured reference tonal range (p99 = 125.9) - because the albedo is the metal F0 for metalness 0.85 and the reference's central 87.6 tone rendered as near-black glossy metal in the page (Lead visual review, revision 9.1); it adds ONLY a very soft low-frequency tonal mottle (deterministic exactly periodic integer-frequency field at 1-3 cycles per tile; deployed luma std ~2 levels, no fine grain, no visible tile structure). Revision 9 removes the rev-7/8 normal/height/roughness grain completely: normal + height flat, roughness flat 0.30 (no modulation), ao flat 0.97, metalness flat 0.85 - the reflection-behaviour levels are IDENTICAL to revision 8 (effective roughness 0.80 x 0.30 = 0.242, effective metalness 0.85), so only the grain is removed.",
+          "region": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "synthesis": "reference-derived neutral/slightly-cool chroma (reference R-G -1.91 / G-B -4.01) placed at a base luma of 125.0 sRGB (top of the reference tonal range; reference mean tone 87.60 double-darkens because albedo is the metal F0) plus a very soft exactly periodic low-frequency tonal mottle (1-3 cycles per tile); deployed luma std 2.04 levels, no fine grain, seamless",
+          "flatFielded": true,
+          "targetLumaSrgb": 125.0,
+          "meanLumaSrgb": 124.951,
+          "deployedMeanRgbSrgb": [
+            123.13,
+            125.08,
+            129.08
+          ],
+          "tonalRangeReferenceSrgb": [
+            52.63,
+            55.86,
+            68.86,
+            87.86,
+            105.86,
+            120.86,
+            125.86,
+            127.86
+          ],
+          "noGrain": true,
+          "detailCompression": {
+            "factor": 0.6,
+            "meanBefore": 125.816,
+            "meanAfter": 125.763,
+            "meanShift": -0.053,
+            "stdBefore": 4.159,
+            "stdAfter": 3.21,
+            "stdRatio": 0.7719,
+            "channelStdRatios": [
+              0.6094,
+              0.6092,
+              0.6093
+            ],
+            "lumaStdBefore": 3.345,
+            "lumaStdAfter": 2.037,
+            "lumaStdRatio": 0.609
+          }
+        },
+        "normal": {
+          "file": "satin/normal.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat tangent-space normal: revision 9 removes the rev-7/8 satin normal grain (model normalMap null, normalScale [0,0], bumpScale 0)",
+          "flat": true,
+          "constantRgb": [
+            128,
+            128,
+            255
+          ],
+          "meanSlope": 0.0,
+          "encodedMeanSlope": 0.00555,
+          "stdLevels": 0.0
+        },
+        "roughness": {
+          "file": "satin/roughness.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat low roughness 0.30, NO grain modulation (std 0); identical level to revision 8 so the blurred mirror reflection is preserved",
+          "flat": true,
+          "deployedMean": 0.301961,
+          "constantLevel": 77,
+          "stdLevels": 0.0,
+          "detailCompression": {
+            "factor": 0.75,
+            "meanBefore": 77.0,
+            "meanAfter": 77.0,
+            "meanShift": 0.0,
+            "stdBefore": 0.0,
+            "stdAfter": 0.0,
+            "stdRatio": null
+          }
+        },
+        "metalness": {
+          "file": "satin/metalness.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat high metalness 0.85 (revision-8 level preserved), no variation",
+          "flat": true,
+          "deployedMean": 0.85098,
+          "constantLevel": 217,
+          "stdLevels": 0.0
+        },
+        "ao": {
+          "file": "satin/ao.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat near-white ambient occlusion 0.97, no grain",
+          "flat": true,
+          "deployedMean": 0.968627,
+          "constantLevel": 247,
+          "stdLevels": 0.0
+        },
+        "height": {
+          "file": "satin/height.png",
+          "width": 512,
+          "height": 512,
+          "colorSpace": "linear",
+          "source": "derived",
+          "processing": [
+            "constant-fill (flat map)"
+          ],
+          "derivation": "flat height mid-grey 128 (std 0): the rev-7/8 grain height is removed and the model does not sample it",
+          "flat": true,
+          "deployedMean": 0.501961,
+          "constantLevel": 128,
+          "stdLevels": 0.0,
+          "detailCompression": {
+            "factor": 0.7,
+            "meanBefore": 128.0,
+            "meanAfter": 128.0,
+            "meanShift": 0.0,
+            "stdBefore": 0.0,
+            "stdAfter": 0.0,
+            "stdRatio": null
+          }
+        }
+      },
+      "tileability": {
+        "note": "mean absolute 8-bit channel delta across the wrap (0..1, lower is better), measured on the final deployed map; internalH/internalV are the mean adjacent-pixel deltas of the same map for reference. Every revision-9 map is seamless by construction (constant fill or an exactly periodic integer-frequency field), and every map publishes measured wrap/internal deltas.",
+        "albedo": {
+          "h": 0.0001,
+          "v": 0.0,
+          "internalH": 0.0001,
+          "internalV": 0.0001,
+          "ratioH": 1.12,
+          "ratioV": 0.777
+        },
+        "normal": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "roughness": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "metalness": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "ao": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        },
+        "height": {
+          "h": 0.0,
+          "v": 0.0,
+          "internalH": 0.0,
+          "internalV": 0.0,
+          "ratioH": null,
+          "ratioV": null
+        }
+      },
+      "grain": {
+        "present": false,
+        "mode": "none",
+        "albedoOnly": false,
+        "channel": "none",
+        "albedoGrain": false,
+        "normalGrain": false,
+        "roughnessGrain": false,
+        "heightGrain": false,
+        "note": "revision 9 removes the rev-7/8 satin grain completely: the albedo carries only a very soft low-frequency tonal mottle, the normal and height maps are flat, roughness is flat 0.30 with no modulation and metalness is flat 0.85"
+      },
+      "smoothness": {
+        "goal": "smooth neutral-grey satin: keep the round-5 reference tone family, remove the revision 7-8 normal/roughness grain entirely",
+        "toneCalibration": {
+          "targetLumaSrgb": 125.0,
+          "referenceMeanRgbSrgb": [
+            85.8,
+            87.71,
+            91.72
+          ],
+          "referenceMeanLumaSrgb": 87.6,
+          "referenceLumaPercentilesSrgb": [
+            52.63,
+            55.86,
+            68.86,
+            87.86,
+            105.86,
+            120.86,
+            125.86,
+            127.86
+          ],
+          "referenceChromaRgMean": -1.91,
+          "referenceChromaGbMean": -4.01,
+          "targetMeanRgbSrgb": [
+            123.2,
+            125.11,
+            129.12
+          ],
+          "rationale": "base tone = top of the reference tonal range (target luma 125 sRGB, inside reference p99 125.9); the reference mean tone 87.6 double-darkens because albedo is the metal F0 for metalness 0.85, per the Lead page review"
+        },
+        "referenceTonalRange": {
+          "referenceRegion": [
+            0,
+            0,
+            251,
+            132
+          ],
+          "flatFieldFactors": [
+            8,
+            32
+          ],
+          "rawMeanRgbSrgb": [
+            85.8,
+            87.72,
+            91.72
+          ],
+          "rawMeanLumaSrgb": 87.6,
+          "rawLumaStd": 21.02,
+          "rawLumaPercentiles": [
+            52.63,
+            55.86,
+            68.86,
+            87.86,
+            105.86,
+            120.86,
+            125.86,
+            127.86
+          ],
+          "rawLumaMin": 48.63,
+          "rawLumaMax": 128.86,
+          "bandMeansRaw": {
+            "rowBands": [
+              119.93,
+              111.04,
+              102.55,
+              93.69,
+              84.01,
+              74.14,
+              65.58,
+              57.43
+            ],
+            "colBands": [
+              88.85,
+              89.72,
+              90.41,
+              90.29,
+              89.76,
+              87.95,
+              86.34,
+              84.07
+            ],
+            "rowSpread": 62.5,
+            "colSpread": 6.35
+          },
+          "flatFieldedMeanRgbSrgb": [
+            85.8,
+            87.71,
+            91.72
+          ],
+          "flatFieldedMeanLumaSrgb": 87.6,
+          "flatFieldedLumaStd": 0.833,
+          "flatFieldedLumaPercentiles": [
+            85.43,
+            86.27,
+            87.07,
+            87.63,
+            88.08,
+            89.02,
+            89.44,
+            90.34
+          ],
+          "bandMeansFlatFielded": {
+            "rowBands": [
+              88.42,
+              88.42,
+              88.42,
+              88.41,
+              88.4,
+              88.4,
+              88.47,
+              88.33
+            ],
+            "colBands": [
+              88.36,
+              88.4,
+              88.38,
+              88.45,
+              88.39,
+              88.36,
+              88.47,
+              88.46
+            ],
+            "rowSpread": 0.14,
+            "colSpread": 0.12
+          },
+          "fineGrainHighpassStd": 0.595,
+          "chromaRgMean": -1.918,
+          "chromaRgStd": 0.486,
+          "chromaGbMean": -4.003,
+          "chromaGbStd": 0.674,
+          "pixelsThatWillBeCopied": 0
+        },
+        "deployedAlbedo": {
+          "meanRgbSrgb": [
+            123.13,
+            125.08,
+            129.08
+          ],
+          "stdRgbSrgb": [
+            2.039,
+            2.04,
+            2.04
+          ],
+          "meanLumaSrgb": 124.951,
+          "lumaStd": 2.037,
+          "lumaPercentiles": [
+            120.86,
+            121.86,
+            123.86,
+            124.86,
+            125.86,
+            128.86,
+            129.86,
+            129.86
+          ],
+          "lumaMin": 120.86,
+          "lumaMax": 129.86,
+          "minChannel": 119,
+          "maxChannel": 134,
+          "chromaRgMean": -1.947,
+          "chromaRgStd": 0.223,
+          "chromaGbMean": -4.006,
+          "chromaGbStd": 0.078,
+          "highpassLumaStd": 0.075,
+          "highpassChromaRgStd": 0.146,
+          "highpassChromaGbStd": 0.072,
+          "channelHighpassStdRgb": [
+            0.102,
+            0.102,
+            0.102
+          ],
+          "channelHighpassCorrelation": {
+            "rg": -0.0289,
+            "rb": 0.0051,
+            "gb": 0.749
+          },
+          "chromaDecorrelation": {
+            "rgVsGb": -0.2809,
+            "lumaVsRg": -0.3642,
+            "lumaVsGb": 0.2094
+          },
+          "spectrum": {
+            "bands": {
+              "0-9": 0.0002,
+              "9-22": 0.0014,
+              "22-43": 0.0169,
+              "43-86": 0.1257,
+              "86-151": 0.2774,
+              "151-216": 0.1826,
+              "216-513": 0.315
+            },
+            "centroidCyclesPerWidth": 228.32,
+            "centroidCpp": 0.22297
+          },
+          "adjacentDeltaMaxLevels": 1.0,
+          "adjacentDeltaMeanLevels": 0.015
+        },
+        "preCompressionAlbedo": {
+          "meanRgbSrgb": [
+            123.21,
+            125.12,
+            129.13
+          ],
+          "stdRgbSrgb": [
+            3.346,
+            3.349,
+            3.349
+          ],
+          "meanLumaSrgb": 125.002,
+          "lumaStd": 3.345,
+          "lumaPercentiles": [
+            118.86,
+            119.86,
+            122.86,
+            124.86,
+            126.86,
+            130.86,
+            133.16,
+            133.86
+          ],
+          "lumaMin": 117.86,
+          "lumaMax": 133.86,
+          "minChannel": 116,
+          "maxChannel": 138,
+          "chromaRgMean": -1.91,
+          "chromaRgStd": 0.286,
+          "chromaGbMean": -4.01,
+          "chromaGbStd": 0.1,
+          "highpassLumaStd": 0.096,
+          "highpassChromaRgStd": 0.187,
+          "highpassChromaGbStd": 0.093,
+          "channelHighpassStdRgb": [
+            0.131,
+            0.131,
+            0.131
+          ],
+          "channelHighpassCorrelation": {
+            "rg": -0.0227,
+            "rb": 0.0104,
+            "gb": 0.7461
+          },
+          "chromaDecorrelation": {
+            "rgVsGb": -0.2818,
+            "lumaVsRg": -0.3614,
+            "lumaVsGb": 0.2107
+          },
+          "spectrum": {
+            "bands": {
+              "0-9": 0.0003,
+              "9-22": 0.0004,
+              "22-43": 0.009,
+              "43-86": 0.1151,
+              "86-151": 0.3061,
+              "151-216": 0.1611,
+              "216-513": 0.3283
+            },
+            "centroidCyclesPerWidth": 229.58,
+            "centroidCpp": 0.2242
+          },
+          "adjacentDeltaMaxLevels": 1.0,
+          "adjacentDeltaMeanLevels": 0.025
+        },
+        "compressionFactor": 0.6,
+        "preScaleFactor": 1.666667,
+        "targetDeployedStdLevels": 2.0,
+        "gradient": {
+          "field": "deterministic exactly periodic integer-frequency low-frequency field",
+          "size": 1024,
+          "components": 6,
+          "minFrequency": 1,
+          "maxFrequency": 3,
+          "frequencyUnit": "cycles per 1024 px tile",
+          "noFineGrain": true,
+          "seamless": true
+        },
+        "grain": {
+          "present": false,
+          "normalGrain": false,
+          "roughnessGrain": false,
+          "heightGrain": false,
+          "albedoFineGrain": false,
+          "highpassLumaStdLevels": 0.075,
+          "adjacentPixelMaxDeltaLevels": 1.0
+        },
+        "flatMapProof": {
+          "normal": {
+            "deployedMean": 0.667974,
+            "stdLevels": 59.8684,
+            "constantRgb": [
+              128,
+              128,
+              255
+            ],
+            "meanSlope": 0.0,
+            "encodedMeanSlope": 0.00555
+          },
+          "roughness": {
+            "deployedMean": 0.301961,
+            "stdLevels": 0.0,
+            "constantLevel": 77
+          },
+          "metalness": {
+            "deployedMean": 0.85098,
+            "stdLevels": 0.0,
+            "constantLevel": 217
+          },
+          "ao": {
+            "deployedMean": 0.968627,
+            "stdLevels": 0.0,
+            "constantLevel": 247
+          },
+          "height": {
+            "deployedMean": 0.501961,
+            "stdLevels": 0.0,
+            "constantLevel": 128
+          }
+        },
+        "reflectionBehaviourPreserved": {
+          "roughnessMapMean": 0.301961,
+          "metalnessMapMean": 0.85098,
+          "aoMapMean": 0.968627,
+          "revision8RoughnessMapMean": 0.3,
+          "revision8MetalnessMapMean": 0.85,
+          "modelRoughnessFactor": 0.8,
+          "effectiveRoughness": 0.2416,
+          "effectiveMetalness": 0.85098,
+          "note": "map means identical to revision 8 (0.30 / 0.85), so the blurred mirror reflection levels are unchanged; only the grain is removed"
+        },
+        "seamless": true,
+        "tileability": {
+          "albedo": {
+            "h": 0.0001,
+            "v": 0.0001,
+            "internalH": 0.0001,
+            "internalV": 0.0001,
+            "ratioH": 0.923,
+            "ratioV": 1.238
+          },
+          "normal": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "roughness": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "metalness": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "ao": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          },
+          "height": {
+            "h": 0.0,
+            "v": 0.0,
+            "internalH": 0.0,
+            "internalV": 0.0,
+            "ratioH": null,
+            "ratioV": null
+          }
+        }
+      }
+    }
+  },
+  "pipeline": {
+    "revision": 9,
+    "revisionSummary": "Revision 9: plaster is perfectly flat (zero grain); limestone is re-sourced from refs/round5/limestone-dark.png and its rough grain is carried ONLY by chromatic/albedo colour noise (flat normal/height, flat matte roughness 0.90); satin is re-sourced from refs/round5/satin-grey.png and loses all grain while keeping the revision-8 reflection levels (roughness map 0.30, metalness map 0.85).",
+    "deterministic": true,
+    "resampler": "Pillow Lanczos (evidence thumbnails only) + integer-frequency plane-wave synthesis",
+    "materialSetNote": "SPEC Revision 5: three groups (plaster index 0, limestone index 1, satin index 2). The Revision 4 concrete and metal groups, their maps and their source copies were removed from the tree.",
+    "referenceDerivationNote": "Revision 9 sources are user reference images, not flat PBR sheets: plaster.png (unchanged) calibrates the flat plaster mean colour; refs/round5/limestone-dark.png and refs/round5/satin-grey.png are flat-fielded to MEASURE grain/tone/chroma statistics (multi-scale low-frequency illumination removal, mean preserving). No reference pixel is copied into any deployed map, so no baked highlight, specular pixel, label or lighting gradient can survive.",
+    "seamHealing": "no healed crops in revision 9: plaster is a constant fill, limestone is a sum of integer-frequency plane waves (exactly periodic on the tile) and satin is a 1-3 cycle/tile periodic field, so every deployed albedo is seamless by construction with identical wrap edges and no derivative jump; the uniform data maps are trivially seamless. Every map still publishes measured wrap/internal deltas in materials.*.tileability.",
+    "normalConventionNote": "all tangent-space normal maps are OpenGL (green = +Y, three.js r151 contract). Revision 9 deploys a perfectly flat (128,128,255) normal for every material: the limestone grain is albedo-only colour noise and the satin is smooth, so the model samples no normalMap (normalScale [0,0]) and no bumpMap (bumpScale 0).",
+    "colourSpaceNote": "albedo PNGs are sRGB encoded; normal/roughness/metalness/ao/height PNGs are linear data maps.",
+    "mapLevelNote": "revision-9 map levels: plaster albedo flat 168/165/160 sRGB, roughness 0.9216, metalness 0, ao 1.0, height 0.502, normal (128,128,255); limestone roughness 0.9020, metalness 0, ao 1.0, height 0.502; satin roughness 0.3020, metalness 0.8510, ao 0.9686, height 0.502. The satin roughness/metalness means are identical to revision 8, so the blurred mirror reflection response is unchanged.",
+    "detailCompressionNote": "SPEC Revision 4 section 4.2-A is still applied: after derivation, albedo / roughness / height deviations from their calibrated means are compressed by 0.60 / 0.75 / 0.70 (means preserved within 0.5 level); factors are published in materials.<id>.detail and measured per channel in the channel detailCompression block. Flat maps are unaffected; the limestone albedo grain is pre-scaled by 1/0.60 so the DEPLOYED map reproduces the measured reference grain (both pre- and post-compression statistics are published in materials.limestone.grain).",
+    "albedoGrainNote": "limestone (revision 9): the visible rough grain is albedo-only per-point chromatic colour noise - one correlated luma plane-wave field plus two independent chroma fields (R-G, G-B; different fixed seeds AND different frequency bands) recombined to RGB, exactly periodic (seamless). The luma std is reference-calibrated (~6.8); the chroma std is deliberately lifted from the reference-measured ~1.0/1.5 to ~2.4/2.8 sRGB levels so the colour grain is clearly measurable, and the deployed R-G vs G-B high-pass decorrelation is published. The normal/height maps are flat and carry no grain; roughness/metalness/ao are flat.",
+    "grainModeNote": "per-material grain declaration for documentation/model QA: materials.<id>.grainMode is 'albedo-only-chromatic' for limestone (grain present, albedo-only, no normal/height/roughness grain) and 'none' for plaster and satin (no surface grain anywhere). Each material also publishes materials.<id>.grain with present/mode/albedoOnly flags and the per-channel grain evidence.",
+    "flatnessNote": "plaster (revision 9): every map is perfectly uniform - albedo std 0 (no speckle/grain), ao 255 std 0, normal (128,128,255) with encoded mean slope 0.0055 (the 8-bit flat-normal floor), roughness 0.9216 std 0, metalness 0, height 128 std 0. The reflective kit is model/preview-side and untouched.",
+    "smoothnessNote": "satin (revision 9 / 9.1): the albedo keeps the round-5 reference's neutral, slightly-cool chroma (R-G ~-1.9, G-B ~-4.0) but its BASE tone is 125 sRGB - the top of the measured reference tonal range (p99 = 125.9) - because the albedo is the metal F0 for metalness 0.85 and the reference's central 87.6 tone double-darkened the render (Lead page review); it carries only a very soft 1-3 cycles/tile tonal mottle (deployed luma std ~2 levels, zero fine grain). normal/height are flat, roughness is flat 0.30 with NO grain modulation and metalness is flat 0.85, i.e. the revision-8 reflection levels with the grain removed. The reference tonal range, target tone and the flat-map proof are published in materials.satin.smoothness."
+  }
+}

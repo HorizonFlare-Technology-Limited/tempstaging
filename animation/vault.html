@@ -1,0 +1,342 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="TEKO Vault ??a ribbed steel safe whose chamfered door closes while a striped background of steel-blue bars expands from a condensed lower-left pile to an upper-right field. One close animation, a fixed three-quarter studio camera and a dark reflective floor.">
+<title>TEKO ??Vault</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4.5' y='5' width='23' height='22' rx='3' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.5'/%3E%3Crect x='9' y='9.5' width='14' height='13' rx='1.6' fill='none' stroke='%23c9d6e6' stroke-width='1.2'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='none' stroke='%23c9d6e6' stroke-width='1.2' stroke-dasharray='1.6 1.6'/%3E%3Cpath d='M6 9.5h2.2M6 12.6h2.2M6 15.7h2.2M6 18.8h2.2M6 21.9h2.2' stroke='%23c9d6e6' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/vault-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-vault="" data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-animation="intro" data-qa-safe-state="open" data-qa-door-progress="0" data-qa-door-angle="0" data-qa-bars-progress="0" data-qa-bars-condensed="1" data-qa-bars-count="26" data-qa-playing="0" data-qa-played-once="0" data-qa-camera="" data-qa-distance="" data-qa-stage-rect="" data-qa-object-rect="" data-still="0" data-shot="0" data-play="auto" data-reduced-motion="0">
+
+  <div class="page" id="page">
+
+    <header class="site-header">
+      <a class="brand" href="./vault.html" aria-label="TEKO ??Vault home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.2" y="4.6" width="15.6" height="14.8" rx="2.2"></rect>
+            <rect x="8.4" y="8.4" width="7.2" height="7.2" rx="1.2" opacity="0.7"></rect>
+            <circle cx="12" cy="12" r="2.1" opacity="0.8" stroke-dasharray="0.9 1.1"></circle>
+            <path d="M6.4 8.2v7.6M8.1 8.2v7.6M9.8 8.2v7.6" opacity="0.55"></path>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Vault</span>
+      </a>
+
+      <nav class="collection-nav" aria-label="Collections">
+        <a class="collection-link" href="./">Coin</a>
+        <a class="collection-link" href="./card.html">Metal Card</a>
+        <a class="collection-link" href="./columns.html">Columns</a>
+        <a class="collection-link" href="./phone.html">iPhone 15</a>
+        <a class="collection-link" href="./billing.html">Billing</a>
+        <a class="collection-link" href="./shield.html">Shield</a>
+        <a class="collection-link" href="./currency-blocks.html">Currency Blocks</a>
+        <span class="collection-link collection-link--current" aria-current="page">Vault</span>
+        <a class="collection-link" href="./paperplane.html">Plane</a>
+      </nav>
+
+      <div class="header-side">
+        <p class="header-note">Ribbed steel safe <span class="header-dot" aria-hidden="true"></span> 34 striped bars</p>
+      </div>
+    </header>
+
+    <main class="studio" id="studio">
+      <section class="stage-column" aria-label="Vault preview">
+
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Interactive 3D preview of a ribbed satin-steel vault with a chamfered door and a ring of perforation dots, standing on a dark reflective floor with a broad striped field of thin steel-blue bars behind and around it. On first view the open door swings closed while the bars expand from a condensed lower-left pile to an upper-right field; press Space or the Replay button to run it again."></canvas>
+
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow">
+              <span class="stage-dot"></span>
+              <span id="stage-eyebrow-text">Vault studio</span>
+            </div>
+            <div class="stage-index"><span id="stage-index">09</span><span class="stage-index-slash">/</span><span class="stage-index-total">09</span></div>
+          </div>
+
+          <div class="stage-caption" id="stage-caption" aria-live="polite">
+            <span class="stage-caption-code" id="stage-code">VLT</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">Ribbed steel vault</span>
+            <span class="stage-caption-detail" id="stage-detail">open &rarr; closed &middot; 34 bars</span>
+          </div>
+
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Replay to close it again</p>
+
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Vault controls">
+          <button class="btn btn-primary" id="btn-replay" type="button" aria-keyshortcuts="Space">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Replay close</span>
+            <kbd>Space</kbd>
+          </button>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <p class="control-state" id="replay-state" aria-live="polite">Open</p>
+        </div>
+
+      </section>
+
+      <aside class="info-column" aria-label="Vault object details">
+        <section class="info-card" id="info-card">
+          <div class="info-topline">
+            <span class="info-kicker">Object facts</span>
+            <span class="info-index" id="info-index">Vault / 09</span>
+          </div>
+
+          <div class="info-identity">
+            <div class="info-names">
+              <h1 class="info-name" id="info-name">Ribbed Steel Vault</h1>
+              <p class="info-region" id="info-region">Safe &middot; chamfered door &middot; striped bar field</p>
+            </div>
+            <span class="info-glyph" id="info-glyph" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="10" y="12" width="44" height="40" rx="6" opacity="0.45"></rect>
+                <rect x="19" y="19" width="26" height="26" rx="3" opacity="0.85"></rect>
+                <circle cx="32" cy="32" r="8" stroke-dasharray="2.1 2.6" opacity="0.9"></circle>
+                <path d="M12 18v20M14.6 18v20M17.2 18v20M19.8 18v20" opacity="0.5"></path>
+                <path d="M46 22v20" opacity="0.6"></path>
+              </svg>
+            </span>
+          </div>
+
+          <div class="rule"></div>
+
+          <dl class="info-specs">
+            <div class="spec-row"><dt>Body</dt><dd>3.1 &times; 2.8 &times; 2.2 &middot; rounded edges</dd></div>
+            <div class="spec-row"><dt>Ribbed side</dt><dd id="spec-ribs">24 vertical fins</dd></div>
+            <div class="spec-row"><dt>Door</dt><dd id="spec-door">chamfered &middot; right hinge</dd></div>
+            <div class="spec-row"><dt>Perforations</dt><dd id="spec-dots">22 dots &middot; circular ring</dd></div>
+            <div class="spec-row"><dt>Handle / lock</dt><dd id="spec-handle">recessed grip &middot; hinge pins</dd></div>
+            <div class="spec-row"><dt>Bars</dt><dd id="spec-bars">34 &middot; steel &rarr; cobalt</dd></div>
+            <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">&minus;40&deg; / 13&deg; three-quarter</dd></div>
+            <div class="spec-row"><dt>Animation</dt><dd id="spec-animation">close + expand &middot; 1.92 s once</dd></div>
+          </dl>
+
+          <div class="rule"></div>
+
+          <div class="info-assets">
+            <div class="info-topline"><span class="info-kicker">Procedural assets</span><span class="info-kicker info-kicker-dim">Local</span></div>
+            <div class="asset-tags" id="asset-tags">
+              <span class="asset-tag asset-tag--cool">procedural steel</span>
+              <span class="asset-tag">PMREM studio</span>
+              <span class="asset-tag">bar gradient</span>
+            </div>
+            <p class="asset-note" id="asset-note">No image files &middot; local geometry + PMREM env &middot; no network</p>
+          </div>
+
+          <div class="info-foot">
+            <span class="info-foot-note">Open &rarr; closed choreography</span>
+            <span class="info-foot-state" id="info-foot-state">Loading</span>
+          </div>
+        </section>
+
+        <div class="info-aside" id="info-aside">
+          <div class="info-notes">
+            <div class="note">
+              <span class="note-kicker">Material</span>
+              <p class="note-body">Dark non-metal shell with a dense ribbed left side and a bright polished silver chamfered door &mdash; the highlight contrast and every gleam come from the live key light and PMREM studio environment; there are no baked reflections or image textures.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Choreography</span>
+              <p class="note-body">On first view the open door swings shut while 34 steel-blue bars expand from a condensed lower-left pile to a broad upper-right field around the safe, staggered bar by bar. It plays once; Replay or <kbd>Space</kbd> runs it again.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Camera &amp; floor</span>
+              <p class="note-body">One fixed three-quarter view, fitted per stage size. A mirrored, dimmed copy of the vault and bars sits below the floor under a soft radial fade &mdash; a subtle dark reflection, no render target and no baked floor.</p>
+            </div>
+          </div>
+          <ul class="legend" aria-label="Keyboard shortcuts and URL flags">
+            <li><kbd class="legend-key">Space</kbd><span>Replay close</span></li>
+            <li><kbd class="legend-key">?still=1</kbd><span>Deterministic closed</span></li>
+            <li><kbd class="legend-key">?play=0</kbd><span>Initial open state</span></li>
+            <li><kbd class="legend-key">Reduced motion</kbd><span>Static closed</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <span class="footer-label">Bar tones</span>
+        <div class="layer-rail" id="layer-rail" aria-label="Striped bar tones">
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--blue" aria-hidden="true"></span><span class="layer-name">Cobalt</span><span class="layer-index">07</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--steel" aria-hidden="true"></span><span class="layer-name">Steel</span><span class="layer-index">07</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--indigo" aria-hidden="true"></span><span class="layer-name">Slate</span><span class="layer-index">07</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--cyan" aria-hidden="true"></span><span class="layer-name">Ice</span><span class="layer-index">06</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--deep" aria-hidden="true"></span><span class="layer-name">Night</span><span class="layer-index">07</span></span>
+          <span class="layer-chip layer-chip--meta"><span class="layer-swatch layer-swatch--satin" aria-hidden="true"></span><span class="layer-name">Satin</span><span class="layer-index">body</span></span>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-note">Procedural geometry and PMREM environment only <span aria-hidden="true">&middot;</span> three.js r151 <span aria-hidden="true">&middot;</span> no network requests</p>
+        <p class="footer-note footer-note-dim" id="footer-status">Loading</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="info-kicker">Static preview</p>
+      <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. Below is a static poster of the ribbed steel vault with its chamfered door and dotted lock ring.</p>
+
+      <div class="fallback-vault" id="fallback-vault" aria-hidden="true">
+        <span class="fallback-vault-fins"></span>
+        <span class="fallback-vault-body"></span>
+        <span class="fallback-vault-door">
+          <span class="fallback-vault-dots"></span>
+          <span class="fallback-vault-grip"></span>
+        </span>
+        <span class="fallback-vault-floor"></span>
+      </div>
+
+      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The satin steel materials, the door close and the bar expansion are skipped in this static view. Geometry, the PMREM environment and the bar gradient are procedural and local &mdash; there are no image files to load.</p>
+
+      <ul class="fallback-files" aria-label="Scene contents">
+        <li><span class="fallback-file-role">Vault</span><span class="mono">ribbed steel body + chamfered door</span></li>
+        <li><span class="fallback-file-role">Bars</span><span class="mono">34 procedural capsules</span></li>
+        <li><span class="fallback-file-role">Network</span><span class="mono">none &middot; all local</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M10 3.2 18 17H2L10 3.2Z"></path><path d="M10 8.2v3.6"></path><circle cx="10" cy="14.4" r="0.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <div class="error-body">
+      <strong class="error-title">Preview error</strong>
+      <p class="error-text" id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <div class="curtain-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.2" y="4.6" width="15.6" height="14.8" rx="2.2"></rect>
+            <rect x="8.4" y="8.4" width="7.2" height="7.2" rx="1.2" opacity="0.7"></rect>
+            <circle cx="12" cy="12" r="2.1" opacity="0.8" stroke-dasharray="0.9 1.1"></circle>
+            <path d="M6.4 8.2v7.6M8.1 8.2v7.6M9.8 8.2v7.6" opacity="0.55"></path>
+          </svg>
+        </span>
+        <span class="curtain-wordmark">TEKO</span>
+      </div>
+      <p class="curtain-title" id="loading-title">Preparing the vault studio</p>
+      <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
+      <div class="curtain-meta"><span id="loading-label">Loading 3D engine</span><span id="loading-count">0 / 0</span></div>
+    </div>
+  </div>
+
+  <noscript>
+    <style>
+      .curtain, .studio, .site-footer, .fallback, .error-banner { display: none !important; }
+      .noscript-panel { display: block; }
+    </style>
+    <section class="noscript-panel" aria-labelledby="noscript-title">
+      <div class="fallback-inner">
+        <p class="info-kicker">Static preview</p>
+        <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
+        <p class="fallback-message">This page renders the ribbed steel vault and its animated striped bars with JavaScript and WebGL. All geometry and materials are procedural and local; enable JavaScript to see the animated three.js scene.</p>
+        <div class="fallback-vault fallback-vault--noscript" aria-hidden="true">
+          <span class="fallback-vault-fins"></span>
+          <span class="fallback-vault-body"></span>
+          <span class="fallback-vault-door"><span class="fallback-vault-dots"></span><span class="fallback-vault-grip"></span></span>
+          <span class="fallback-vault-floor"></span>
+        </div>
+      </div>
+    </section>
+  </noscript>
+
+  <div class="sr-only" id="live-status" role="status" aria-live="polite"></div>
+
+  <pre id="qa-diag" hidden></pre>
+
+  <script>
+  /* Early QA capture: must run before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_VAULT_QA = window.__TEKO_VAULT_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      if (value && typeof value === 'object') {
+        if (value.message) return String(value.message);
+        try { return JSON.stringify(value); } catch (err) { return String(value); }
+      }
+      return String(value);
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var location = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + location);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      push(qa.errors, 'unhandledrejection', describe(event && event.reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+  })();
+  </script>
+  <script type="module" src="./src/vault-preview.js"></script>
+  <script>
+  /* Module-load safety net: if src/vault-preview.js never boots (parse/import
+     failure), reveal the static poster instead of leaving the curtain up. */
+  (function () {
+    window.setTimeout(function () {
+      try {
+        var body = document.body;
+        if (!body || body.dataset.qaReady === '1' || body.dataset.fallback === '1') return;
+        var fallback = document.getElementById('fallback');
+        if (fallback) fallback.hidden = false;
+        body.dataset.fallback = '1';
+        body.dataset.qaFallback = '1';
+        var banner = document.getElementById('error-banner');
+        var text = document.getElementById('error-text');
+        if (banner && text) {
+          text.textContent = 'The interactive preview module could not start. A static poster of the vault is shown below.';
+          banner.hidden = false;
+        }
+        var curtain = document.getElementById('loading');
+        if (curtain) {
+          curtain.classList.add('is-hidden');
+          curtain.hidden = true;
+        }
+      } catch (err) { /* best effort only */ }
+    }, 22000);
+  })();
+  </script>
+</body>
+</html>
+

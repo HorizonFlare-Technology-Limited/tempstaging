@@ -1,0 +1,276 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="TEKO Currency Coin ??a three.js silver coin preview. The same Lexend currency symbol in lighting-driven relief on both faces of a satin/twill coin with a reeded middle frame; seven currencies.">
+<title>TEKO ??Currency Coin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23c9d6e6' stroke-width='1'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/styles.css">
+<style>
+/* Lead-added cross-link to the additive card deliverable (card.html). */
+.header-note a { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-bright); }
+.header-note a:hover { color: var(--ink); text-decoration-color: currentColor; }
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-coin="" data-face="a" data-mode="hero" data-qa-ready="0" data-qa-errors="0">
+
+  <div class="page" id="page">
+
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="TEKO ??Currency Coin home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <circle cx="12" cy="12" r="5.4" stroke-dasharray="1.2 2.4"></circle>
+            <path d="M12 3v1.6M12 19.4V21M3 12h1.6M19.4 12H21"></path>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Currency Coin</span>
+      </a>
+      <p class="header-note">Satin silver <span class="header-dot" aria-hidden="true"></span> Seven currencies <span class="header-dot" aria-hidden="true"></span> <a href="./card.html">Metal Card</a> <span class="header-dot" aria-hidden="true"></span> <a href="./columns.html">Columns</a> <span class="header-dot" aria-hidden="true"></span> <a href="./billing.html">Billing</a> <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a> <span class="header-dot" aria-hidden="true"></span> <a href="./phone.html">iPhone 15</a></p>
+    </header>
+
+    <main class="studio" id="studio">
+      <section class="stage-column" aria-label="Coin preview">
+
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Interactive 3D metallic silver coin. Drag to rotate it freely in 3D through a full 360 degrees in any direction (hold Shift to roll), use the left and right arrow keys to change currency, press G for the gallery, Y for the ring or T for the stacked coins, and press R or double-click to reset the view."></canvas>
+
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow">
+              <span class="stage-dot"></span>
+              <span id="stage-eyebrow-text">Silver studio</span>
+            </div>
+            <div class="stage-index"><span id="stage-index">01</span><span class="stage-index-slash">/</span><span class="stage-index-total" id="stage-index-total">07</span></div>
+          </div>
+
+          <div class="stage-caption" id="stage-caption" aria-live="polite">
+            <span class="stage-caption-code" id="stage-code">GBP</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">British Pound</span>
+          </div>
+
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to rotate 360簞 繚 Shift-drag to roll 繚 double-click to reset</p>
+
+          <div class="gallery-labels" id="gallery-labels" hidden></div>
+
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Coin controls">
+          <button class="btn btn-ghost" id="btn-replay" type="button" hidden>
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Replay</span>
+          </button>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <button class="btn btn-ghost" id="btn-spin" type="button" aria-pressed="false" aria-keyshortcuts="S">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M16.5 10a6.5 6.5 0 1 1-2.1-4.8"></path><path d="M16.8 2.9v4.2h-4.2"></path><circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
+            </svg>
+            <span>Auto-spin</span>
+            <kbd>S</kbd>
+          </button>
+
+          <button class="btn btn-ghost" id="btn-gallery" type="button" aria-pressed="false" aria-keyshortcuts="G">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+              <rect x="3" y="3" width="5.6" height="5.6" rx="1.2"></rect>
+              <rect x="11.4" y="3" width="5.6" height="5.6" rx="1.2"></rect>
+              <rect x="3" y="11.4" width="5.6" height="5.6" rx="1.2"></rect>
+              <rect x="11.4" y="11.4" width="5.6" height="5.6" rx="1.2"></rect>
+            </svg>
+            <span>Gallery</span>
+            <kbd>G</kbd>
+          </button>
+
+          <button class="btn btn-ghost" id="btn-ring" type="button" aria-pressed="false" aria-keyshortcuts="Y">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+              <circle cx="10" cy="3.8" r="1.5"></circle>
+              <circle cx="14.7" cy="5.7" r="1.5"></circle>
+              <circle cx="16.4" cy="10.1" r="1.5"></circle>
+              <circle cx="14.7" cy="14.4" r="1.5"></circle>
+              <circle cx="10" cy="16.2" r="1.5"></circle>
+              <circle cx="5.3" cy="14.4" r="1.5"></circle>
+              <circle cx="3.6" cy="10.1" r="1.5"></circle>
+              <circle cx="5.3" cy="5.7" r="1.5"></circle>
+            </svg>
+            <span>Ring</span>
+            <kbd>Y</kbd>
+          </button>
+
+          <button class="btn btn-ghost" id="btn-stack" type="button" aria-pressed="false" aria-keyshortcuts="T">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="10" cy="14.6" rx="6.3" ry="2.3"></ellipse>
+              <ellipse cx="10" cy="10" rx="6.3" ry="2.3"></ellipse>
+              <ellipse cx="10" cy="5.4" rx="6.3" ry="2.3"></ellipse>
+            </svg>
+            <span>Stack</span>
+            <kbd>T</kbd>
+          </button>
+        </div>
+
+      </section>
+
+      <aside class="info-column" aria-label="Currency details">
+        <section class="info-card" id="info-card">
+          <div class="info-topline">
+            <span class="info-kicker">Currency</span>
+            <span class="info-index" id="info-index">01 / 07</span>
+          </div>
+
+          <div class="info-identity">
+            <div class="info-names">
+              <h2 class="info-name" id="info-name">British Pound</h2>
+              <p class="info-region" id="info-region">United Kingdom</p>
+            </div>
+            <span class="info-glyph" id="info-glyph" aria-hidden="true">瞿</span>
+          </div>
+
+          <div class="rule"></div>
+
+          <dl class="info-specs">
+            <div class="spec-row"><dt>Code</dt><dd id="info-code">GBP</dd></div>
+            <div class="spec-row"><dt>Symbol</dt><dd id="info-symbol">瞿</dd></div>
+            <div class="spec-row"><dt>Faces</dt><dd>Symbol / Symbol (identical)</dd></div>
+            <div class="spec-row"><dt>Material</dt><dd>Satin silver, relief symbol</dd></div>
+            <div class="spec-row"><dt>Bezel</dt><dd>Reeded middle frame</dd></div>
+          </dl>
+
+          <div class="rule"></div>
+
+          <div class="info-assets">
+            <div class="info-topline"><span class="info-kicker">Source assets</span><span class="info-kicker info-kicker-dim">Local</span></div>
+            <div class="asset-tags" id="asset-tags"></div>
+            <p class="asset-note" id="asset-note">satin.png + Lexend-Variable.ttf</p>
+          </div>
+
+          <div class="info-foot">
+            <span class="info-foot-note">Satin silver, relief symbol</span>
+            <span class="info-foot-state" id="info-foot-state">Hero view</span>
+          </div>
+        </section>
+
+        <div class="info-aside" id="info-aside">
+          <p class="aside-copy">One symbol, two faces &mdash; the same Lexend glyph standing in relief on a satin silver coin with a fine diagonal twill. Its light and shadow come from the lighting rather than paint; the reeded middle frame wraps the edge, leaving both faces clean.</p>
+          <ul class="legend" aria-label="Keyboard shortcuts">
+            <li><kbd class="legend-key">??/kbd><kbd class="legend-key">??/kbd><span>Change currency</span></li>
+            <li><kbd class="legend-key">G</kbd><span>Gallery</span></li>
+            <li><kbd class="legend-key">Y</kbd><span>Ring</span></li>
+            <li><kbd class="legend-key">T</kbd><span>Stack</span></li>
+            <li><kbd class="legend-key">S</kbd><span>Auto-spin</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <span class="footer-label">Currencies</span>
+        <nav class="currency-rail" id="currency-rail" aria-label="Currency selection"></nav>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-note">Local assets only <span aria-hidden="true">繚</span> three.js r151 <span aria-hidden="true">繚</span> no network requests</p>
+        <p class="footer-note footer-note-dim" id="footer-status">Ready</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="info-kicker">Static preview</p>
+      <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. The seven silver coins and their source assets are listed below.</p>
+      <div class="fallback-grid" id="fallback-grid"></div>
+    </div>
+  </section>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M10 3.2 18 17H2L10 3.2Z"></path><path d="M10 8.2v3.6"></path><circle cx="10" cy="14.4" r="0.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <div class="error-body">
+      <strong class="error-title">Preview error</strong>
+      <p class="error-text" id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <div class="curtain-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <circle cx="12" cy="12" r="5.4" stroke-dasharray="1.2 2.4"></circle>
+            <path d="M12 3v1.6M12 19.4V21M3 12h1.6M19.4 12H21"></path>
+          </svg>
+        </span>
+        <span class="curtain-wordmark">TEKO</span>
+      </div>
+      <p class="curtain-title" id="loading-title">Preparing the silver studio</p>
+      <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
+      <div class="curtain-meta"><span id="loading-label">Loading source assets</span><span id="loading-count">0 / 0</span></div>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="noscript">This preview needs JavaScript enabled to render the coin.</div>
+  </noscript>
+
+  <pre id="qa-diag" hidden></pre>
+
+  <script>
+  /* Early QA capture: must run before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_QA = window.__TEKO_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      if (value && typeof value === 'object') {
+        if (value.message) return String(value.message);
+        try { return JSON.stringify(value); } catch (err) { return String(value); }
+      }
+      return String(value);
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var location = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + location);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      var reason = event && event.reason;
+      push(qa.errors, 'unhandledrejection', describe(reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+  })();
+  </script>
+  <script type="module" src="./src/preview.js"></script>
+</body>
+</html>

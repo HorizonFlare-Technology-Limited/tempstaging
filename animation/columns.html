@@ -1,0 +1,461 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="TEKO Material Columns ??27 long cuboids in three materials (plaster, limestone, satin) and nine exact dimensions: 140/80/40 px footprints by 600/550/500 px heights, one world unit per source pixel.">
+<title>TEKO ??Material Columns</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='26' height='24' rx='4' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.6'/%3E%3Cpath d='M10 24V15M16 24V9M22 24v-6' stroke='%23c9d6e6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/columns-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-columns="" data-material="all" data-view="hero" data-spin="0" data-count="27" data-qa-ready="0" data-qa-errors="0" data-fallback="0">
+
+  <div class="page" id="page">
+
+    <header class="site-header">
+      <a class="brand" href="./columns.html" aria-label="TEKO ??Material Columns home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+            <path d="M5 20V11.6M12 20V4.4M19 20v-5.4"></path>
+            <path d="M3.4 21.2h17.2" opacity="0.42"></path>
+            <path d="M5 11.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2ZM12 4.4a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2ZM19 14.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2Z" opacity="0.5"></path>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Material Columns</span>
+      </a>
+      <div class="header-side">
+        <p class="header-note">27 long cuboids <span class="header-dot" aria-hidden="true"></span> 3 materials &times; 9 dimensions <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a></p>
+        <div class="header-links">
+          <a class="header-link" href="./index.html">
+            <span>Coin</span>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 8h10"></path><path d="M9 4l4 4-4 4"></path>
+            </svg>
+          </a>
+          <a class="header-link header-link--second" href="./card.html">
+            <span>Card</span>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 8h10"></path><path d="M9 4l4 4-4 4"></path>
+            </svg>
+          </a>
+          <a class="header-link header-link--second" href="./billing.html">
+            <span>Billing</span>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 8h10"></path><path d="M9 4l4 4-4 4"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <h1 class="sr-only">TEKO ??Material Columns: 27 long cuboids in plaster, limestone and satin, nine exact dimensions</h1>
+
+    <main class="studio" id="studio">
+      <section class="stage-column" aria-label="Material columns preview">
+
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Interactive 3D preview of 27 long cuboid columns: nine plaster, nine limestone and nine satin, in three footprints (140, 80 and 40 pixels) and three heights (600, 550 and 500 pixels). Drag to orbit, scroll to zoom, click a column to focus it."></canvas>
+
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow">
+              <span class="stage-dot"></span>
+              <span id="stage-eyebrow-text">Material studio</span>
+            </div>
+            <div class="stage-index"><span id="stage-index">27</span><span class="stage-index-slash">/</span><span class="stage-index-total">27</span></div>
+          </div>
+
+          <div class="group-labels" id="group-labels" aria-hidden="true">
+            <span class="group-label" data-group-label="plaster"><span class="group-label-dot"></span><span class="group-label-name">Plaster</span></span>
+            <span class="group-label" data-group-label="limestone"><span class="group-label-dot"></span><span class="group-label-name">Limestone</span></span>
+            <span class="group-label" data-group-label="satin"><span class="group-label-dot"></span><span class="group-label-name">Satin</span></span>
+          </div>
+
+          <div class="stage-caption" id="stage-caption" aria-live="polite">
+            <span class="stage-caption-code" id="stage-code">27</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">long cuboids &middot; 3 materials &times; 9 dimensions</span>
+            <span class="stage-caption-detail" id="stage-detail"></span>
+          </div>
+
+          <p class="stage-unit" id="stage-unit">1 px = 1 world unit</p>
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to orbit &middot; click a column to focus</p>
+
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Column controls">
+          <button class="btn btn-primary" id="btn-reset" type="button" aria-keyshortcuts="R">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Reset view</span>
+            <kbd>R</kbd>
+          </button>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <button class="btn btn-ghost" id="btn-spin" type="button" aria-pressed="false" aria-keyshortcuts="Space">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M16.5 10a6.5 6.5 0 1 1-2.1-4.8"></path><path d="M16.8 2.9v4.2h-4.2"></path><circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none"></circle>
+            </svg>
+            <span>Auto-rotate</span>
+            <kbd>Space</kbd>
+          </button>
+        </div>
+      </section>
+
+      <aside class="info-column" aria-label="Column details">
+        <section class="info-card" id="info-card">
+          <div class="info-topline">
+            <span class="info-kicker">Material groups</span>
+            <span class="info-index" id="info-index">27 / 27</span>
+          </div>
+
+          <div class="material-selector" id="material-selector" role="tablist" aria-label="Material">
+            <button class="material-tab is-active" data-material="all" type="button" data-key="0" role="tab" aria-selected="true" aria-keyshortcuts="0">
+              <span class="material-tab-label">All</span><kbd>0</kbd>
+            </button>
+            <button class="material-tab" data-material="plaster" type="button" data-key="1" role="tab" aria-selected="false" aria-keyshortcuts="1"><span class="material-tab-label">Plaster</span><kbd>1</kbd></button>
+            <button class="material-tab" data-material="limestone" type="button" data-key="2" role="tab" aria-selected="false" aria-keyshortcuts="2"><span class="material-tab-label">Limestone</span><kbd>2</kbd></button>
+            <button class="material-tab" data-material="satin" type="button" data-key="3" role="tab" aria-selected="false" aria-keyshortcuts="3"><span class="material-tab-label">Satin</span><kbd>3</kbd></button>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="readout" id="readout">
+            <div class="info-topline">
+              <span class="info-kicker">Selection</span>
+              <span class="readout-state" id="readout-state">Hover a column</span>
+            </div>
+            <p class="readout-name" id="readout-name">All 27 columns</p>
+            <p class="readout-dims" id="readout-dims">140 / 80 / 40 px footprints &middot; 600 / 550 / 500 px heights</p>
+            <p class="readout-id" id="readout-id">3 materials &times; 9 dimensions</p>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="size-matrix-wrap">
+            <div class="info-topline">
+              <span class="info-kicker">Size matrix</span>
+              <span class="info-kicker info-kicker-dim">footprint px &times; height px</span>
+            </div>
+            <table class="size-matrix" id="size-matrix" aria-label="Size matrix: three footprints (140, 80, 40 pixels) by three heights (600, 550, 500 pixels)">
+              <thead>
+                <tr>
+                  <th scope="col"><span class="matrix-corner">H \ F</span></th>
+                  <th scope="col"><span class="matrix-col-px">140</span><span class="matrix-col-label">Large</span></th>
+                  <th scope="col"><span class="matrix-col-px">80</span><span class="matrix-col-label">Medium</span></th>
+                  <th scope="col"><span class="matrix-col-px">40</span><span class="matrix-col-label">Small</span></th>
+                </tr>
+              </thead>
+              <tbody>
+              <tr><th scope="row"><span class="matrix-row-px">600</span><span class="matrix-row-label">Long</span></th><td><button class="matrix-cell" data-footprint="large" data-height="long" type="button" aria-label="Large footprint 140 pixels, Long height 600 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">140&times;600</span></button></td><td><button class="matrix-cell" data-footprint="medium" data-height="long" type="button" aria-label="Medium footprint 80 pixels, Long height 600 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">80&times;600</span></button></td><td><button class="matrix-cell" data-footprint="small" data-height="long" type="button" aria-label="Small footprint 40 pixels, Long height 600 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">40&times;600</span></button></td></tr>
+              <tr><th scope="row"><span class="matrix-row-px">550</span><span class="matrix-row-label">Medium</span></th><td><button class="matrix-cell" data-footprint="large" data-height="medium" type="button" aria-label="Large footprint 140 pixels, Medium height 550 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">140&times;550</span></button></td><td><button class="matrix-cell" data-footprint="medium" data-height="medium" type="button" aria-label="Medium footprint 80 pixels, Medium height 550 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">80&times;550</span></button></td><td><button class="matrix-cell" data-footprint="small" data-height="medium" type="button" aria-label="Small footprint 40 pixels, Medium height 550 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">40&times;550</span></button></td></tr>
+              <tr><th scope="row"><span class="matrix-row-px">500</span><span class="matrix-row-label">Short</span></th><td><button class="matrix-cell" data-footprint="large" data-height="short" type="button" aria-label="Large footprint 140 pixels, Short height 500 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">140&times;500</span></button></td><td><button class="matrix-cell" data-footprint="medium" data-height="short" type="button" aria-label="Medium footprint 80 pixels, Short height 500 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">80&times;500</span></button></td><td><button class="matrix-cell" data-footprint="small" data-height="short" type="button" aria-label="Small footprint 40 pixels, Short height 500 pixels"><span class="matrix-cell-dot" aria-hidden="true"></span><span class="matrix-cell-dims">40&times;500</span></button></td></tr>
+              </tbody>
+            </table>
+            <p class="matrix-note" id="matrix-note">Hover or select a cell to highlight the matching column(s).</p>
+          </div>
+
+          <div class="rule"></div>
+
+          <dl class="info-specs">
+            <div class="spec-row"><dt>Count</dt><dd>27 long cuboids</dd></div>
+            <div class="spec-row"><dt>Groups</dt><dd>Plaster / Limestone / Satin</dd></div>
+            <div class="spec-row"><dt>Footprints</dt><dd>140 / 80 / 40 px</dd></div>
+            <div class="spec-row"><dt>Heights</dt><dd>600 / 550 / 500 px</dd></div>
+            <div class="spec-row"><dt>Unit</dt><dd>1 px = 1 world unit</dd></div>
+            <div class="spec-row"><dt>Extent</dt><dd id="spec-extent">1850 &times; 500 &times; 600 px</dd></div>
+            <div class="spec-row"><dt>Edges</dt><dd>3 / 5 / 10 px radius (small / medium / large)</dd></div>
+            <div class="spec-row"><dt>Sources</dt><dd>plaster.png &middot; limestone.png &middot; satin.png</dd></div>
+          </dl>
+
+          <div class="info-foot">
+            <span class="info-foot-note">Local PBR + procedural materials</span>
+            <span class="info-foot-state" id="info-foot-state">Loading</span>
+          </div>
+        </section>
+
+        <div class="info-aside" id="info-aside">
+          <div class="info-notes">
+            <div class="note">
+              <span class="note-kicker">Model</span>
+              <p class="note-body">27 real box meshes, no instancing, no runtime scaling: one source pixel is one world unit.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Materials</span>
+              <p class="note-body">Every column is a real rounded box: its edges are bevelled with a <strong>3 / 5 / 10 px radius</strong> for the small / medium / large footprint (exact footprints, heights and layout unchanged). Plaster is a <strong>perfectly smooth liquid-metal mirror</strong> with no grain at all. Limestone is the dark rough stone of the reference, its grain carried only by per-point <strong>chromatic albedo variation</strong>. Satin is a smooth neutral-grey surface with a soft tonal gradient and its blurred reflection.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Studio</span>
+              <p class="note-body">PMREM room environment with key, fill and rim lights; a neutral floor catches the soft shadows.</p>
+            </div>
+          </div>
+          <ul class="legend" aria-label="Keyboard shortcuts">
+            <li><kbd class="legend-key">Drag</kbd><span>Orbit</span></li>
+            <li><kbd class="legend-key">Scroll</kbd><span>Zoom</span></li>
+            <li><kbd class="legend-key">1</kbd><kbd class="legend-key">2</kbd><kbd class="legend-key">3</kbd><span>Material</span></li>
+            <li><kbd class="legend-key">0</kbd><kbd class="legend-key">A</kbd><span>All</span></li>
+            <li><kbd class="legend-key">R</kbd><span>Reset view</span></li>
+            <li><kbd class="legend-key">Space</kbd><span>Auto-rotate</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <span class="footer-label">Materials</span>
+        <div class="material-rail" id="material-rail" aria-label="Material selection">
+          <button class="material-chip material-chip--all" data-material-chip="all" type="button">
+            <span class="material-swatch material-swatch--all" aria-hidden="true"></span>
+            <span class="chip-name">All</span>
+            <span class="chip-file">27 columns</span>
+          </button>
+          <button class="material-chip" data-material-chip="plaster" type="button"><span class="material-swatch material-swatch--plaster" aria-hidden="true"></span><span class="chip-name">Plaster</span><span class="chip-file">plaster.png</span></button>
+          <button class="material-chip" data-material-chip="limestone" type="button"><span class="material-swatch material-swatch--limestone" aria-hidden="true"></span><span class="chip-name">Limestone</span><span class="chip-file">limestone.png</span></button>
+          <button class="material-chip" data-material-chip="satin" type="button"><span class="material-swatch material-swatch--satin" aria-hidden="true"></span><span class="chip-name">Satin</span><span class="chip-file">satin.png</span></button>
+          <span class="material-chip material-chip--meta">
+            <span class="material-swatch material-swatch--unit" aria-hidden="true"></span>
+            <span class="chip-name">px = world unit</span>
+            <span class="chip-file">1 : 1</span>
+          </span>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-note">Local assets only <span aria-hidden="true">&middot;</span> three.js r151 <span aria-hidden="true">&middot;</span> no network requests</p>
+        <p class="footer-note footer-note-dim" id="footer-status">Loading</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="info-kicker">Static summary</p>
+      <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. The 27 long cuboids, their material groups and their exact dimensions are listed below.</p>
+      <p class="fallback-unit">Unit convention: 1 source pixel = 1 three.js world unit &middot; scene envelope 1850 &times; 500 &times; 600 px centred at (-25, 300, 0) &middot; no runtime scaling.</p>
+      <div class="fallback-groups">
+      <section class="fallback-group" data-fallback-group="plaster">
+        <div class="fallback-group-head">
+          <span class="material-swatch material-swatch--plaster" aria-hidden="true"></span>
+          <h3 class="fallback-group-name">Plaster</h3>
+          <span class="fallback-group-source">plaster.png</span>
+          <span class="fallback-group-count">9 columns</span>
+        </div>
+        <table class="fallback-table">
+          <caption class="sr-only">Nine plaster columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
+          <thead><tr><th scope="col">Column id</th><th scope="col">F</th><th scope="col">H</th><th scope="col">W &times; D &times; H px</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><span class="mono">plaster-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">plaster-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="fallback-group" data-fallback-group="limestone">
+        <div class="fallback-group-head">
+          <span class="material-swatch material-swatch--limestone" aria-hidden="true"></span>
+          <h3 class="fallback-group-name">Limestone</h3>
+          <span class="fallback-group-source">limestone.png</span>
+          <span class="fallback-group-count">9 columns</span>
+        </div>
+        <table class="fallback-table">
+          <caption class="sr-only">Nine limestone columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
+          <thead><tr><th scope="col">Column id</th><th scope="col">F</th><th scope="col">H</th><th scope="col">W &times; D &times; H px</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><span class="mono">limestone-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">limestone-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="fallback-group" data-fallback-group="satin">
+        <div class="fallback-group-head">
+          <span class="material-swatch material-swatch--satin" aria-hidden="true"></span>
+          <h3 class="fallback-group-name">Satin</h3>
+          <span class="fallback-group-source">satin.png</span>
+          <span class="fallback-group-count">9 columns</span>
+        </div>
+        <table class="fallback-table">
+          <caption class="sr-only">Nine satin columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
+          <thead><tr><th scope="col">Column id</th><th scope="col">F</th><th scope="col">H</th><th scope="col">W &times; D &times; H px</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><span class="mono">satin-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">satin-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">satin-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">satin-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">satin-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">satin-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">satin-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">satin-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">satin-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
+          </tbody>
+        </table>
+      </section>
+      </div>
+      <p class="fallback-explain">Each group's maps are cropped from its own local PBR sample sheet: <span class="mono">plaster.png</span>, <span class="mono">limestone.png</span> and <span class="mono">satin.png</span> (project asset tree <span class="mono">assets/textures/materials/</span>). The interactive model needs WebGL; the static tables above use the same frozen dimensions.</p>
+    </div>
+  </section>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M10 3.2 18 17H2L10 3.2Z"></path><path d="M10 8.2v3.6"></path><circle cx="10" cy="14.4" r="0.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <div class="error-body">
+      <strong class="error-title">Preview error</strong>
+      <p class="error-text" id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <div class="curtain-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+            <path d="M5 20V11.6M12 20V4.4M19 20v-5.4"></path>
+            <path d="M3.4 21.2h17.2" opacity="0.42"></path>
+          </svg>
+        </span>
+        <span class="curtain-wordmark">TEKO</span>
+      </div>
+      <p class="curtain-title" id="loading-title">Preparing the material studio</p>
+      <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
+      <div class="curtain-meta"><span id="loading-label">Loading 3D engine</span><span id="loading-count">0 / 19</span></div>
+    </div>
+  </div>
+
+  <noscript>
+    <style>
+      .page, .curtain, .error-banner { display: none !important; }
+      .fallback { display: block !important; }
+    </style>
+  </noscript>
+
+  <div class="sr-only" id="live-status" role="status" aria-live="polite"></div>
+  <pre id="qa-diag" hidden></pre>
+
+  <script>
+  /* Early QA capture: must run before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_COLUMNS_QA = window.__TEKO_COLUMNS_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      if (value && typeof value === 'object') {
+        if (value.message) return String(value.message);
+        try { return JSON.stringify(value); } catch (err) { return String(value); }
+      }
+      return String(value);
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var where = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + where);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      var reason = event && event.reason;
+      push(qa.errors, 'unhandledrejection', describe(reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+
+    /* The QA hook object must exist as soon as the page boots, before any module runs.
+       src/columns-preview.js keeps this same object identity and fills debug()/api in. */
+    var early = {
+      version: '1.0.0',
+      debug: function () {
+        return {
+          ready: false,
+          errors: qa.errors.length,
+          webgl: false,
+          material: 'all',
+          view: 'hero',
+          spin: false,
+          count: 27,
+          materials: [],
+          columns: [],
+          textures: { loaded: 0, total: 18 },
+          renderer: { antialias: true, dpr: 1, drawCalls: 0 },
+          camera: { position: [0, 0, 0], target: [0, 0, 0] },
+          bounds: { min: [-950, 0, -250], max: [900, 600, 250] },
+          columnScreenRects: {}
+        };
+      },
+      api: {
+        setMaterial: function () { return false; },
+        setView: function () { return false; },
+        setSpin: function () { return false; },
+        reset: function () { return Promise.resolve(false); },
+        focusColumn: function () { return false; },
+        hoverColumn: function () { return false; },
+        getColumnScreenRect: function () { return null; }
+      }
+    };
+    if (!window.__tekoColumns) window.__tekoColumns = early;
+  })();
+  </script>
+  <script type="module" src="./src/columns-preview.js"></script>
+  <script>
+  /* Module-load safety net: if src/columns-preview.js never boots (parse/import failure),
+     reveal the static 27-column summary instead of leaving the curtain up. */
+  (function () {
+    window.setTimeout(function () {
+      try {
+        var body = document.body;
+        if (!body || body.dataset.qaReady === '1' || body.dataset.fallback === '1') return;
+        var fallback = document.getElementById('fallback');
+        if (fallback) fallback.hidden = false;
+        body.dataset.fallback = '1';
+        var banner = document.getElementById('error-banner');
+        var text = document.getElementById('error-text');
+        if (banner && text) {
+          text.textContent = 'The interactive preview module could not start. The 27 columns and their exact dimensions are listed below.';
+          banner.hidden = false;
+        }
+        var curtain = document.getElementById('loading');
+        if (curtain) {
+          curtain.classList.add('is-hidden');
+          curtain.hidden = true;
+        }
+      } catch (err) { /* best effort only */ }
+    }, 22000);
+  })();
+  </script>
+</body>
+</html>

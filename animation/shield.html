@@ -1,0 +1,431 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="TEKO Security Shield ??a Revolut-style gunmetal shield with a polished bevelled rim, a recessed convex face and the TEKO arrow emblem embossed in a switchable palette (brand gold, white, graphite, silver, adaptive). A deterministic three.js model in a neutral product studio; drag to orbit, press R to reset, 1?? to switch the emblem palette.">
+<title>TEKO ??Security Shield</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3.5 27 7.4v9.2c0 6.1-4.5 10.4-11 12.4-6.5-2-11-6.3-11-12.4V7.4Z' fill='%232e333a' stroke='%23c9cfd7' stroke-width='1.3'/%3E%3Cpath d='M16 9.4v12.2' stroke='%23ffd21c' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M10.6 14.6 16 9.4l5.4 5.2' fill='none' stroke='%23ffd21c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/shield-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-shield="" data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-pose="" data-qa-default-pose="26,12" data-qa-body="#777c82" data-qa-bevel="#d4dae2" data-qa-logo="assets/shield/teko2_icon.svg" data-qa-logo-shapes="3" data-qa-logo-palette="gold" data-qa-logo-palette-label="Brand Gold" data-qa-logo-variant="" data-qa-logo-bright="#ffd21c" data-qa-logo-deep="#9a700c" data-qa-logo-socket="#2c3136" data-qa-logo-contrast="" data-qa-logo-source="teko2_icon-gold.svg" data-qa-logo-source-sha="" data-qa-logo-source-bytes="" data-qa-logo-geometry="assets/shield/teko2_icon.svg" data-qa-triangles="0" data-qa-distance="" data-qa-object-rect="" data-still="0" data-shot="0" data-qa-mode="live" data-reduced-motion="0">
+
+  <div class="page" id="page">
+
+    <header class="site-header">
+      <a class="brand" href="./shield.html" aria-label="TEKO ??Security Shield home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.7 20.6 5.8v7.1c0 4.7-3.5 8-8.6 9.5-5.1-1.5-8.6-4.8-8.6-9.5V5.8Z"></path>
+            <path d="M12 7.4v8.9"></path>
+            <path d="M8.4 11.4 12 7.4l3.6 4"></path>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Security Shield</span>
+      </a>
+
+      <nav class="collection-nav" aria-label="Collections">
+        <a class="collection-link" href="./">Coin</a>
+        <a class="collection-link" href="./card.html">Metal Card</a>
+        <a class="collection-link" href="./columns.html">Columns</a>
+        <a class="collection-link" href="./phone.html">iPhone 15</a>
+        <a class="collection-link" href="./billing.html">Billing</a>
+        <span class="collection-link collection-link--current" aria-current="page">Shield</span>
+        <a class="collection-link" href="./currency-blocks.html">Currency Blocks</a>
+        <a class="collection-link" href="./vault.html">Vault</a>
+        <a class="collection-link" href="./paperplane.html">Plane</a>
+      </nav>
+
+      <div class="header-side">
+        <p class="header-note">Gunmetal plate <span class="header-dot" aria-hidden="true"></span> <span id="header-emblem">TEKO gold emblem</span></p>
+      </div>
+    </header>
+
+    <main class="studio" id="studio">
+      <section class="stage-column" aria-label="Security shield preview">
+
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Interactive 3D security shield: a dark gunmetal Revolut-style shield with rounded shoulders, a polished bevelled rim, tapered sides into a wide rounded point, a recessed convex face and the TEKO arrow emblem embossed in the selected palette finish (brand gold by default). Drag to orbit within clamped angles; press R or double-click to reset the fixed three-quarter view; press 1 to 5 to switch the emblem palette."></canvas>
+
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow">
+              <span class="stage-dot"></span>
+              <span id="stage-eyebrow-text">Security studio</span>
+            </div>
+            <div class="stage-index"><span id="stage-index">06</span><span class="stage-index-slash">/</span><span class="stage-index-total">09</span></div>
+          </div>
+
+          <div class="stage-caption" id="stage-caption" aria-live="polite">
+            <span class="stage-caption-code" id="stage-code">SHD</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">Gunmetal shield</span>
+            <span class="stage-caption-detail" id="stage-detail">TEKO gold relief</span>
+          </div>
+
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to orbit</p>
+
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Shield controls">
+          <button class="btn btn-primary" id="btn-reset" type="button" aria-keyshortcuts="R">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Reset view</span>
+            <kbd>R</kbd>
+          </button>
+
+          <div class="palette-cluster">
+            <span class="palette-label">Emblem</span>
+            <div class="palette-group" id="logo-palette" role="group" aria-label="Emblem colour palette">
+              <button class="palette-option" type="button" data-logo-palette="gold" aria-pressed="true" aria-keyshortcuts="1">
+                <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+                <span class="palette-name">Brand Gold</span>
+                <kbd class="palette-key">1</kbd>
+              </button>
+              <button class="palette-option" type="button" data-logo-palette="white" aria-pressed="false" aria-keyshortcuts="2">
+                <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+                <span class="palette-name">White</span>
+                <kbd class="palette-key">2</kbd>
+              </button>
+              <button class="palette-option" type="button" data-logo-palette="black" aria-pressed="false" aria-keyshortcuts="3">
+                <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+                <span class="palette-name">Graphite</span>
+                <kbd class="palette-key">3</kbd>
+              </button>
+              <button class="palette-option" type="button" data-logo-palette="silver" aria-pressed="false" aria-keyshortcuts="4">
+                <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+                <span class="palette-name">Silver</span>
+                <kbd class="palette-key">4</kbd>
+              </button>
+              <button class="palette-option" type="button" data-logo-palette="adaptive" aria-pressed="false" aria-keyshortcuts="5">
+                <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+                <span class="palette-name">Adaptive</span>
+                <kbd class="palette-key">5</kbd>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <p class="control-state" id="pose-state" aria-live="polite">26&deg; / 12&deg;</p>
+        </div>
+
+      </section>
+
+      <aside class="info-column" aria-label="Shield details">
+        <section class="info-card" id="info-card">
+          <div class="info-topline">
+            <span class="info-kicker">Object facts</span>
+            <span class="info-index" id="info-index">Shield / 06</span>
+          </div>
+
+          <div class="info-identity">
+            <div class="info-names">
+              <h1 class="info-name" id="info-name">Security Shield</h1>
+              <p class="info-region" id="info-region">Gunmetal plate &middot; TEKO gold emblem</p>
+            </div>
+            <span class="info-glyph" id="info-glyph" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M32 7 54 15v18c0 12-9.2 20-22 24-12.8-4-22-12-22-24V15Z" opacity="0.45"></path>
+                <path d="M32 13 48 19v14c0 9-6.8 15-16 18.4C22.8 48 16 42 16 33V19Z"></path>
+                <path d="M32 22v16"></path>
+                <path d="M25.6 29.4 32 22l6.4 7.4"></path>
+              </svg>
+            </span>
+          </div>
+
+          <div class="rule"></div>
+
+          <dl class="info-specs">
+            <div class="spec-row"><dt>Silhouette</dt><dd id="spec-silhouette">349 &times; 461 px &middot; 0.757</dd></div>
+            <div class="spec-row"><dt>Width / height</dt><dd id="spec-size">1.000 / 1.321</dd></div>
+            <div class="spec-row"><dt>Plate thickness</dt><dd id="spec-thickness">0.132</dd></div>
+            <div class="spec-row"><dt>Body tone</dt><dd id="spec-body">#777c82</dd></div>
+            <div class="spec-row"><dt>Bevel tone</dt><dd id="spec-bevel">#d4dae2</dd></div>
+            <div class="spec-row"><dt>Metalness</dt><dd id="spec-metalness">1.00</dd></div>
+            <div class="spec-row"><dt>Roughness</dt><dd id="spec-roughness">0.46</dd></div>
+            <div class="spec-row"><dt>Emblem</dt><dd id="spec-logo">teko2_icon.svg</dd></div>
+            <div class="spec-row"><dt>Emblem palette</dt><dd id="spec-logo-palette">Brand Gold</dd></div>
+            <div class="spec-row"><dt>Emblem tones</dt><dd id="spec-logo-tones">#ffd21c / #9a700c</dd></div>
+            <div class="spec-row"><dt>Palette source</dt><dd id="spec-logo-source">teko2_icon-gold.svg</dd></div>
+            <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">26&deg; / 12&deg; three-quarter</dd></div>
+            <div class="spec-row"><dt>Triangles</dt><dd id="spec-triangles">&mdash;</dd></div>
+          </dl>
+
+          <div class="rule"></div>
+
+          <div class="info-assets">
+            <div class="info-topline"><span class="info-kicker">Model assets</span><span class="info-kicker info-kicker-dim">Local</span></div>
+            <div class="asset-tags" id="asset-tags">
+              <span class="asset-tag">teko2_icon.svg</span>
+              <span class="asset-tag" id="asset-tag-palette">teko2_icon-gold.svg</span>
+              <span class="asset-tag asset-tag--gold">3 contours</span>
+              <span class="asset-tag">512-pt outline</span>
+              <span class="asset-tag">procedural relief</span>
+            </div>
+            <p class="asset-note" id="asset-note">Copied byte-identically from <span class="mono">K:\HFWorkspace\icons</span> &middot; no network</p>
+          </div>
+
+          <div class="info-foot">
+            <span class="info-foot-note">Revolut-style silhouette</span>
+            <span class="info-foot-state" id="info-foot-state">Loading</span>
+          </div>
+        </section>
+
+        <div class="info-aside" id="info-aside">
+          <div class="info-notes">
+            <div class="note">
+              <span class="note-kicker">Silhouette</span>
+              <p class="note-body">Rounded shoulders (r 0.056 W), straight sides tangentially filleted into tapered lower edges and a wide rounded bottom point &mdash; the outer silhouette is a subpixel trace of the reference shield (349 &times; 461 px, ratio 0.757), extruded with a polished rim and a recessed convex face.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Material &amp; light</span>
+              <p class="note-body">Mid-dark gunmetal is the true albedo; the bright rim is a polished bevel, not painted light. A neutral PMREM studio supplies every reflection &mdash; no baked highlights in any texture.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Emblem</span>
+              <p class="note-body">The TEKO arrow SVG is parsed at runtime, draped across the convex panel and embossed over a dark socket. One geometry, five palette finishes: the selector (or <kbd>1</kbd>&ndash;<kbd>5</kbd>, or <span class="mono">?logo=</span>) re-tints the same relief only.</p>
+            </div>
+          </div>
+          <ul class="legend" aria-label="Interaction and URL flags">
+            <li><kbd class="legend-key">Drag</kbd><span>Orbit</span></li>
+            <li><kbd class="legend-key">Dbl-click</kbd><span>Reset</span></li>
+            <li><kbd class="legend-key">R</kbd><span>Reset view</span></li>
+            <li><kbd class="legend-key">1&ndash;5</kbd><span>Emblem palette</span></li>
+            <li><kbd class="legend-key">?logo=white</kbd><span>Palette URL</span></li>
+            <li><kbd class="legend-key">?still=1</kbd><span>Frozen pose</span></li>
+            <li><kbd class="legend-key">Reduced motion</kbd><span>Instant reset</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <span class="footer-label">Relief</span>
+        <div class="layer-rail" id="layer-rail" aria-label="Shield relief layers">
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--silhouette" aria-hidden="true"></span><span class="layer-name">Silhouette</span><span class="layer-index">01</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--wall" aria-hidden="true"></span><span class="layer-name">Wall</span><span class="layer-index">02</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--bevel" aria-hidden="true"></span><span class="layer-name">Bevel</span><span class="layer-index">03</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--groove" aria-hidden="true"></span><span class="layer-name">Groove</span><span class="layer-index">04</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--panel" aria-hidden="true"></span><span class="layer-name">Panel</span><span class="layer-index">05</span></span>
+          <span class="layer-chip layer-chip--gold" id="layer-chip-emblem"><span class="layer-swatch layer-swatch--gold" id="layer-swatch-emblem" aria-hidden="true"></span><span class="layer-name">Emblem</span><span class="layer-index">06</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--back" aria-hidden="true"></span><span class="layer-name">Back</span><span class="layer-index">07</span></span>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-note">Local assets only <span aria-hidden="true">&middot;</span> three.js r151 <span aria-hidden="true">&middot;</span> no network requests</p>
+        <p class="footer-note footer-note-dim" id="footer-status">Loading</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="info-kicker">Static preview</p>
+      <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. Below is a static poster of the security shield: a dark gunmetal Revolut-style crest with rounded shoulders, a polished bevelled rim, tapered sides into a rounded point, a recessed convex face and the TEKO arrow emblem in two-tone gold.</p>
+
+      <div class="fallback-poster" aria-hidden="true">
+        <svg class="poster-shield" viewBox="0 0 349 461" role="presentation">
+          <defs>
+            <linearGradient id="poster-body" x1="0.1" y1="0" x2="0.9" y2="1">
+              <stop offset="0" stop-color="#9aa1a9"></stop>
+              <stop offset="0.34" stop-color="#767c84"></stop>
+              <stop offset="0.62" stop-color="#5a6068"></stop>
+              <stop offset="1" stop-color="#3f444b"></stop>
+            </linearGradient>
+            <linearGradient id="poster-rim" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#f5f8fb"></stop>
+              <stop offset="0.45" stop-color="#c9d0d8"></stop>
+              <stop offset="1" stop-color="#7c838c"></stop>
+            </linearGradient>
+            <linearGradient id="poster-panel" x1="0.2" y1="0" x2="0.8" y2="1">
+              <stop offset="0" stop-color="#8b9199"></stop>
+              <stop offset="0.5" stop-color="#6c727a"></stop>
+              <stop offset="1" stop-color="#4b5058"></stop>
+            </linearGradient>
+          </defs>
+          <path d="M19.5 0L329.5 0L330.3 0L331.2 0.1L332 0.2L332.8 0.3L333.7 0.5L334.5 0.7L335.3 0.9L336.1 1.2L336.9 1.5L337.7 1.8L338.5 2.2L339.2 2.6L340 3.1L340.7 3.5L341.4 4L342 4.6L342.7 5.1L343.3 5.7L343.9 6.3L344.4 7L345 7.6L345.5 8.3L345.9 9L346.4 9.8L346.8 10.5L347.2 11.3L347.5 12.1L347.8 12.9L348.1 13.7L348.3 14.5L348.5 15.3L348.7 16.2L348.8 17L348.9 17.8L349 18.7L349 19.5L349 279L348.9 283.6L348.6 288.3L348.1 292.9L347.4 297.5L346.6 302L345.5 306.5L344.3 311L342.8 315.4L341.2 319.8L339.4 324L337.4 328.2L335.3 332.3L333 336.3L330.5 340.2L327.8 344.1L325 347.7L322.1 351.3L319 354.8L315.7 358.1L312.3 361.2L308.8 364.3L305.2 367.1L186.3 457.1L185.6 457.6L184.9 458L184.2 458.5L183.4 458.9L182.7 459.2L181.9 459.6L181.1 459.9L180.3 460.1L179.5 460.4L178.7 460.6L177.9 460.7L177 460.9L176.2 461L175.3 461L174.5 461L173.7 461L172.8 461L172 460.9L171.1 460.7L170.3 460.6L169.5 460.4L168.7 460.1L167.9 459.9L167.1 459.6L166.3 459.2L165.6 458.9L164.8 458.5L164.1 458L163.4 457.6L162.7 457.1L43.8 367.1L40.2 364.3L36.7 361.2L33.3 358.1L30 354.8L26.9 351.3L24 347.7L21.2 344.1L18.5 340.2L16 336.3L13.7 332.3L11.6 328.2L9.6 324L7.8 319.8L6.2 315.4L4.7 311L3.5 306.5L2.4 302L1.6 297.5L0.9 292.9L0.4 288.3L0.1 283.6L0 279L0 19.5L0 18.7L0.1 17.8L0.2 17L0.3 16.2L0.5 15.3L0.7 14.5L0.9 13.7L1.2 12.9L1.5 12.1L1.8 11.3L2.2 10.5L2.6 9.8L3.1 9L3.5 8.3L4 7.6L4.6 7L5.1 6.3L5.7 5.7L6.3 5.1L7 4.6L7.6 4L8.3 3.5L9 3.1L9.8 2.6L10.5 2.2L11.3 1.8L12.1 1.5L12.9 1.2L13.7 0.9L14.5 0.7L15.3 0.5L16.2 0.3L17 0.2L17.8 0.1L18.7 0L19.5 0Z" fill="url(#poster-body)"></path>
+          <path d="M19.5 0L329.5 0L330.3 0L331.2 0.1L332 0.2L332.8 0.3L333.7 0.5L334.5 0.7L335.3 0.9L336.1 1.2L336.9 1.5L337.7 1.8L338.5 2.2L339.2 2.6L340 3.1L340.7 3.5L341.4 4L342 4.6L342.7 5.1L343.3 5.7L343.9 6.3L344.4 7L345 7.6L345.5 8.3L345.9 9L346.4 9.8L346.8 10.5L347.2 11.3L347.5 12.1L347.8 12.9L348.1 13.7L348.3 14.5L348.5 15.3L348.7 16.2L348.8 17L348.9 17.8L349 18.7L349 19.5L349 279L348.9 283.6L348.6 288.3L348.1 292.9L347.4 297.5L346.6 302L345.5 306.5L344.3 311L342.8 315.4L341.2 319.8L339.4 324L337.4 328.2L335.3 332.3L333 336.3L330.5 340.2L327.8 344.1L325 347.7L322.1 351.3L319 354.8L315.7 358.1L312.3 361.2L308.8 364.3L305.2 367.1L186.3 457.1L185.6 457.6L184.9 458L184.2 458.5L183.4 458.9L182.7 459.2L181.9 459.6L181.1 459.9L180.3 460.1L179.5 460.4L178.7 460.6L177.9 460.7L177 460.9L176.2 461L175.3 461L174.5 461L173.7 461L172.8 461L172 460.9L171.1 460.7L170.3 460.6L169.5 460.4L168.7 460.1L167.9 459.9L167.1 459.6L166.3 459.2L165.6 458.9L164.8 458.5L164.1 458L163.4 457.6L162.7 457.1L43.8 367.1L40.2 364.3L36.7 361.2L33.3 358.1L30 354.8L26.9 351.3L24 347.7L21.2 344.1L18.5 340.2L16 336.3L13.7 332.3L11.6 328.2L9.6 324L7.8 319.8L6.2 315.4L4.7 311L3.5 306.5L2.4 302L1.6 297.5L0.9 292.9L0.4 288.3L0.1 283.6L0 279L0 19.5L0 18.7L0.1 17.8L0.2 17L0.3 16.2L0.5 15.3L0.7 14.5L0.9 13.7L1.2 12.9L1.5 12.1L1.8 11.3L2.2 10.5L2.6 9.8L3.1 9L3.5 8.3L4 7.6L4.6 7L5.1 6.3L5.7 5.7L6.3 5.1L7 4.6L7.6 4L8.3 3.5L9 3.1L9.8 2.6L10.5 2.2L11.3 1.8L12.1 1.5L12.9 1.2L13.7 0.9L14.5 0.7L15.3 0.5L16.2 0.3L17 0.2L17.8 0.1L18.7 0L19.5 0Z" fill="none" stroke="url(#poster-rim)" stroke-width="7"></path>
+          <path d="M26.1 10.3L31.4 10.3L36.7 10.3L42 10.3L47.3 10.3L52.6 10.3L57.9 10.3L63.2 10.3L68.5 10.3L73.8 10.3L79.1 10.3L84.4 10.3L89.7 10.3L95 10.3L100.3 10.3L105.6 10.3L110.9 10.3L116.2 10.3L121.6 10.3L126.9 10.3L132.2 10.3L137.5 10.3L142.8 10.3L148.1 10.3L153.4 10.3L158.7 10.3L164 10.3L169.3 10.3L174.6 10.3L179.9 10.3L185.2 10.3L190.5 10.3L195.8 10.3L201.1 10.3L206.4 10.3L211.7 10.3L217 10.3L222.3 10.3L227.7 10.3L233 10.3L238.3 10.3L243.6 10.3L248.9 10.3L254.2 10.3L259.5 10.3L264.8 10.3L270.1 10.3L275.4 10.3L280.7 10.3L286 10.3L291.3 10.3L296.6 10.3L301.9 10.3L307.2 10.3L312.5 10.3L317.8 10.3L323.1 10.3L328.9 10.3L334.2 11.8L337.9 15.8L338.7 23L338.7 29.9L338.7 35.4L338.7 40.6L338.7 45.8L338.7 51L338.7 56.2L338.7 61.4L338.7 66.6L338.7 71.9L338.7 77.1L338.7 82.3L338.7 87.5L338.7 92.7L338.7 97.9L338.7 103.1L338.7 108.3L338.7 113.5L338.7 118.8L338.7 124L338.7 129.2L338.7 134.4L338.7 139.6L338.7 144.8L338.7 150L338.7 155.2L338.7 160.5L338.7 165.7L338.7 170.9L338.7 176.1L338.7 181.3L338.7 186.5L338.7 191.7L338.7 196.9L338.7 202.1L338.7 207.4L338.7 212.6L338.7 217.8L338.7 223L338.7 228.2L338.7 233.4L338.7 238.6L338.7 243.8L338.7 249.1L338.7 254.3L338.7 259.5L338.7 264.7L338.7 269.9L338.7 275.1L338.7 280.3L338.5 285.6L338 290.8L337.3 295.9L336.2 301.1L335 306.1L333.4 311.1L331.6 316L329.6 320.8L327.3 325.5L324.7 330.1L321.9 334.5L318.9 338.8L315.7 342.9L312.2 346.8L308.6 350.6L304.8 354.2L300.8 357.5L296.6 360.7L292.5 363.8L288.3 367L284.2 370.1L280 373.3L275.8 376.4L271.7 379.6L267.5 382.7L263.4 385.9L259.2 389L255 392.2L250.9 395.3L246.7 398.4L242.6 401.6L238.4 404.7L234.2 407.9L230.1 411L225.9 414.2L221.8 417.3L217.6 420.5L213.5 423.6L209.3 426.8L205.1 429.9L201 433.1L196.8 436.2L192.7 439.4L188.5 442.5L184.3 445.7L179.6 449.1L174.4 450.5L169.2 449L164.5 445.6L160.3 442.4L156.2 439.2L152 436.1L147.9 432.9L143.7 429.8L139.6 426.6L135.4 423.5L131.2 420.4L127.1 417.2L122.9 414.1L118.8 410.9L114.6 407.8L110.4 404.6L106.3 401.5L102.1 398.3L98 395.2L93.8 392L89.6 388.9L85.5 385.7L81.3 382.6L77.2 379.4L73 376.3L68.8 373.2L64.7 370L60.5 366.9L56.4 363.7L52.2 360.6L48.1 357.4L44.1 354L40.2 350.5L36.6 346.7L33.2 342.7L30 338.6L27 334.3L24.2 329.9L21.7 325.3L19.4 320.7L17.3 315.8L15.5 310.9L14 305.9L12.7 300.9L11.7 295.7L11 290.6L10.5 285.4L10.3 280.1L10.3 274.9L10.3 269.7L10.3 264.5L10.3 259.3L10.3 254.1L10.3 248.9L10.3 243.6L10.3 238.4L10.3 233.2L10.3 228L10.3 222.8L10.3 217.6L10.3 212.4L10.3 207.2L10.3 201.9L10.3 196.7L10.3 191.5L10.3 186.3L10.3 181.1L10.3 175.9L10.3 170.7L10.3 165.5L10.3 160.3L10.3 155L10.3 149.8L10.3 144.6L10.3 139.4L10.3 134.2L10.3 129L10.3 123.8L10.3 118.6L10.3 113.3L10.3 108.1L10.3 102.9L10.3 97.7L10.3 92.5L10.3 87.3L10.3 82.1L10.3 76.9L10.3 71.7L10.3 66.4L10.3 61.2L10.3 56L10.3 50.8L10.3 45.6L10.3 40.4L10.3 35.2L10.3 29.7L10.3 22.7L11.3 15.6L15 11.7L20.3 10.3Z" fill="none" stroke="#2f343a" stroke-width="4" opacity="0.55"></path>
+          <path d="M28.8 14.6L34 14.6L39.2 14.7L44.4 14.6L49.6 14.6L54.9 14.6L60.1 14.6L65.3 14.7L70.5 14.6L75.7 14.6L80.9 14.6L86.1 14.6L91.3 14.6L96.5 14.7L101.7 14.6L106.9 14.6L112.1 14.6L117.3 14.6L122.5 14.7L127.7 14.6L132.9 14.6L138.2 14.6L143.4 14.6L148.6 14.7L153.8 14.6L159 14.6L164.2 14.6L169.4 14.6L174.6 14.7L179.8 14.6L185 14.6L190.2 14.6L195.4 14.6L200.6 14.7L205.8 14.6L211 14.6L216.2 14.6L221.5 14.6L226.7 14.7L231.9 14.6L237.1 14.6L242.3 14.6L247.5 14.6L252.7 14.6L257.9 14.7L263.1 14.6L268.3 14.6L273.5 14.6L278.7 14.6L283.9 14.7L289.1 14.6L294.3 14.6L299.6 14.6L304.8 14.6L310 14.7L315.2 14.6L320.4 14.6L326 14.6L331.6 15.6L334.4 20.7L334.4 28.9L334.3 35.6L334.3 40.9L334.3 46L334.4 51.1L334.4 56.2L334.4 61.2L334.4 66.3L334.4 71.4L334.4 76.4L334.4 81.5L334.4 86.6L334.4 91.7L334.4 96.7L334.4 101.8L334.4 106.9L334.3 112L334.3 117L334.3 122.1L334.3 127.2L334.4 132.2L334.4 137.3L334.4 142.4L334.4 147.5L334.4 152.5L334.4 157.6L334.4 162.7L334.4 167.8L334.4 172.8L334.4 177.9L334.4 183L334.4 188.1L334.4 193.1L334.3 198.2L334.3 203.3L334.3 208.3L334.4 213.4L334.4 218.5L334.4 223.6L334.4 228.6L334.4 233.7L334.4 238.8L334.4 243.9L334.4 248.9L334.4 254L334.4 259.1L334.4 264.1L334.4 269.2L334.4 274.3L334.3 279.4L334.2 284.5L333.8 289.6L333.1 294.6L332.1 299.6L330.9 304.6L329.4 309.4L327.6 314.2L325.6 318.9L323.4 323.5L320.9 327.9L318.2 332.2L315.3 336.4L312.1 340.4L308.7 344.2L305.2 347.9L301.4 351.3L297.5 354.5L293.4 357.6L289.4 360.7L285.3 363.8L281.3 366.8L277.2 369.9L273.2 373L269.1 376L265.1 379.1L261 382.2L257 385.2L252.9 388.3L248.9 391.4L244.8 394.4L240.8 397.5L236.7 400.5L232.7 403.6L228.6 406.7L224.6 409.7L220.5 412.8L216.5 415.9L212.4 418.9L208.4 422L204.3 425.1L200.3 428.1L196.2 431.2L192.2 434.3L188.1 437.3L184 440.4L179.5 443.9L174.4 446.3L169.4 443.7L164.8 440.3L160.7 437.2L156.7 434.1L152.6 431.1L148.6 428L144.5 424.9L140.5 421.9L136.4 418.8L132.4 415.7L128.3 412.7L124.3 409.6L120.2 406.6L116.2 403.5L112.1 400.4L108.1 397.4L104 394.3L100 391.2L95.9 388.2L91.9 385.1L87.8 382L83.8 379L79.7 375.9L75.7 372.8L71.6 369.8L67.6 366.7L63.5 363.7L59.5 360.6L55.4 357.5L51.4 354.4L47.4 351.2L43.7 347.7L40.1 344.1L36.8 340.2L33.6 336.2L30.7 332.1L28 327.8L25.5 323.3L23.3 318.7L21.3 314L19.6 309.2L18.1 304.4L16.9 299.4L15.9 294.4L15.2 289.4L14.8 284.3L14.7 279.2L14.7 274.1L14.6 269L14.6 264L14.6 258.9L14.6 253.8L14.6 248.7L14.6 243.7L14.6 238.6L14.6 233.5L14.6 228.4L14.6 223.4L14.6 218.3L14.6 213.2L14.6 208.2L14.7 203.1L14.7 198L14.7 192.9L14.6 187.9L14.6 182.8L14.6 177.7L14.6 172.6L14.6 167.6L14.6 162.5L14.6 157.4L14.6 152.3L14.6 147.3L14.6 142.2L14.6 137.1L14.6 132.1L14.6 127L14.7 121.9L14.7 116.8L14.7 111.8L14.6 106.7L14.6 101.6L14.6 96.5L14.6 91.5L14.6 86.4L14.6 81.3L14.6 76.2L14.6 71.2L14.6 66.1L14.6 61L14.6 56L14.6 50.9L14.7 45.8L14.7 40.7L14.7 35.4L14.6 28.6L14.7 20.4L17.6 15.5L23.2 14.6Z" fill="url(#poster-panel)"></path>
+          <image href="./assets/shield/teko2_icon.png" x="84" y="141" width="181" height="181"></image>
+        </svg>
+      </div>
+
+      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The procedural relief, metal materials and studio reflections are skipped in this static view; the emblem artwork below is the local TEKO icon asset.</p>
+
+      <ul class="fallback-files" aria-label="Scene contents">
+        <li><span class="fallback-file-role">Emblem</span><span class="mono">assets/shield/teko2_icon.svg</span></li>
+        <li><span class="fallback-file-role">Palette</span><span class="mono">?logo=gold|white|black|silver|adaptive</span></li>
+        <li><span class="fallback-file-role">Model</span><span class="mono">src/shield-model.js (procedural)</span></li>
+        <li><span class="fallback-file-role">Network</span><span class="mono">none &middot; all local</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M10 3.2 18 17H2L10 3.2Z"></path><path d="M10 8.2v3.6"></path><circle cx="10" cy="14.4" r="0.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <div class="error-body">
+      <strong class="error-title">Preview error</strong>
+      <p class="error-text" id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <div class="curtain-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.7 20.6 5.8v7.1c0 4.7-3.5 8-8.6 9.5-5.1-1.5-8.6-4.8-8.6-9.5V5.8Z"></path>
+            <path d="M12 7.4v8.9"></path>
+            <path d="M8.4 11.4 12 7.4l3.6 4"></path>
+          </svg>
+        </span>
+        <span class="curtain-wordmark">TEKO</span>
+      </div>
+      <p class="curtain-title" id="loading-title">Preparing the security studio</p>
+      <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
+      <div class="curtain-meta"><span id="loading-label">Loading 3D engine</span><span id="loading-count">0 / 0</span></div>
+    </div>
+  </div>
+
+  <noscript>
+    <style>
+      .curtain, .studio, .site-footer, .fallback, .error-banner { display: none !important; }
+      .noscript-panel { display: block; }
+    </style>
+    <section class="noscript-panel" aria-labelledby="noscript-title">
+      <div class="fallback-inner">
+        <p class="info-kicker">Static preview</p>
+        <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
+        <p class="fallback-message">This page renders the security shield with JavaScript and WebGL. The silhouette, relief, metal materials and the embossed TEKO emblem are all procedural and local; enable JavaScript to see the interactive three.js scene.</p>
+        <div class="fallback-poster" aria-hidden="true">
+          <svg class="poster-shield" viewBox="0 0 349 461" role="presentation">
+            <path d="M19.5 0L329.5 0L330.3 0L331.2 0.1L332 0.2L332.8 0.3L333.7 0.5L334.5 0.7L335.3 0.9L336.1 1.2L336.9 1.5L337.7 1.8L338.5 2.2L339.2 2.6L340 3.1L340.7 3.5L341.4 4L342 4.6L342.7 5.1L343.3 5.7L343.9 6.3L344.4 7L345 7.6L345.5 8.3L345.9 9L346.4 9.8L346.8 10.5L347.2 11.3L347.5 12.1L347.8 12.9L348.1 13.7L348.3 14.5L348.5 15.3L348.7 16.2L348.8 17L348.9 17.8L349 18.7L349 19.5L349 279L348.9 283.6L348.6 288.3L348.1 292.9L347.4 297.5L346.6 302L345.5 306.5L344.3 311L342.8 315.4L341.2 319.8L339.4 324L337.4 328.2L335.3 332.3L333 336.3L330.5 340.2L327.8 344.1L325 347.7L322.1 351.3L319 354.8L315.7 358.1L312.3 361.2L308.8 364.3L305.2 367.1L186.3 457.1L185.6 457.6L184.9 458L184.2 458.5L183.4 458.9L182.7 459.2L181.9 459.6L181.1 459.9L180.3 460.1L179.5 460.4L178.7 460.6L177.9 460.7L177 460.9L176.2 461L175.3 461L174.5 461L173.7 461L172.8 461L172 460.9L171.1 460.7L170.3 460.6L169.5 460.4L168.7 460.1L167.9 459.9L167.1 459.6L166.3 459.2L165.6 458.9L164.8 458.5L164.1 458L163.4 457.6L162.7 457.1L43.8 367.1L40.2 364.3L36.7 361.2L33.3 358.1L30 354.8L26.9 351.3L24 347.7L21.2 344.1L18.5 340.2L16 336.3L13.7 332.3L11.6 328.2L9.6 324L7.8 319.8L6.2 315.4L4.7 311L3.5 306.5L2.4 302L1.6 297.5L0.9 292.9L0.4 288.3L0.1 283.6L0 279L0 19.5L0 18.7L0.1 17.8L0.2 17L0.3 16.2L0.5 15.3L0.7 14.5L0.9 13.7L1.2 12.9L1.5 12.1L1.8 11.3L2.2 10.5L2.6 9.8L3.1 9L3.5 8.3L4 7.6L4.6 7L5.1 6.3L5.7 5.7L6.3 5.1L7 4.6L7.6 4L8.3 3.5L9 3.1L9.8 2.6L10.5 2.2L11.3 1.8L12.1 1.5L12.9 1.2L13.7 0.9L14.5 0.7L15.3 0.5L16.2 0.3L17 0.2L17.8 0.1L18.7 0L19.5 0Z" fill="#666c74"></path>
+            <path d="M28.8 14.6L34 14.6L39.2 14.7L44.4 14.6L49.6 14.6L54.9 14.6L60.1 14.6L65.3 14.7L70.5 14.6L75.7 14.6L80.9 14.6L86.1 14.6L91.3 14.6L96.5 14.7L101.7 14.6L106.9 14.6L112.1 14.6L117.3 14.6L122.5 14.7L127.7 14.6L132.9 14.6L138.2 14.6L143.4 14.6L148.6 14.7L153.8 14.6L159 14.6L164.2 14.6L169.4 14.6L174.6 14.7L179.8 14.6L185 14.6L190.2 14.6L195.4 14.6L200.6 14.7L205.8 14.6L211 14.6L216.2 14.6L221.5 14.6L226.7 14.7L231.9 14.6L237.1 14.6L242.3 14.6L247.5 14.6L252.7 14.6L257.9 14.7L263.1 14.6L268.3 14.6L273.5 14.6L278.7 14.6L283.9 14.7L289.1 14.6L294.3 14.6L299.6 14.6L304.8 14.6L310 14.7L315.2 14.6L320.4 14.6L326 14.6L331.6 15.6L334.4 20.7L334.4 28.9L334.3 35.6L334.3 40.9L334.3 46L334.4 51.1L334.4 56.2L334.4 61.2L334.4 66.3L334.4 71.4L334.4 76.4L334.4 81.5L334.4 86.6L334.4 91.7L334.4 96.7L334.4 101.8L334.4 106.9L334.3 112L334.3 117L334.3 122.1L334.3 127.2L334.4 132.2L334.4 137.3L334.4 142.4L334.4 147.5L334.4 152.5L334.4 157.6L334.4 162.7L334.4 167.8L334.4 172.8L334.4 177.9L334.4 183L334.4 188.1L334.4 193.1L334.3 198.2L334.3 203.3L334.3 208.3L334.4 213.4L334.4 218.5L334.4 223.6L334.4 228.6L334.4 233.7L334.4 238.8L334.4 243.9L334.4 248.9L334.4 254L334.4 259.1L334.4 264.1L334.4 269.2L334.4 274.3L334.3 279.4L334.2 284.5L333.8 289.6L333.1 294.6L332.1 299.6L330.9 304.6L329.4 309.4L327.6 314.2L325.6 318.9L323.4 323.5L320.9 327.9L318.2 332.2L315.3 336.4L312.1 340.4L308.7 344.2L305.2 347.9L301.4 351.3L297.5 354.5L293.4 357.6L289.4 360.7L285.3 363.8L281.3 366.8L277.2 369.9L273.2 373L269.1 376L265.1 379.1L261 382.2L257 385.2L252.9 388.3L248.9 391.4L244.8 394.4L240.8 397.5L236.7 400.5L232.7 403.6L228.6 406.7L224.6 409.7L220.5 412.8L216.5 415.9L212.4 418.9L208.4 422L204.3 425.1L200.3 428.1L196.2 431.2L192.2 434.3L188.1 437.3L184 440.4L179.5 443.9L174.4 446.3L169.4 443.7L164.8 440.3L160.7 437.2L156.7 434.1L152.6 431.1L148.6 428L144.5 424.9L140.5 421.9L136.4 418.8L132.4 415.7L128.3 412.7L124.3 409.6L120.2 406.6L116.2 403.5L112.1 400.4L108.1 397.4L104 394.3L100 391.2L95.9 388.2L91.9 385.1L87.8 382L83.8 379L79.7 375.9L75.7 372.8L71.6 369.8L67.6 366.7L63.5 363.7L59.5 360.6L55.4 357.5L51.4 354.4L47.4 351.2L43.7 347.7L40.1 344.1L36.8 340.2L33.6 336.2L30.7 332.1L28 327.8L25.5 323.3L23.3 318.7L21.3 314L19.6 309.2L18.1 304.4L16.9 299.4L15.9 294.4L15.2 289.4L14.8 284.3L14.7 279.2L14.7 274.1L14.6 269L14.6 264L14.6 258.9L14.6 253.8L14.6 248.7L14.6 243.7L14.6 238.6L14.6 233.5L14.6 228.4L14.6 223.4L14.6 218.3L14.6 213.2L14.6 208.2L14.7 203.1L14.7 198L14.7 192.9L14.6 187.9L14.6 182.8L14.6 177.7L14.6 172.6L14.6 167.6L14.6 162.5L14.6 157.4L14.6 152.3L14.6 147.3L14.6 142.2L14.6 137.1L14.6 132.1L14.6 127L14.7 121.9L14.7 116.8L14.7 111.8L14.6 106.7L14.6 101.6L14.6 96.5L14.6 91.5L14.6 86.4L14.6 81.3L14.6 76.2L14.6 71.2L14.6 66.1L14.6 61L14.6 56L14.6 50.9L14.7 45.8L14.7 40.7L14.7 35.4L14.6 28.6L14.7 20.4L17.6 15.5L23.2 14.6Z" fill="#7d838b"></path>
+            <image href="./assets/shield/teko2_icon.png" x="84" y="141" width="181" height="181"></image>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </noscript>
+
+  <div class="sr-only" id="live-status" role="status" aria-live="polite"></div>
+
+  <pre id="qa-diag" hidden></pre>
+
+  <script>
+  /* Early QA capture: must run before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_SHIELD_QA = window.__TEKO_SHIELD_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      if (value && typeof value === 'object') {
+        if (value.message) return String(value.message);
+        try { return JSON.stringify(value); } catch (err) { return String(value); }
+      }
+      return String(value);
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var location = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + location);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      push(qa.errors, 'unhandledrejection', describe(event && event.reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+
+    /* Early QA API stub: available synchronously before the module boots, then
+       replaced by src/shield-preview.js with the live controller once ready. */
+    window.__tekoShield = window.__tekoShield || {
+      version: 'boot',
+      ready: false,
+      errors: qa.errors,
+      warnings: qa.warnings,
+      debug: function () {
+        return { ready: false, booting: true, errors: qa.errors.slice(), warnings: qa.warnings.slice() };
+      },
+      reset: function () { return false; },
+      setPose: function () { return null; },
+      readyPromise: function () {
+        return new Promise(function (resolve) {
+          var started = Date.now();
+          (function poll() {
+            try {
+              if (window.__tekoShield && window.__tekoShield.version !== 'boot') {
+                var promise = window.__tekoShield.readyPromise ? window.__tekoShield.readyPromise() : Promise.resolve(Boolean(window.__tekoShield.ready));
+                Promise.resolve(promise).then(resolve, function () { resolve(false); });
+                return;
+              }
+              if (Date.now() - started > 20000) { resolve(false); return; }
+              window.setTimeout(poll, 40);
+            } catch (err) { resolve(false); }
+          })();
+        });
+      }
+    };
+  })();
+  </script>
+  <script type="module" src="./src/shield-preview.js"></script>
+  <script>
+  /* Module-load safety net: if src/shield-preview.js never boots (parse/import
+     failure), reveal the static poster instead of leaving the curtain up. */
+  (function () {
+    window.setTimeout(function () {
+      try {
+        var body = document.body;
+        if (!body || body.dataset.qaReady === '1' || body.dataset.fallback === '1') return;
+        var fallback = document.getElementById('fallback');
+        if (fallback) fallback.hidden = false;
+        body.dataset.fallback = '1';
+        body.dataset.qaFallback = '1';
+        var banner = document.getElementById('error-banner');
+        var text = document.getElementById('error-text');
+        if (banner && text) {
+          text.textContent = 'The interactive preview module could not start. A static poster of the shield is shown below.';
+          banner.hidden = false;
+        }
+        var curtain = document.getElementById('loading');
+        if (curtain) {
+          curtain.classList.add('is-hidden');
+          curtain.hidden = true;
+        }
+      } catch (err) { /* best effort only */ }
+    }, 22000);
+  })();
+  </script>
+</body>
+</html>
+

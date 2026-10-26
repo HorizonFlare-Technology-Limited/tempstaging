@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070809">
+<meta name="description" content="TEKO Currency Blocks — five thick glossy black rounded-square blocks that gather into a flush stack and settle back into the fig3 stacked totem, each top face inlaid with a large, centred Lexend currency symbol: £, $, €, ¥ and ₽. Dark metal studio, one shared gather-and-settle timeline for the vertical totem and the horizontally fanned stacked layout, deterministic and local only.">
+<title>TEKO · Currency Blocks</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox='0%200%2032%2032'%3E%3Crect%20x='6'%20y='2.6'%20width='20'%20height='4.6'%20rx='1.5'%20fill='%23151a22'%20stroke='%23c9d6e6'%20stroke-width='1.1'/%3E%3Crect%20x='6.4'%20y='7.8'%20width='20'%20height='4.6'%20rx='1.5'%20fill='%2312171d'%20stroke='%23c9d6e6'%20stroke-width='1.1'/%3E%3Crect%20x='6.8'%20y='13'%20width='20'%20height='4.6'%20rx='1.5'%20fill='%230f1419'%20stroke='%23c9d6e6'%20stroke-width='1.1'/%3E%3Crect%20x='7.2'%20y='18.2'%20width='20'%20height='4.6'%20rx='1.5'%20fill='%230c1015'%20stroke='%23c9d6e6'%20stroke-width='1.1'/%3E%3Crect%20x='7.6'%20y='23.4'%20width='20'%20height='4.6'%20rx='1.5'%20fill='%23090c10'%20stroke='%23c9d6e6'%20stroke-width='1.1'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/currency-blocks-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-currency-blocks="" data-layout="vertical" data-still="0" data-shot="0" data-play="1" data-reduced-motion="0" data-qa-mode="0" data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-blocks="5" data-qa-symbols="GBP,USD,EUR,JPY,RUB" data-qa-font="lexend" data-qa-font-loaded="0" data-qa-layout="vertical" data-qa-phase="idle" data-qa-progress="0" data-qa-time="0" data-qa-duration="2.9">
+
+  <div class="page" id="page">
+
+    <header class="site-header">
+      <a class="brand" href="./currency-blocks.html" aria-label="TEKO Currency Blocks home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6.4" y="2.8" width="12.8" height="3.4" rx="1.3"></rect>
+            <rect x="6" y="7.3" width="12.8" height="3.4" rx="1.3" opacity="0.86"></rect>
+            <rect x="5.6" y="11.8" width="12.8" height="3.4" rx="1.3" opacity="0.72"></rect>
+            <rect x="5.2" y="16.3" width="12.8" height="3.4" rx="1.3" opacity="0.58"></rect>
+            <rect x="4.8" y="20.8" width="12.8" height="3.4" rx="1.3" opacity="0.44"></rect>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Currency Blocks</span>
+      </a>
+
+      <nav class="collection-nav" aria-label="Collections">
+        <a class="collection-link" href="./">Coin</a>
+        <a class="collection-link" href="./card.html">Metal Card</a>
+        <a class="collection-link" href="./columns.html">Columns</a>
+        <a class="collection-link" href="./phone.html">iPhone 15</a>
+        <a class="collection-link" href="./billing.html">Billing</a>
+        <a class="collection-link" href="./shield.html">Shield</a>
+        <span class="collection-link collection-link--current" aria-current="page">Currency Blocks</span>
+        <a class="collection-link" href="./vault.html">Vault</a>
+        <a class="collection-link" href="./paperplane.html">Plane</a>
+      </nav>
+
+      <div class="header-side">
+        <p class="header-note">5 black blocks <span class="header-dot" aria-hidden="true"></span> one gather-and-settle pass</p>
+      </div>
+    </header>
+
+    <main class="studio" id="studio">
+      <section class="stage-column" aria-label="Currency block preview">
+
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <div class="stage-rules" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Interactive 3D preview of five thick glossy black rounded-square currency blocks stacked vertically. Each block's top face is inlaid with a large, centred Lexend currency symbol: pound, dollar, euro, yen and ruble. The blocks start scattered, gather bottom-up into a flush stack, hold, then settle top-down into the fig3 stacked totem. Drag to orbit and press R to reset the view; press Space or Replay to play the gather-and-settle timeline again; switch the layout between the plumb vertical stack and the horizontally fanned stacked layout."></canvas>
+
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow">
+              <span class="stage-dot"></span>
+              <span id="stage-eyebrow-text">Currency totem</span>
+            </div>
+            <div class="stage-index"><span id="stage-index">05</span><span class="stage-index-slash">/</span><span class="stage-index-total">05</span></div>
+          </div>
+
+          <div class="stage-caption" id="stage-caption" aria-live="polite">
+            <span class="stage-caption-code" id="stage-code">VRT</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">Vertical stack</span>
+            <span class="stage-caption-detail" id="stage-detail">£ · $ · € · ¥ · ₽ · stacked top to bottom</span>
+          </div>
+
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to orbit · R resets</p>
+
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Currency block controls">
+          <div class="layout-group" role="group" aria-labelledby="layout-group-label">
+            <span class="layout-label" id="layout-group-label">Layout</span>
+            <div class="segmented">
+              <button class="seg-btn" id="btn-layout-vertical" type="button" aria-pressed="true">Vertical</button>
+              <button class="seg-btn" id="btn-layout-horizontal" type="button" aria-pressed="false">Horizontal</button>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="btn-replay" type="button" aria-keyshortcuts="Space">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Replay</span>
+            <kbd>Space</kbd>
+          </button>
+
+          <button class="btn" id="btn-reset" type="button" aria-keyshortcuts="R">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 3.4v13.2"></path>
+              <path d="M3.4 10h13.2"></path>
+              <circle cx="10" cy="10" r="6.4" opacity="0.55"></circle>
+            </svg>
+            <span>Reset view</span>
+            <kbd>R</kbd>
+          </button>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <p class="control-state" id="view-state">Loading</p>
+        </div>
+
+      </section>
+
+      <aside class="info-column" aria-label="Currency block details">
+        <section class="info-card" id="info-card">
+          <div class="info-topline">
+            <span class="info-kicker">Object facts</span>
+            <span class="info-index" id="info-index">Currency Blocks / 07</span>
+          </div>
+
+          <div class="info-identity">
+            <div class="info-names">
+              <h1 class="info-name" id="info-name">Currency Blocks</h1>
+              <p class="info-region" id="info-region">Five black plates &middot; Lexend symbol inlays</p>
+            </div>
+            <span class="info-glyph" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="16" y="8" width="36" height="11" rx="4"></rect>
+                <rect x="15" y="21" width="36" height="11" rx="4" opacity="0.82"></rect>
+                <rect x="14" y="34" width="36" height="11" rx="4" opacity="0.64"></rect>
+                <rect x="13" y="47" width="36" height="11" rx="4" opacity="0.46"></rect>
+                <path d="M28 13.5h12M27 26.5h12M26 39.5h12" opacity="0.72"></path>
+              </svg>
+            </span>
+          </div>
+
+          <div class="rule"></div>
+
+          <dl class="info-specs">
+            <div class="spec-row"><dt>Layout</dt><dd id="spec-layout">Vertical stack &middot; Y axis</dd></div>
+            <div class="spec-row"><dt>Blocks</dt><dd id="spec-blocks">5 &middot; one per currency</dd></div>
+            <div class="spec-row"><dt>Block size</dt><dd id="spec-block-size">1.6 &times; 1.6</dd></div>
+            <div class="spec-row"><dt>Corner radius</dt><dd id="spec-corner-radius">0.22 &middot; large</dd></div>
+            <div class="spec-row"><dt>Thickness</dt><dd id="spec-thickness">0.26 &middot; bevel 0.026</dd></div>
+            <div class="spec-row"><dt>Rest pitch</dt><dd id="spec-rest-pitch">1.32 &middot; fig3 totem</dd></div>
+            <div class="spec-row"><dt>Tight pitch</dt><dd id="spec-tight-pitch">0.3 &middot; flush puck</dd></div>
+            <div class="spec-row"><dt>Travel</dt><dd id="spec-travel">2.4 units &middot; loose to flush</dd></div>
+            <div class="spec-row"><dt>Duration</dt><dd id="spec-duration">2.9 s &middot; one pass</dd></div>
+            <div class="spec-row"><dt>Easing</dt><dd id="spec-easing">easeInOutCubic / easeOutBack</dd></div>
+            <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">42&deg; / 30&deg; three-quarter</dd></div>
+            <div class="spec-row"><dt>Motion</dt><dd id="spec-motion">Stacked gather and settle &middot; both layouts</dd></div>
+            <div class="spec-row"><dt>Symbols</dt><dd id="spec-symbols">£ &middot; $ &middot; € &middot; ¥ &middot; ₽</dd></div>
+            <div class="spec-row"><dt>Typeface</dt><dd id="spec-typeface">Lexend 600 &middot; FontFace</dd></div>
+            <div class="spec-row"><dt>Material</dt><dd id="spec-material">Black glossy metal</dd></div>
+            <div class="spec-row"><dt>Metalness</dt><dd id="spec-metalness">0.92</dd></div>
+            <div class="spec-row"><dt>Roughness</dt><dd id="spec-roughness">0.19</dd></div>
+          </dl>
+
+          <div class="rule"></div>
+
+          <div class="info-assets">
+            <div class="info-topline"><span class="info-kicker">Procedural assets</span><span class="info-kicker info-kicker-dim">Local</span></div>
+            <div class="asset-tags" id="asset-tags">
+              <span class="asset-tag asset-tag--glyph">5 Lexend symbols</span>
+              <span class="asset-tag">768&sup2; glyph maps</span>
+              <span class="asset-tag">One shared timeline</span>
+            </div>
+            <p class="asset-note" id="asset-note">Lexend FontFace inlays &middot; procedural metal studio &middot; no network</p>
+          </div>
+
+          <div class="info-foot">
+            <span class="info-foot-note">Gather-and-settle currency totem</span>
+            <span class="info-foot-state" id="info-foot-state">Loading</span>
+          </div>
+        </section>
+
+        <div class="info-aside" id="info-aside">
+          <div class="info-notes">
+            <div class="note">
+              <span class="note-kicker">One black, five blocks</span>
+              <p class="note-body">Every block uses the same near-black glossy metal &mdash; <span class="mono">#0a0b0d</span>, metalness 0.92, roughness 0.19. The cooler, lighter faces in the reference are lighting, not separate colours: a low blue rim light, a blue under-glow and bright softbox reflections pick out the edges and top faces while the albedo stays black on all five. Each plate is the fig3 thick build (0.26 world units, up from 0.09) with a 1.6&nbsp;&times;&nbsp;1.6 footprint.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Centred Lexend inlays</span>
+              <p class="note-body">Each symbol &mdash; <span class="mono">£ $ € ¥ ₽</span> &mdash; is drawn from <span class="mono">assets/fonts/Lexend-Variable.ttf</span> through the FontFace API, turned into a 768&sup2; albedo + bevel normal map and inlaid as raised polished metal. The glyph's ink box is centred on the plate in both axes (font ink metrics, not the em box) and sits exactly on the top-face centre &mdash; the old viewer-side forward offset is gone. No PNG glyphs and no image assets.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">One timeline, two stacked layouts</span>
+              <p class="note-body">Both layouts are stacked vertical totems &mdash; there is no flat row. <span class="mono">Vertical</span> is the plumb fig3 totem; <span class="mono">Horizontal</span> keeps the same five horizontally-oriented plates stacked vertically but fans the totem progressively along X. Both share the same gather-and-settle timeline: a loose intro, a bottom-up gather into the flush puck, a 0.19&nbsp;s tight hold, then a top-down <span class="mono">easeOutBack</span> settle onto the rest pose at 2.9&nbsp;s. It plays once on viewport entry and again on Replay; the layout toggle only re-lays the same five blocks.</p>
+            </div>
+          </div>
+          <ul class="legend" aria-label="Controls, keyboard shortcuts and URL flags">
+            <li><kbd class="legend-key">Drag</kbd><span>Orbit &plusmn;16&deg; / &plusmn;7&deg;</span></li>
+            <li><kbd class="legend-key">R</kbd><span>Reset view</span></li>
+            <li><kbd class="legend-key">Space</kbd><span>Replay</span></li>
+            <li><kbd class="legend-key">Layout</kbd><span>Vertical / horizontal</span></li>
+            <li><kbd class="legend-key">?layout=</kbd><span>vertical | horizontal</span></li>
+            <li><kbd class="legend-key">?still=1</kbd><span>Deterministic rest frame</span></li>
+            <li><kbd class="legend-key">?play=0</kbd><span>Loose frame, stopped</span></li>
+            <li><kbd class="legend-key">Reduced motion</kbd><span>Static rest frame</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <span class="footer-label">Currencies</span>
+        <div class="currency-rail" id="currency-rail" aria-label="Currencies in the block set">
+          <span class="currency-chip"><span class="currency-swatch" aria-hidden="true">£</span><span class="currency-name">Pound</span><span class="currency-code">GBP</span></span>
+          <span class="currency-chip"><span class="currency-swatch" aria-hidden="true">$</span><span class="currency-name">Dollar</span><span class="currency-code">USD</span></span>
+          <span class="currency-chip"><span class="currency-swatch" aria-hidden="true">€</span><span class="currency-name">Euro</span><span class="currency-code">EUR</span></span>
+          <span class="currency-chip"><span class="currency-swatch" aria-hidden="true">¥</span><span class="currency-name">Yen</span><span class="currency-code">JPY</span></span>
+          <span class="currency-chip"><span class="currency-swatch" aria-hidden="true">₽</span><span class="currency-name">Ruble</span><span class="currency-code">RUB</span></span>
+          <span class="currency-chip currency-chip--meta"><span class="currency-swatch currency-swatch--glyph" aria-hidden="true">Aa</span><span class="currency-name">Lexend</span><span class="currency-code">600</span></span>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-note">Lexend FontFace inlays <span aria-hidden="true">&middot;</span> one gather-and-settle timeline <span aria-hidden="true">&middot;</span> three.js r151 <span aria-hidden="true">&middot;</span> local only, no network requests</p>
+        <p class="footer-note footer-note-dim" id="footer-status">Loading</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="info-kicker">Static preview</p>
+      <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. Below is a static poster of the same five thick black rounded-square currency blocks &mdash; pound, dollar, euro, yen and ruble, stacked top to bottom &mdash; with the large symbols centred and set live in Lexend.</p>
+
+      <div class="fallback-stack" id="fallback-stack" role="img" aria-label="Five black currency blocks each inlaid with a Lexend symbol: pound, dollar, euro, yen and ruble.">
+        <span class="fallback-plate fallback-plate--1"><span class="fallback-symbol">£</span></span>
+        <span class="fallback-plate fallback-plate--2"><span class="fallback-symbol">$</span></span>
+        <span class="fallback-plate fallback-plate--3"><span class="fallback-symbol">€</span></span>
+        <span class="fallback-plate fallback-plate--4"><span class="fallback-symbol">¥</span></span>
+        <span class="fallback-plate fallback-plate--5"><span class="fallback-symbol">₽</span></span>
+      </div>
+
+      <p class="fallback-explain" id="fallback-explain">The interactive blocks need WebGL. The gather-and-settle timeline, the Lexend FontFace inlays and the metal studio are skipped in this static view; the symbols above are live Lexend text, not PNGs. With JavaScript enabled but no WebGL, the same poster automatically switches between the plumb vertical stack and the horizontally fanned stacked layout when the layout changes.</p>
+
+      <ul class="fallback-files" aria-label="Scene contents">
+        <li><span class="fallback-file-role">Blocks</span><span class="mono">5 thick rounded squares &middot; black glossy metal</span></li>
+        <li><span class="fallback-file-role">Symbols</span><span class="mono">Lexend variable font via FontFace &middot; centred</span></li>
+        <li><span class="fallback-file-role">Timeline</span><span class="mono">2.9 s gather and settle &middot; both stacked layouts</span></li>
+        <li><span class="fallback-file-role">Network</span><span class="mono">none &middot; all local</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <noscript>
+    <style>
+      .curtain, .studio, .site-footer, .fallback, .error-banner { display: none !important; }
+      .page { min-height: 0; }
+      .noscript-panel { display: block; }
+    </style>
+    <section class="noscript-panel" aria-labelledby="noscript-title">
+      <div class="fallback-inner">
+        <p class="info-kicker">Static preview</p>
+        <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
+        <p class="fallback-message">This page renders the five currency blocks with JavaScript and WebGL. The black metal plates, the Lexend symbol inlays and the shared gather-and-settle timeline are all procedural and local; enable JavaScript to see the animated three.js scene.</p>
+        <div class="fallback-stack" role="img" aria-label="Five black currency blocks each inlaid with a Lexend symbol: pound, dollar, euro, yen and ruble.">
+          <span class="fallback-plate fallback-plate--1"><span class="fallback-symbol">£</span></span>
+          <span class="fallback-plate fallback-plate--2"><span class="fallback-symbol">$</span></span>
+          <span class="fallback-plate fallback-plate--3"><span class="fallback-symbol">€</span></span>
+          <span class="fallback-plate fallback-plate--4"><span class="fallback-symbol">¥</span></span>
+          <span class="fallback-plate fallback-plate--5"><span class="fallback-symbol">₽</span></span>
+        </div>
+        <p class="fallback-explain">The symbols above are live Lexend text from <span class="mono">assets/fonts/Lexend-Variable.ttf</span>, not PNGs. No network requests are made by this page.</p>
+      </div>
+    </section>
+  </noscript>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M10 3.2 18 17H2L10 3.2Z"></path><path d="M10 8.2v3.6"></path><circle cx="10" cy="14.4" r="0.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <div class="error-body">
+      <strong class="error-title">Preview error</strong>
+      <p class="error-text" id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <div class="curtain-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6.4" y="2.8" width="12.8" height="3.4" rx="1.3"></rect>
+            <rect x="5.6" y="7.3" width="12.8" height="3.4" rx="1.3" opacity="0.8"></rect>
+            <rect x="4.8" y="11.8" width="12.8" height="3.4" rx="1.3" opacity="0.6"></rect>
+            <rect x="4.4" y="16.3" width="12.8" height="3.4" rx="1.3" opacity="0.42"></rect>
+          </svg>
+        </span>
+        <span class="curtain-wordmark">TEKO</span>
+      </div>
+      <p class="curtain-title" id="loading-title">Preparing the currency blocks</p>
+      <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
+      <div class="curtain-meta"><span id="loading-label">Loading 3D engine</span><span id="loading-count">0 / 0</span></div>
+    </div>
+  </div>
+
+  <div class="sr-only" id="live-status" role="status" aria-live="polite"></div>
+
+  <pre id="qa-diag" hidden></pre>
+
+  <script>
+  /* Early QA capture: must run before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_CURRENCY_BLOCKS_QA = window.__TEKO_CURRENCY_BLOCKS_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      if (value && typeof value === 'object') {
+        if (value.message) return String(value.message);
+        try { return JSON.stringify(value); } catch (err) { return String(value); }
+      }
+      return String(value);
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var location = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + location);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      push(qa.errors, 'unhandledrejection', describe(event && event.reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+  })();
+  </script>
+  <script type="module" src="./src/currency-blocks-preview.js"></script>
+  <script>
+  /* Module-load safety net: if src/currency-blocks-preview.js never boots (parse/import
+     failure), reveal the static poster instead of leaving the curtain up. */
+  (function () {
+    window.setTimeout(function () {
+      try {
+        var body = document.body;
+        if (!body || body.dataset.qaReady === '1' || body.dataset.fallback === '1') return;
+        var fallback = document.getElementById('fallback');
+        if (fallback) fallback.hidden = false;
+        body.dataset.fallback = '1';
+        body.dataset.qaFallback = '1';
+        var banner = document.getElementById('error-banner');
+        var text = document.getElementById('error-text');
+        if (banner && text) {
+          text.textContent = 'The interactive preview module could not start. A static poster of the five currency blocks is shown below.';
+          banner.hidden = false;
+        }
+        var curtain = document.getElementById('loading');
+        if (curtain) {
+          curtain.classList.add('is-hidden');
+          curtain.hidden = true;
+        }
+      } catch (err) { /* best effort only */ }
+    }, 22000);
+  })();
+  </script>
+</body>
+</html>

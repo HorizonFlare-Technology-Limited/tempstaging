@@ -1,0 +1,364 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="TEKO Billing Documents ??seven translucent paper sheets stacked face down in a horizontal fan above a satin pedestal, their printed undersides underlit white, gold and cool from below. One unfold animation, a fixed 45簞 three-quarter studio camera and a dark editorial product stage.">
+<title>TEKO ??Billing Documents</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='6' width='24' height='17' rx='3' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.5'/%3E%3Cpath d='M9 12h9M9 16h13M9 20h7' stroke='%23c9d6e6' stroke-width='1.4' stroke-linecap='round'/%3E%3Crect x='8' y='3' width='24' height='17' rx='3' fill='none' stroke='%23c9d6e6' stroke-opacity='0.4' stroke-width='1.2'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/billing-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-billing="" data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-animation="intro" data-qa-expanded="0" data-qa-playing="0" data-qa-progress="0" data-qa-sheets="7" data-qa-layers="7" data-qa-treatments="white:2,gold:2,pcb:3" data-qa-underlight="white,gold,cool" data-qa-satin="unknown" data-qa-camera="" data-qa-distance="" data-qa-object-rect="" data-still="0" data-shot="0" data-play="auto" data-reduced-motion="0">
+
+  <div class="page" id="page">
+
+    <header class="site-header">
+      <a class="brand" href="./billing.html" aria-label="TEKO ??Billing Documents home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.4" y="7.2" width="15.2" height="11.4" rx="2.2"></rect>
+            <path d="M7.2 11.2h6.2M7.2 14.2h9.2M7.2 17.2h4.6"></path>
+            <rect x="8.2" y="4.4" width="15.2" height="11.4" rx="2.2" opacity="0.42"></rect>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Billing Documents</span>
+      </a>
+
+      <nav class="collection-nav" aria-label="Collections">
+        <a class="collection-link" href="./">Coin</a>
+        <a class="collection-link" href="./card.html">Metal Card</a>
+        <a class="collection-link" href="./columns.html">Columns</a>
+        <a class="collection-link" href="./phone.html">iPhone 15</a>
+        <span class="collection-link collection-link--current" aria-current="page">Billing</span>
+        <a class="collection-link" href="./shield.html">Shield</a>
+        <a class="collection-link" href="./currency-blocks.html">Currency Blocks</a>
+        <a class="collection-link" href="./vault.html">Vault</a>
+        <a class="collection-link" href="./paperplane.html">Plane</a>
+      </nav>
+
+      <div class="header-side">
+        <p class="header-note">7 papers <span class="header-dot" aria-hidden="true"></span> Underlit</p>
+      </div>
+    </header>
+
+    <main class="studio" id="studio">
+      <section class="stage-column" aria-label="Billing documents preview">
+
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Interactive 3D preview of seven translucent paper sheets lying face down in a horizontal stack above a satin pedestal: two white sheets, two white-to-gold radial sheets and three light grey-blue PCB-pattern sheets, with white, gold and cool underlights glowing through their printed undersides. The camera is fixed at a 45-degree three-quarter view above the stack. The stack unfolds from a condensed right-hand pile upward and to the left when it enters the viewport; press Space or the Replay button to unfold it again."></canvas>
+
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow">
+              <span class="stage-dot"></span>
+              <span id="stage-eyebrow-text">Billing studio</span>
+            </div>
+            <div class="stage-index"><span id="stage-index">07</span><span class="stage-index-slash">/</span><span class="stage-index-total">07</span></div>
+          </div>
+
+          <div class="stage-caption" id="stage-caption" aria-live="polite">
+            <span class="stage-caption-code" id="stage-code">DOC</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">Seven face-down papers</span>
+            <span class="stage-caption-detail" id="stage-detail">2 white + 2 gold + 3 PCB</span>
+          </div>
+
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Replay to unfold again</p>
+
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Billing controls">
+          <button class="btn btn-primary" id="btn-replay" type="button" aria-keyshortcuts="Space">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Replay unfold</span>
+            <kbd>Space</kbd>
+          </button>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <p class="control-state" id="replay-state" aria-live="polite">Condensed</p>
+        </div>
+
+      </section>
+
+      <aside class="info-column" aria-label="Billing document details">
+        <section class="info-card" id="info-card">
+          <div class="info-topline">
+            <span class="info-kicker">Object facts</span>
+            <span class="info-index" id="info-index">Billing / 05</span>
+          </div>
+
+          <div class="info-identity">
+            <div class="info-names">
+              <h1 class="info-name" id="info-name">Billing Documents</h1>
+              <p class="info-region" id="info-region">Seven face-down papers &middot; underlit stack</p>
+            </div>
+            <span class="info-glyph" id="info-glyph" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="12" y="14" width="38" height="42" rx="6" opacity="0.4"></rect>
+                <rect x="17" y="20" width="38" height="42" rx="6" opacity="0.68"></rect>
+                <rect x="22" y="26" width="38" height="42" rx="6"></rect>
+                <path d="M29 36h14M29 42h22M29 48h10"></path>
+              </svg>
+            </span>
+          </div>
+
+          <div class="rule"></div>
+
+          <dl class="info-specs">
+            <div class="spec-row"><dt>Sheets</dt><dd>7 &middot; <span id="spec-treatments">2 white &middot; 2 gold &middot; 3 PCB</span></dd></div>
+            <div class="spec-row"><dt>Sheet size</dt><dd id="spec-sheet-size">180 &times; 240 px</dd></div>
+            <div class="spec-row"><dt>Corner radius</dt><dd>15 px &middot; translucent paper edge</dd></div>
+            <div class="spec-row"><dt>Underlight</dt><dd id="spec-underlight">white &middot; gold &middot; cool</dd></div>
+            <div class="spec-row"><dt>Artwork</dt><dd id="spec-artwork">abstract print &middot; underside &middot; no text</dd></div>
+            <div class="spec-row"><dt>Pedestal</dt><dd id="spec-satin-source">Columns satin</dd></div>
+            <div class="spec-row"><dt>Satin metalness</dt><dd id="spec-satin-metalness">1.00</dd></div>
+            <div class="spec-row"><dt>Satin roughness</dt><dd id="spec-satin-roughness">0.80</dd></div>
+            <div class="spec-row"><dt>Env intensity</dt><dd id="spec-satin-env">2.40</dd></div>
+            <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">45&deg; / 19&deg; three-quarter</dd></div>
+            <div class="spec-row"><dt>Animation</dt><dd id="spec-animation">1.9 s unfold &middot; once</dd></div>
+          </dl>
+
+          <div class="rule"></div>
+
+          <div class="info-assets">
+            <div class="info-topline"><span class="info-kicker">Procedural assets</span><span class="info-kicker info-kicker-dim">Local</span></div>
+            <div class="asset-tags" id="asset-tags">
+              <span class="asset-tag asset-tag--paper">paper fields</span>
+              <span class="asset-tag asset-tag--print">print layers</span>
+              <span class="asset-tag">satin maps</span>
+            </div>
+            <p class="asset-note" id="asset-note">Face-down paper sheets &middot; underside print &middot; satin from columns-model.js &middot; no network</p>
+          </div>
+
+          <div class="info-foot">
+            <span class="info-foot-note">Underlit paper stack</span>
+            <span class="info-foot-state" id="info-foot-state">Loading</span>
+          </div>
+        </section>
+
+        <div class="info-aside" id="info-aside">
+          <div class="info-notes">
+            <div class="note">
+              <span class="note-kicker">Material</span>
+              <p class="note-body">The pedestal reuses the columns deliverable&rsquo;s satin material through <span class="mono">loadColumnBank()</span>, cloned so it inherits the current grain and soft blurred reflection.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Face-down print</span>
+              <p class="note-body">Each sheet lies face down: the camera sees the blank paper back, while the printed underside reads through the translucent paper. There is no readable text, number, amount or logo &mdash; only abstract strokes, dot fields, line traces and colour.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Light from below</span>
+              <p class="note-body">A glow card under each sheet tints its group: white under the two white papers, gold under the white-to-gold radial pair, cool under the three light grey-blue PCB papers.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Choreography</span>
+              <p class="note-body">A condensed pile on the right unfolds upward and to the left, staggered sheet by sheet, until every sheet settles flat and face down. It plays once when the stage enters the viewport; Replay or <kbd>Space</kbd> runs it again.</p>
+            </div>
+            <div class="note">
+              <span class="note-kicker">Camera &amp; light</span>
+              <p class="note-body">One fixed 45&deg; / 19&deg; three-quarter view, fitted per stage size. The dark studio uses a soft PMREM environment plus a baked contact shadow &mdash; no hard floor edge.</p>
+            </div>
+          </div>
+          <ul class="legend" aria-label="Keyboard shortcuts and URL flags">
+            <li><kbd class="legend-key">Space</kbd><span>Replay unfold</span></li>
+            <li><kbd class="legend-key">?still=1</kbd><span>Deterministic expanded</span></li>
+            <li><kbd class="legend-key">?play=0</kbd><span>Condensed stack</span></li>
+            <li><kbd class="legend-key">Reduced motion</kbd><span>Static expanded</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <span class="footer-label">Layers</span>
+        <div class="layer-rail" id="layer-rail" aria-label="Paper sheet layers, bottom to top">
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--white" aria-hidden="true"></span><span class="layer-name">White paper</span><span class="layer-index">01</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--white" aria-hidden="true"></span><span class="layer-name">White paper</span><span class="layer-index">02</span></span>
+          <span class="layer-chip layer-chip--gold"><span class="layer-swatch layer-swatch--gold" aria-hidden="true"></span><span class="layer-name">Gold radial</span><span class="layer-index">03</span></span>
+          <span class="layer-chip layer-chip--gold"><span class="layer-swatch layer-swatch--gold" aria-hidden="true"></span><span class="layer-name">Gold radial</span><span class="layer-index">04</span></span>
+          <span class="layer-chip layer-chip--pcb"><span class="layer-swatch layer-swatch--pcb" aria-hidden="true"></span><span class="layer-name">PCB sheet</span><span class="layer-index">05</span></span>
+          <span class="layer-chip layer-chip--pcb"><span class="layer-swatch layer-swatch--pcb" aria-hidden="true"></span><span class="layer-name">PCB sheet</span><span class="layer-index">06</span></span>
+          <span class="layer-chip layer-chip--pcb"><span class="layer-swatch layer-swatch--pcb" aria-hidden="true"></span><span class="layer-name">PCB sheet</span><span class="layer-index">07</span></span>
+          <span class="layer-chip layer-chip--meta"><span class="layer-swatch layer-swatch--satin" aria-hidden="true"></span><span class="layer-name">Satin</span><span class="layer-index">base</span></span>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-note">Procedural canvas textures only <span aria-hidden="true">&middot;</span> three.js r151 <span aria-hidden="true">&middot;</span> no network requests</p>
+        <p class="footer-note footer-note-dim" id="footer-status">Loading</p>
+      </div>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="info-kicker">Static preview</p>
+      <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. Below is a static poster of the seven-sheet paper stack &mdash; two white papers, two white-to-gold radial papers and three light grey-blue PCB papers &mdash; stacked face down above the satin pedestal and underlit from below.</p>
+
+      <div class="fallback-stack" id="fallback-stack" aria-hidden="true">
+        <span class="fallback-underlight fallback-underlight--white"></span>
+        <span class="fallback-underlight fallback-underlight--gold"></span>
+        <span class="fallback-underlight fallback-underlight--cool"></span>
+        <span class="fallback-pedestal"></span>
+        <span class="fallback-sheet fallback-sheet--white fallback-sheet--1"></span>
+        <span class="fallback-sheet fallback-sheet--white fallback-sheet--2"></span>
+        <span class="fallback-sheet fallback-sheet--gold fallback-sheet--3"></span>
+        <span class="fallback-sheet fallback-sheet--gold fallback-sheet--4"></span>
+        <span class="fallback-sheet fallback-sheet--pcb fallback-sheet--5"></span>
+        <span class="fallback-sheet fallback-sheet--pcb fallback-sheet--6"></span>
+        <span class="fallback-sheet fallback-sheet--pcb fallback-sheet--7"></span>
+      </div>
+
+      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The satin pedestal material, the translucent paper edges, the underlights and the unfold animation are skipped in this static view. Paper and print artwork is procedural and local &mdash; there are no image files to load, and no sheet carries readable text.</p>
+
+      <ul class="fallback-files" aria-label="Scene contents">
+        <li><span class="fallback-file-role">Papers</span><span class="mono">7 procedural face-down sheets</span></li>
+        <li><span class="fallback-file-role">Pedestal</span><span class="mono">satin material from columns-model.js</span></li>
+        <li><span class="fallback-file-role">Network</span><span class="mono">none &middot; all local</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M10 3.2 18 17H2L10 3.2Z"></path><path d="M10 8.2v3.6"></path><circle cx="10" cy="14.4" r="0.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <div class="error-body">
+      <strong class="error-title">Preview error</strong>
+      <p class="error-text" id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <div class="curtain-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.4" y="7.2" width="15.2" height="11.4" rx="2.2"></rect>
+            <path d="M7.2 11.2h6.2M7.2 14.2h9.2M7.2 17.2h4.6"></path>
+            <rect x="8.2" y="4.4" width="15.2" height="11.4" rx="2.2" opacity="0.42"></rect>
+          </svg>
+        </span>
+        <span class="curtain-wordmark">TEKO</span>
+      </div>
+      <p class="curtain-title" id="loading-title">Preparing the billing studio</p>
+      <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
+      <div class="curtain-meta"><span id="loading-label">Loading 3D engine</span><span id="loading-count">0 / 0</span></div>
+    </div>
+  </div>
+
+  <noscript>
+    <style>
+      .curtain, .studio, .site-footer, .fallback, .error-banner { display: none !important; }
+      .noscript-panel { display: block; }
+    </style>
+    <section class="noscript-panel" aria-labelledby="noscript-title">
+      <div class="fallback-inner">
+        <p class="info-kicker">Static preview</p>
+        <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
+        <p class="fallback-message">This page renders the seven-sheet face-down paper stack with JavaScript and WebGL. The papers, the satin pedestal, the underlights and the unfold animation are all procedural and local; enable JavaScript to see the animated three.js scene.</p>
+        <div class="fallback-stack fallback-stack--noscript" aria-hidden="true">
+          <span class="fallback-underlight fallback-underlight--white"></span>
+          <span class="fallback-underlight fallback-underlight--gold"></span>
+          <span class="fallback-underlight fallback-underlight--cool"></span>
+          <span class="fallback-pedestal"></span>
+          <span class="fallback-sheet fallback-sheet--white fallback-sheet--1"></span>
+          <span class="fallback-sheet fallback-sheet--white fallback-sheet--2"></span>
+          <span class="fallback-sheet fallback-sheet--gold fallback-sheet--3"></span>
+          <span class="fallback-sheet fallback-sheet--gold fallback-sheet--4"></span>
+          <span class="fallback-sheet fallback-sheet--pcb fallback-sheet--5"></span>
+          <span class="fallback-sheet fallback-sheet--pcb fallback-sheet--6"></span>
+          <span class="fallback-sheet fallback-sheet--pcb fallback-sheet--7"></span>
+        </div>
+      </div>
+    </section>
+  </noscript>
+
+  <div class="sr-only" id="live-status" role="status" aria-live="polite"></div>
+
+  <pre id="qa-diag" hidden></pre>
+
+  <script>
+  /* Early QA capture: must run before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_BILLING_QA = window.__TEKO_BILLING_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      if (value && typeof value === 'object') {
+        if (value.message) return String(value.message);
+        try { return JSON.stringify(value); } catch (err) { return String(value); }
+      }
+      return String(value);
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var location = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + location);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      push(qa.errors, 'unhandledrejection', describe(event && event.reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+  })();
+  </script>
+  <script type="module" src="./src/billing-preview.js"></script>
+  <script>
+  /* Module-load safety net: if src/billing-preview.js never boots (parse/import
+     failure), reveal the static poster instead of leaving the curtain up. */
+  (function () {
+    window.setTimeout(function () {
+      try {
+        var body = document.body;
+        if (!body || body.dataset.qaReady === '1' || body.dataset.fallback === '1') return;
+        var fallback = document.getElementById('fallback');
+        if (fallback) fallback.hidden = false;
+        body.dataset.fallback = '1';
+        body.dataset.qaFallback = '1';
+        var banner = document.getElementById('error-banner');
+        var text = document.getElementById('error-text');
+        if (banner && text) {
+          text.textContent = 'The interactive preview module could not start. A static poster of the document stack is shown below.';
+          banner.hidden = false;
+        }
+        var curtain = document.getElementById('loading');
+        if (curtain) {
+          curtain.classList.add('is-hidden');
+          curtain.hidden = true;
+        }
+      } catch (err) { /* best effort only */ }
+    }, 22000);
+  })();
+  </script>
+</body>
+</html>
+
+
