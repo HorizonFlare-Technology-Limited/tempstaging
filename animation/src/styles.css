@@ -346,6 +346,26 @@ body[data-mode='stack'] .stage-caption {
   transform: none;
 }
 
+/* Wave composition (docs/coin-wave.md): cinematic near-black stage — the
+   reference's dark backdrop — with the caption naming the mode. The stage aura
+   turns into a faint blue-violet haze behind the ribbon. */
+body[data-mode='wave'] .stage-caption {
+  opacity: 1;
+  transform: none;
+}
+
+body[data-mode='wave'] .stage {
+  background:
+    radial-gradient(118% 96% at 52% 40%, rgba(28, 34, 64, 0.55) 0%, rgba(7, 8, 14, 0.15) 58%, rgba(3, 4, 8, 0) 78%),
+    #030408;
+}
+
+body[data-mode='wave'] .stage-aura {
+  background:
+    radial-gradient(closest-side at 54% 42%, rgba(96, 106, 186, 0.14), rgba(96, 106, 186, 0.03) 52%, rgba(96, 106, 186, 0) 74%),
+    radial-gradient(closest-side at 68% 66%, rgba(255, 214, 10, 0.05), rgba(255, 214, 10, 0) 62%);
+}
+
 .stage-hint {
   position: absolute;
   right: 2px;
@@ -1442,6 +1462,11 @@ body[data-fallback='1'] .fallback {
   #btn-replay {
     grid-column: 1 / -1;
   }
+  /* Wave is a fifth mode button: give it its own full-width row so the 3 x 2
+     grid stays even at 390 px (Auto-spin / Gallery / Ring / Stack / Wave). */
+  #btn-wave {
+    grid-column: 1 / -1;
+  }
   .control-spacer {
     display: none;
   }
@@ -1584,5 +1609,185 @@ body[data-fallback='1'] .fallback {
   .veil-spinner {
     animation: none;
     border-top-color: rgba(226, 234, 244, 0.5);
+  }
+}
+
+/* Revision 14: the sixth mode button (Parade) joins Auto-spin + five modes.
+   In the 1181-1340 px band the stage column no longer fits the full-size set
+   on one line, so compact the bar (key caps off, tighter padding/gaps) and
+   keep the single-row layout used above 1340 px. */
+@media (min-width: 1181px) and (max-width: 1340px) {
+  .control-bar {
+    gap: 8px;
+  }
+  .btn {
+    padding: 0 11px;
+    gap: 7px;
+  }
+  .btn kbd {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Revision 14: coin Parade (sixth mode)
+   -------------------------------------------------------------------------- */
+
+.stage-play {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(206, 222, 244, 0.32);
+  background: rgba(8, 10, 14, 0.62);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 0.22s var(--ease), border-color 0.22s var(--ease), color 0.22s var(--ease);
+}
+
+.stage-play:hover {
+  background: rgba(24, 28, 36, 0.82);
+  border-color: rgba(206, 222, 244, 0.55);
+}
+
+.stage-play[aria-pressed='true'] {
+  border-color: rgba(206, 222, 244, 0.55);
+}
+
+.stage-play:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.stage-play[hidden] {
+  display: none;
+}
+
+/* Parade stage: pure black reference void; the purpose-built PMREM studio and
+   black distance fog provide depth. The page aura/glow would wash it out. */
+body[data-mode='parade'] .stage {
+  background: #000;
+}
+
+body[data-mode='parade'] .stage-aura {
+  display: none;
+}
+
+body[data-mode='parade'] .stage-caption {
+  opacity: 1;
+  transform: none;
+}
+
+body[data-mode='parade'] .stage-hint {
+  color: rgba(226, 234, 244, 0.42);
+}
+
+body[data-shot='1'] #btn-parade-play {
+  display: none;
+}
+
+/* Clean stage-only capture state (?capture=1): deterministic Parade frames for
+   the MP4/poster and reference-look screenshots. */
+body[data-capture='1'] {
+  background: #000;
+  overflow: hidden;
+}
+
+body[data-capture='1'] .site-header,
+body[data-capture='1'] .info-column,
+body[data-capture='1'] .control-bar,
+body[data-capture='1'] .site-footer,
+body[data-capture='1'] .stage-overlay,
+body[data-capture='1'] .stage-caption,
+body[data-capture='1'] .stage-hint,
+body[data-capture='1'] .stage-play,
+body[data-capture='1'] .gallery-labels,
+body[data-capture='1'] .stage-veil,
+body[data-capture='1'] .curtain,
+body[data-capture='1'] .error-banner,
+body[data-capture='1'] .fallback {
+  display: none !important;
+}
+
+body[data-capture='1'] .page {
+  display: block;
+  width: 100vw;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+body[data-capture='1'] .studio {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+
+body[data-capture='1'] .stage-column {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+}
+
+body[data-capture='1'] .stage {
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  flex: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #000;
+}
+
+body[data-capture='1'] #stage-canvas {
+  background: #000;
+}
+
+@media (max-width: 760px) {
+  .stage-play {
+    bottom: 24px;
+    height: 32px;
+    min-width: 84px;
+    font-size: 9.5px;
+  }
+  body[data-capture='1'] .stage,
+  body[data-capture='1'] .stage-column {
+    height: 100vh;
+  }
+}
+
+@media (max-width: 430px) {
+  .control-bar {
+    gap: 8px;
+  }
+  .control-bar .btn {
+    height: 44px;
+    padding: 0 12px;
+    gap: 7px;
+  }
+  .control-bar .btn kbd {
+    display: none;
+  }
+  .stage-play {
+    bottom: 20px;
   }
 }

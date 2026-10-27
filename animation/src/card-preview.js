@@ -3,7 +3,8 @@
  *
  * Owns the page shell wiring, the QA hooks (contract §4.5) and the three.js
  * studio: a two-card glossy sleek-steel composition (light card front-left, dark
- * card behind-right) on a dark studio backdrop.
+ * card behind-right) on a dark studio backdrop, both cards edged with the
+ * Revision-8 thin mirror-chrome middle frame.
  *
  * Lighting contract (round 7): exactly ONE key PointLight, placed to the RIGHT of
  * the live default camera (screen-right at the 45°/20° view), aimed at the
@@ -125,8 +126,10 @@ const AUTO = Object.freeze({ speed: 0.52, yawAmplitude: 19, pitchAmplitude: 2.4 
 const FLOAT = Object.freeze({ y: 0.014, tilt: 0.0016, speed: 0.82 });
 // Round 3 "reflection" presentation mode: a dark glass table below the floating
 // pair mirrors both cards (mirrored clone layer + gradient glass sheet), and the
-// card materials' environment response is boosted. OFF is the accepted round-2
-// render (no floor, baseline env values).
+// card materials' environment response is boosted. OFF is the no-floor,
+// base-env render (the accepted round-2 look updated by the later material
+// rounds; Revision 8 boosts/clamps the mirror bezel instead of the old per-card
+// satin/polished edge values).
 const REFLECTION = Object.freeze({
   // The pair floats just above the dark glass table; the mirror image starts
   // right below the lowest card and is framed with a visible, fading band.
@@ -167,19 +170,20 @@ const REFLECTION = Object.freeze({
   // cards' own transforms are untouched; only the camera refits to include the
   // glass table, exactly like the auto-fit already frames the pair.
   frameBand: 0.8,
-  // Round 3 reflection boost: shared front/back values and the LIGHT card's
-  // polished edge boost. Round 4 makes the edge boost per card: the dark card's
-  // satin frame must never turn into a white line in reflection mode, so its
-  // edge is boosted only slightly from its own OFF value (contract R4.2).
-  envOn: Object.freeze({ front: 1.6, edge: 2.7, back: 0.8, backLight: 2.95 }),
+  // Round 3 reflection boost: shared front/back values plus the mirror-bezel
+  // boost. Revision 8 (round 8): BOTH cards' bezels are mirror chrome, so the
+  // old Round-4 per-card satin clamp is gone; a single modest edge boost is
+  // applied to both live edge materials and clamped to a narrow band so
+  // reflection ON cannot clip the chrome rim to flat white. The OFF/base values
+  // are read live from the model (dark 1.35 / light 1.45 in v2.6.0).
+  envOn: Object.freeze({ front: 1.6, edge: 1.75, back: 0.8, backLight: 2.95 }),
   // Revision 6: the backs are per-card reconstructed artwork with their own OFF
   // envMapIntensity (dark 0.70 / light 2.40). The shared R3 value 0.8 is still
   // the dark back's ON target; the light back needs its own slightly higher ON
   // target so reflection mode brightens both backs instead of dimming the white
   // one (see docs/card-model-contract.md R6.3).
-  darkEdgeScale: 1.15,
-  darkEdgeMin: 1.0,
-  darkEdgeMax: 1.25,
+  edgeOnMin: 1.45,
+  edgeOnMax: 2.0,
 });
 const PLANE_Z = new THREE.Vector3(0, 0, 1);
 
@@ -332,10 +336,16 @@ function syncVariantInfo() {
   const light = specById('light');
   if (dark && dom.specDark) dom.specDark.textContent = dark.source || dark.face || 'novocard-default-dark.png';
   if (light && dom.specLight) dom.specLight.textContent = light.source || light.face || 'novocard-default-light.png';
-  const front = state.cards.light && state.cards.light.materials ? state.cards.light.materials.front : null;
-  if (front) {
-    if (dom.specMetalness && typeof front.metalness === 'number') dom.specMetalness.textContent = front.metalness.toFixed(2);
-    if (dom.specClearcoat && typeof front.clearcoat === 'number') dom.specClearcoat.textContent = front.clearcoat.toFixed(2);
+  // Revision 8: the two live numeric fact rows now describe the mirror-chrome
+  // bezel (the user-facing headline of this round), so read the light card's
+  // EDGE material and fall back to the front material only if it is missing.
+  const lightMaterials = state.cards.light && state.cards.light.materials
+    ? state.cards.light.materials
+    : null;
+  const bezel = lightMaterials ? (lightMaterials.edge || lightMaterials.front) : null;
+  if (bezel) {
+    if (dom.specMetalness && typeof bezel.metalness === 'number') dom.specMetalness.textContent = bezel.metalness.toFixed(2);
+    if (dom.specClearcoat && typeof bezel.clearcoat === 'number') dom.specClearcoat.textContent = bezel.clearcoat.toFixed(2);
   }
 }
 
@@ -479,8 +489,9 @@ function materialDebug(id) {
 }
 
 // Round 2 QA: the bezel/edge material must be reported explicitly (the model
-// exposes card.materials.edge). QA asserts edge roughness <= 0.2,
-// envMapIntensity >= 1.2 and clearcoat >= 0.4 on the delivered build.
+// exposes card.materials.edge). Revision 8: QA asserts the mirror-chrome frame
+// (metalness 1.0, roughness <= 0.10, finish 'mirror-chrome', live
+// envMapIntensity inside the model's documented OFF/ON range).
 function edgeMaterialDebug(id) {
   const card = state.cards[id];
   const material = card && card.materials ? card.materials.edge : null;
@@ -1137,18 +1148,15 @@ class CardStudio {
     };
   }
 
-  // Reflection-ON environment values per card. Front/back are the shared round-3
-  // boosts; the light card keeps its polished-edge boost (2.0 -> 2.7) while the
-  // dark card's satin edge is only nudged from its own OFF value and clamped to
-  // the low R4.2 range so the dark frame cannot become a white line.
+  // Reflection-ON environment values per card. Front/back keep the shared
+  // round-3/6 boosts; Revision 8 makes both edge materials mirror chrome, so the
+  // same clamped edge boost applies to both cards (the R4.2 dark-edge clamp was
+  // tied to the retired satin frame).
   _reflectionOnEnv(id, base) {
     const on = REFLECTION.envOn;
     return {
       front: on.front,
-      edge:
-        id === 'light'
-          ? on.edge
-          : clamp(base.edge * REFLECTION.darkEdgeScale, REFLECTION.darkEdgeMin, REFLECTION.darkEdgeMax),
+      edge: clamp(on.edge, REFLECTION.edgeOnMin, REFLECTION.edgeOnMax),
       back: id === 'dark' ? on.back : (Number(on.backLight) || on.back),
     };
   }
@@ -1156,8 +1164,8 @@ class CardStudio {
   _buildReflectionClones() {
     if (!this._reflectionRoot) return;
     this._disposeReflectionClones();
-    // Base (round-4/OFF) env values are read from each card's live materials so
-    // the page does not hard-code the modeler's dark-edge numbers.
+    // Base (OFF) env values are read from each card's live materials so the page
+    // does not hard-code the modeler's mirror-edge numbers.
     this._reflectionEnvBase = {
       light: this._reflectionEnvForCard(this.cards.light),
       dark: this._reflectionEnvForCard(this.cards.dark),
@@ -2175,10 +2183,10 @@ class CardStudio {
       reflectionPass: Boolean(
         this.reflectionEnabled && this.reflectionWeight > 0.5 && this._reflectionRoot && this._reflectionRoot.visible
       ),
-      // Round-3 shape (light card = polished edge, the headline boost). Round 4
-      // adds envByCard so QA can read the dark card's deliberately lower edge
-      // boost; debug().edgeMaterials remains the authoritative live per-card
-      // material source (color + satin props included).
+      // Round-3 shape, kept for QA compatibility: `env` reports the light card's
+      // live values and `envByCard` the per-card values. Revision 8 made both
+      // bezels mirror chrome, so the edge boost is now the same for both cards
+      // (debug().edgeMaterials remains the authoritative live per-card source).
       env: {
         front: round(materials && materials.front ? materials.front.envMapIntensity : 0, 3),
         edge: round(materials && materials.edge ? materials.edge.envMapIntensity : 0, 3),

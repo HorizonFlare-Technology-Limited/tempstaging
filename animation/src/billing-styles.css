@@ -326,6 +326,19 @@ kbd {
   -webkit-user-select: none;
 }
 
+/* Bottom scrim: the reused satin column is deliberately cropped by the stage
+   bottom, so the caption/hint row sits over it. The scrim keeps that row legible
+   over the column's light satin band (and reads as a normal studio vignette). */
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 88px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(6, 8, 11, 0) 0%, rgba(6, 8, 11, 0.52) 48%, rgba(6, 8, 11, 0.88) 100%);
+}
+
 .stage-overlay {
   position: absolute;
   inset: 0;
@@ -912,12 +925,25 @@ body[data-shot='1'] .stage-hint {
   border-style: dashed;
 }
 
+/* Round 5: the unified text mockup is a floating layer, not paper. */
+.layer-chip--mockup {
+  border-color: rgba(214, 230, 250, 0.24);
+  background: rgba(214, 230, 250, 0.05);
+}
+
 .layer-swatch {
   width: 12px;
   height: 12px;
   flex: 0 0 auto;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.layer-swatch--mockup {
+  background:
+    repeating-linear-gradient(180deg, rgba(226, 238, 252, 0.92) 0 1px, rgba(226, 238, 252, 0) 1px 3px),
+    linear-gradient(150deg, rgba(34, 38, 45, 0.9), rgba(30, 33, 39, 0.9));
+  border-color: rgba(224, 236, 250, 0.4);
 }
 
 .layer-swatch--white {
@@ -1014,6 +1040,9 @@ body[data-shot='1'] .stage-hint {
   max-width: 460px;
   aspect-ratio: 0.94;
   margin: 22px auto 10px;
+  /* The reused satin column runs out of the bottom of the poster exactly like it
+     runs out of the bottom of the stage — it is cropped, never shrunk. */
+  overflow: hidden;
 }
 
 /* Underlight hints behind the face-down stack: one glow per treatment group. */
@@ -1044,23 +1073,29 @@ body[data-shot='1'] .stage-hint {
   background: radial-gradient(closest-side, rgba(158, 196, 236, 0.46), rgba(158, 196, 236, 0) 74%);
 }
 
+/* Round 5: the support is the reused columns satin COLUMN, not a plinth. It is
+   taller than the poster and cropped by the poster's bottom edge (overflow
+   hidden), so only the top band shows, exactly like the WebGL stage crop. */
 .fallback-pedestal {
   position: absolute;
-  left: 26%;
-  bottom: 1%;
-  width: 48%;
-  height: 12%;
+  left: 30%;
+  bottom: 0;
+  width: 40%;
+  height: 34%;
   z-index: 1;
-  border-radius: 10px;
+  border-radius: 6px 6px 0 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.05) 24%, rgba(120, 128, 140, 0.16) 62%, rgba(20, 23, 28, 0.92)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 18%, rgba(120, 128, 140, 0.14) 46%, rgba(20, 23, 28, 0.9) 96%),
     linear-gradient(100deg, #6d7480, #aab2bd 34%, #5d636d 70%, #80858f);
-  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -8px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 8px 0 22px rgba(255, 255, 255, 0.06),
+    inset -10px 0 24px rgba(0, 0, 0, 0.42);
   border: 1px solid rgba(226, 234, 244, 0.14);
+  border-bottom: 0;
 }
 
-/* Face-down horizontal paper sheets: rounded landscape cards, three treatments. */
+/* Face-down horizontal paper sheets: rounded landscape cards, three treatments.
+   Round 5: the paper carries no artwork any more — the unified text mockup is a
+   separate floating layer (.fallback-mockup) above each sheet. */
 .fallback-sheet {
   position: absolute;
   width: 72%;
@@ -1071,39 +1106,39 @@ body[data-shot='1'] .stage-hint {
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
 }
 
-/* Abstract marks read through the paper: thin rules + dot fields, never text. */
-.fallback-sheet::before,
-.fallback-sheet::after {
-  content: '';
+/* The unified text mockup: ONE pattern floating above every sheet, drawn as bare
+   ink (transparent background) so it reads detached from the paper. This flat
+   poster approximates the floating layer as a thin ink band hovering over the
+   exposed band of each sheet (the 3D build lifts the layer 10 px above the paper
+   and casts its blurred shadow on it). */
+.fallback-mockup {
   position: absolute;
+  width: 58%;
+  height: 5.2%;
+  z-index: 9;
   pointer-events: none;
-}
-
-.fallback-sheet::before {
-  left: 9%;
-  right: 9%;
-  top: 25%;
-  height: 50%;
+  color: rgba(12, 13, 15, 0.9);
   background-image: repeating-linear-gradient(
     180deg,
     currentColor 0,
-    currentColor 1px,
-    rgba(0, 0, 0, 0) 1px,
-    rgba(0, 0, 0, 0) 8px
+    currentColor 1.3px,
+    rgba(0, 0, 0, 0) 1.3px,
+    rgba(0, 0, 0, 0) 6.6px
   );
-  opacity: 0.32;
+  -webkit-mask-image: linear-gradient(90deg, #000 0 44%, rgba(0, 0, 0, 0.28) 68%, rgba(0, 0, 0, 0) 86%);
+  mask-image: linear-gradient(90deg, #000 0 44%, rgba(0, 0, 0, 0.28) 68%, rgba(0, 0, 0, 0) 86%);
+  filter: drop-shadow(0 1.5px 1.2px rgba(0, 0, 0, 0.55));
+  transform: translateY(-1.5px);
 }
 
-.fallback-sheet::after {
-  left: 12%;
-  right: 42%;
-  top: 29%;
-  height: 42%;
-  background-image: radial-gradient(circle at center, currentColor 0.8px, rgba(0, 0, 0, 0) 1.4px);
-  background-size: 7px 7px;
-  opacity: 0.24;
+.fallback-mockup--5,
+.fallback-mockup--6,
+.fallback-mockup--7 {
+  color: rgba(238, 246, 255, 0.9);
 }
 
+/* Round 5 faces: white and gold are OPAQUE; only the PCB paper stays translucent
+   (its background alpha lets the underlight glow behind it read through). */
 .fallback-sheet--white {
   color: rgba(20, 22, 26, 0.92);
   background:
@@ -1125,12 +1160,14 @@ body[data-shot='1'] .stage-hint {
   color: rgba(244, 250, 255, 0.92);
   border-color: rgba(198, 220, 238, 0.4);
   background:
-    linear-gradient(168deg, #d6e1ee, #b6c7db 56%, #93a9c8),
-    #bfcfe0;
+    linear-gradient(168deg, rgba(214, 225, 238, 0.72), rgba(182, 199, 219, 0.66) 56%, rgba(147, 169, 200, 0.62)),
+    rgba(191, 207, 224, 0.5);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.42), 0 0 28px rgba(158, 196, 236, 0.26),
     inset 0 -8px 18px rgba(150, 192, 232, 0.38), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
 
+/* Sheet index doubles as the stacking order: each sheet's mockup layer sits
+   directly above its own paper (z = sheet z + 1) and below the next sheet up. */
 .fallback-sheet--1 {
   left: 12%;
   bottom: 18%;
@@ -1142,42 +1179,84 @@ body[data-shot='1'] .stage-hint {
   left: 11.4%;
   bottom: 24.6%;
   transform: rotate(0.2deg);
-  z-index: 3;
+  z-index: 4;
 }
 
 .fallback-sheet--3 {
   left: 10.8%;
   bottom: 31.2%;
   transform: rotate(-0.3deg);
-  z-index: 4;
+  z-index: 6;
 }
 
 .fallback-sheet--4 {
   left: 10.2%;
   bottom: 37.8%;
   transform: rotate(-0.6deg);
-  z-index: 5;
+  z-index: 8;
 }
 
 .fallback-sheet--5 {
   left: 9.6%;
   bottom: 44.4%;
   transform: rotate(-0.9deg);
-  z-index: 6;
+  z-index: 10;
 }
 
 .fallback-sheet--6 {
   left: 9%;
   bottom: 51%;
   transform: rotate(-1.2deg);
-  z-index: 7;
+  z-index: 12;
 }
 
 .fallback-sheet--7 {
   left: 8.4%;
   bottom: 57.6%;
   transform: rotate(-1.5deg);
-  z-index: 8;
+  z-index: 14;
+}
+
+.fallback-mockup--1 {
+  left: 15%;
+  bottom: 19.3%;
+  z-index: 3;
+}
+
+.fallback-mockup--2 {
+  left: 14.4%;
+  bottom: 25.9%;
+  z-index: 5;
+}
+
+.fallback-mockup--3 {
+  left: 13.8%;
+  bottom: 32.5%;
+  z-index: 7;
+}
+
+.fallback-mockup--4 {
+  left: 13.2%;
+  bottom: 39.1%;
+  z-index: 9;
+}
+
+.fallback-mockup--5 {
+  left: 12.6%;
+  bottom: 45.7%;
+  z-index: 11;
+}
+
+.fallback-mockup--6 {
+  left: 12%;
+  bottom: 52.3%;
+  z-index: 13;
+}
+
+.fallback-mockup--7 {
+  left: 11.4%;
+  bottom: 58.9%;
+  z-index: 15;
 }
 
 .fallback-files {

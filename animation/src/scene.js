@@ -96,6 +96,10 @@ export class CoinStudio {
     this.mode = 'hero';
     this.face = 'a';
     this.spinEnabled = false;
+    // Revision 9 (Wave mode): a composition can ask the studio for a fully
+    // static stage — no idle float, no pointer parallax — while the free
+    // trackball view stays live. Set by the page (see setStatic()).
+    this.staticScene = false;
 
     // Revision 8: free trackball view state. `quaternion` is the orientation
     // actually rendered on the orbit group, `target` the orientation the input
@@ -528,6 +532,23 @@ export class CoinStudio {
 
   setSpin(enabled) {
     this.spinEnabled = Boolean(enabled) && !this.reducedMotion && !this.shot;
+  }
+
+  /**
+   * Freeze the studio's ambient motion (idle float + pointer parallax) for a
+   * static composition (Wave mode). The 360° trackball view is untouched: this
+   * only stops the scene itself from animating, so `?shot=1`/`?still=1` captures
+   * and a live static composition show the same frame.
+   * @param {boolean} value
+   */
+  setStatic(value) {
+    this.staticScene = Boolean(value);
+    if (this.staticScene) {
+      this._pointerTarget.x = 0;
+      this._pointerTarget.y = 0;
+      if (this.root) this.root.position.y = 0;
+      if (this.tilt) this.tilt.rotation.set(0, 0, 0);
+    }
   }
 
   playIntro() {
@@ -1172,7 +1193,7 @@ export class CoinStudio {
     this._syncOrbit();
 
     // Idle spin (coin turns around its own axis; the displayed face stays front)
-    const motionAllowed = !this.shot && !this.reducedMotion && !this.threeQuarter;
+    const motionAllowed = !this.shot && !this.reducedMotion && !this.threeQuarter && !this.staticScene;
     if (this.spinEnabled && motionAllowed) {
       this._spinAngle = (this._spinAngle + dt * 0.62) % TAU;
     }
@@ -1182,7 +1203,8 @@ export class CoinStudio {
     this.root.position.y = motionAllowed ? Math.sin(this._time * 0.72) * 0.032 : 0;
 
     // Pointer parallax + intro swing
-    const parallaxScale = this.shot || this.reducedMotion || this.threeQuarter || this.mode === 'hero' ? 0 : 0.45;
+    const parallaxScale =
+      this.shot || this.reducedMotion || this.threeQuarter || this.staticScene || this.mode === 'hero' ? 0 : 0.45;
     const targetTiltY = this._pointerTarget.x * 0.085 * parallaxScale + this._introPose * 0.5;
     const targetTiltX = -this._pointerTarget.y * 0.055 * parallaxScale;
     const tiltEase = 1 - Math.exp(-dt * 4.2);
@@ -1192,7 +1214,7 @@ export class CoinStudio {
 
     // Camera dolly (smooth on mode switches / resize)
     const displayTarget = this._camTarget + this._introPose * 2.4;
-    this._camDist = this.shot || this.reducedMotion || this.threeQuarter
+    this._camDist = this.shot || this.reducedMotion || this.threeQuarter || this.staticScene
       ? displayTarget
       : lerp(this._camDist, displayTarget, 1 - Math.exp(-dt * 5.5));
     this.camera.position.set(0, this._camY, this._camDist);

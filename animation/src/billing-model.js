@@ -1,53 +1,71 @@
 /**
- * tekoanimation — Billing documents model, v2 (round 4: face-down paper stack).
+ * tekoanimation — Billing documents model, v3 (round 5: unified floating text
+ * mockup, opaque faces, columns-satin column support).
  *
- * The object is a HORIZONTAL stack of SEVEN translucent paper sheets floating
- * above the satin pedestal (the satin material is supplied by the page from the
- * columns deliverable bank: `loadColumnBank().materials.satin`, cloned so it
- * inherits the current satin grain/reflection). The sheets are FACE DOWN: the
- * camera (fixed 45° three-quarter, elevation 19°) looks down at the blank paper
- * back, while the printed graphic side is on the UNDERSIDE and — because paper is
- * translucent, and because every sheet carries an underlight glow card beneath
- * its print — the marks and the light from below read through the sheet.
+ * The object is a HORIZONTAL stack of SEVEN face-down paper sheets floating above
+ * the COLUMNS DELIVERABLE'S SATIN COLUMN (the page instantiates
+ * `createColumns(bank).columnsById['satin-large-long']`, passes that mesh in as
+ * `columnInstance`, and the model reuses it as the support — no billing-owned
+ * pedestal geometry is built here any more). The fixed 45°/19° camera looks down
+ * at the blank paper backs.
+ *
+ * ROUND-5 changes from round 4:
+ *   - UNIFIED TEXT MOCKUP: all seven sheets share ONE abstract typographic
+ *     artwork — the same text-line pattern (header bar, title line, body line
+ *     rows, amount bars, rules, dot field) painted once from one seed. Only the
+ *     ink tone differs per treatment (white/gold dark, PCB light same-tone).
+ *     There is still NO readable text: no letters, digits, words, amounts, codes
+ *     or logo; the painter uses `fillRect` / rounded bars only, never `fillText`.
+ *   - FLOATING LAYER: the unified mockup is its own mesh + own material, floating
+ *     `LAYER_SPEC.mockupLift` world px ABOVE each sheet's paper surface. It is not
+ *     painted into the paper albedo/map, so the graphic reads as a detached layer
+ *     hovering over the paper.
+ *   - OPAQUE FACES: the white and gold paper faces are opaque (transparent:false,
+ *     opacity 1, depthWrite true); the PCB paper keeps the round-4 translucent
+ *     spec (transparent, opacity < 1, depthWrite false). The underlight glow
+ *     cards and the page's underlight pool are kept; on the opaque sheets the
+ *     light now reads as the glow halo around the paper edge instead of shining
+ *     through the sheet.
+ *   - SUPPORT: the satin column instance from the columns deliverable is scaled to
+ *     the billing footprint (SUPPORT_SPEC.width x depth), its top face at
+ *     SUPPORT_SPEC.topY, and it is deliberately TALL: it runs down past the stage
+ *     bottom and is cropped by the viewport. The paper stack keeps its round-4
+ *     scale — the camera fit only takes the support vertices at/above
+ *     SUPPORT_SPEC.cropY, never the whole column.
  *
  * Unit convention: 1 world unit = 1 source px, matching the columns deliverable
  * (the satin albedo/normal/roughness maps are authored for that scale: one satin
  * texture tile covers 260 px x UV_DENSITY_SCALE = 338 world px).
  *
- * Sheet artwork is PROCEDURAL and LOCAL: deterministic canvas textures painted
+ * Everything painted here is PROCEDURAL and LOCAL: deterministic canvas textures
  * from seeded mulberry32 PRNGs — no Math.random, no fetch, no external image, no
- * font dependency. There is NO readable text anywhere: no TEKO wordmark, no
- * amounts, no transaction copy, no letters or numbers. The print is only abstract
- * graphic language: thick short bars in loose rows (text-line rhythm without
- * forming letters), rounded strokes, dot-matrix fields, line/PCB-like traces,
- * thin rules, rounded-rect outlines, corner registration ticks and colour fields.
+ * font dependency, no network.
  *
  * Three treatments bottom -> top (2 WHITE / 2 GOLD / 3 PCB):
- *   - WHITE (0-1): warm-white paper with deterministic fibre/mottle, black
- *     abstract marks, white underlight + white rim.
- *   - GOLD (2-3): white -> gold RADIAL paper (verified - edges white, centre
- *     gold), black + light grey-blue marks, gold underlight + gold rim.
- *   - PCB (4-6): light grey-blue paper with deterministic banding/mottle, PCB-like
- *     pattern in lighter same-tone marks (plus a few deeper same-tone traces, NO
- *     black), cool underlight + cool rim.
+ *   - WHITE (0-1): warm-white opaque paper, black unified mockup, white underlight
+ *     + white rim.
+ *   - GOLD (2-3): white -> gold RADIAL opaque paper, near-black unified mockup,
+ *     gold underlight + gold rim.
+ *   - PCB (4-6): light grey-blue translucent paper, light same-tone unified
+ *     mockup, cool underlight + cool rim.
  *
  * Per-sheet layer construction (all children of the animated sheet group, so the
  * existing pose animation moves every layer together):
- *   glow  renderOrder base+0  additive underlight card (1.1x sheet), just below
- *   print renderOrder base+1  underside print, rotated PI about X (normal down),
- *                             BackSide so the camera above sees it through paper
- *   paper renderOrder base+2  blank translucent paper top surface
- *   rim   renderOrder base+3  existing bright edge strip
- * where base = sheetIndex * 8 (bottom sheet drawn first, top sheet last) so a
- * page that has not applied its camera-distance ordering yet still composites
- * correctly. The page re-derives the same ladder from `sheet.layers`.
+ *   glow   renderOrder base+0  additive underlight card (1.1x sheet), just below
+ *   paper  renderOrder base+1  paper top surface (opaque white/gold, translucent
+ *                              PCB), markings live on the separate mockup layer
+ *   mockup renderOrder base+2  the floating unified text-mockup layer, lifted
+ *                              above the paper surface (transparent background)
+ *   rim    renderOrder base+3  existing bright edge strip
+ * where base = sheetIndex * 8 (bottom sheet drawn first, top sheet last). The page
+ * re-derives the same ladder from `sheet.layers`.
  *
- * Layout model (deterministic):
+ * Layout model (deterministic, unchanged from round 4):
  *   - `sheetPose(index, 'expanded')` is the fanned horizontal stack rising above
- *     the pedestal and sweeping LEFT as it climbs; a tiny per-treatment skew
+ *     the support and sweeping LEFT as it climbs; a tiny per-treatment skew
  *     (+2° yaw gold / -1° yaw PCB) makes the three sets read as groups.
- *   - `sheetPose(index, 'condensed')` is a tight pile on the RIGHT side of the
- *     pedestal, so playing the unfold reads as "right to left, upward".
+ *   - `sheetPose(index, 'condensed')` is a tight pile on the RIGHT, so playing the
+ *     unfold reads as "right to left, upward".
  *   - The animation itself (staggered lerp) lives in the page controller; the two
  *     pose tables and the pure interpolation helpers are exported here so the
  *     choreography is testable without a DOM/browser.
@@ -55,25 +73,28 @@
  * Geometry:
  *   - every sheet: a subdivided, corner-clamped rounded-rect surface with a
  *     gentle bow (centre up), plus a thin extruded rim strip (bright edge), all
- *     shared by the seven sheets;
+ *     shared by the seven sheets; the mockup layer reuses the same surface
+ *     geometry, lifted in +Z (sheet local = world UP once pitched flat);
  *   - the underlight card is a shared 1.1x PlaneGeometry;
- *   - pedestal: a rounded box (extruded rounded-rect plan, bevelled top/bottom)
- *     with world-scale per-face UVs + uv2 (the satin material samples aoMap from
- *     uv2, exactly like the columns model).
+ *   - support: the columns deliverable's satin column mesh, rescaled/positioned by
+ *     `prepareColumnSupport()` (geometry untouched, UVs stay the columns-baked
+ *     per-face planar ones).
  *
  * Public API (frozen for ./billing-preview.js):
  *   MODEL_VERSION, SHEET_COUNT, TREATMENTS, GOLD_START_INDEX, WARM_SHEET_INDEX,
- *   SHEET_SPEC, LAYER_SPEC, PEDESTAL_SPEC, UV_DENSITY_SCALE, SATIN_TILE_PX,
- *   SATIN_FALLBACK, TEXTURE_SPEC, LAYOUT, TREATMENT_POSE_SKEW, CAMERA_SPEC,
- *   ANIMATION_SPEC, SHEET_META, treatmentForIndex,
+ *   SHEET_SPEC, LAYER_SPEC, SUPPORT_SPEC, PEDESTAL_SPEC (legacy alias),
+ *   UV_DENSITY_SCALE, SATIN_TILE_PX, SATIN_FALLBACK, TEXTURE_SPEC, MOCKUP_SPEC,
+ *   PAPER_FACE, LAYOUT, TREATMENT_POSE_SKEW, CAMERA_SPEC, ANIMATION_SPEC,
+ *   SHEET_META, treatmentForIndex, resolveSupportScale(mesh, spec),
+ *   prepareColumnSupport(mesh, spec), computeSupportBounds(support),
  *   sheetPose(index, mode), lerpSheetPose(from, to, t), applySheetPose(sheet, pose),
  *   computeStackBounds(mode), createSeededRandom(seed), easeInOutCubic(t),
- *   artworkSpecFor(index), drawSheetArtwork(ctx, spec), createSheetTexture(index),
+ *   mockupArtworkSpecFor(), drawMockupArtwork(ctx, spec), createMockupTexture(),
  *   paperArtworkSpecFor(treatment), drawPaperArtwork(ctx, spec),
  *   createPaperTexture(treatment), glowArtworkSpecFor(treatment),
  *   drawGlowArtwork(ctx, spec), createGlowTexture(treatment),
- *   buildSheetGeometries(spec), buildPedestalGeometry(spec, satinTilePx),
- *   createFallbackSatinMaterial({ tilePx }), createBillingModel(options)
+ *   buildSheetGeometries(spec), createFallbackSatinMaterial({ tilePx }),
+ *   createBillingModel(options)
  *
  * Everything is deterministic and local-only; there is no Math.random and no
  * network access anywhere in this module.
@@ -82,7 +103,7 @@
 import * as THREE from 'three';
 
 /** Human-readable module version (not part of the page QA contract). */
-export const MODEL_VERSION = '2.0.0';
+export const MODEL_VERSION = '3.0.0';
 
 /** The stack is exactly seven paper sheets (2 white / 2 gold / 3 PCB). */
 export const SHEET_COUNT = 7;
@@ -126,30 +147,52 @@ export const SHEET_SPEC = Object.freeze({
 
 /**
  * Face-down layering constants, in sheet-local px / degrees.
- * The paper sits at z = 0; the print and the underlight card hang BELOW it
- * (negative z in sheet-local space is world DOWN once the sheet is pitched flat).
+ * The paper sits at z = 0; the underlight card hangs BELOW it (negative z in
+ * sheet-local space is world DOWN once the sheet is pitched flat), while the
+ * unified text mockup floats ABOVE the paper surface (+Z = world UP).
  * `renderOrderStride` is the renderOrder span reserved per sheet.
  */
 export const LAYER_SPEC = Object.freeze({
-  printDrop: 0.15,
   glowDrop: 4,
   glowScale: 1.1,
+  // World px the floating mockup layer sits above the paper surface. This is a
+  // real 3D gap (the camera is at 19° elevation), so the graphic reads as a
+  // detached layer hovering over the paper instead of ink baked into it.
+  mockupLift: 10,
   renderOrderStride: 8,
 });
 
 /**
- * Satin pedestal in source px: a rounded plinth, 360 wide x 210 deep x 90 tall
- * (top face at world y = 90). Unchanged from v1.
+ * Column support in source px. The support is NOT built here: the page reuses the
+ * columns deliverable's satin column instance (columns-model.js
+ * `createColumns(bank).columnsById['satin-large-long']`) and the model rescales
+ * that instance to this specification.
+ *
+ *   width x depth  = the billing footprint (the round-4 plinth plan, unchanged)
+ *   topY            = the support top face; the paper stack floats above it exactly
+ *                    as it did over the round-4 plinth
+ *   columnId        = the columns deliverable column that is reused
+ *   cropY           = framing clip: only support vertices at/above this y take
+ *                    part in the camera fit. The column itself is much taller and
+ *                    runs down past the stage bottom (cropped by the viewport),
+ *                    so the paper stack keeps its round-4 scale.
+ *   columnScaleY    = world-scale of the reused column along its length: keeps the
+ *                    support tall enough to run out of the bottom of the stage at
+ *                    1440/1200/390 without shrinking the paper stack.
  */
-export const PEDESTAL_SPEC = Object.freeze({
+export const SUPPORT_SPEC = Object.freeze({
   width: 360,
   depth: 210,
-  height: 90,
-  radius: 30,
-  bevel: 6,
+  topY: 90,
   centerX: -55,
   centerZ: 0,
+  columnId: 'satin-large-long',
+  cropY: 0,
+  columnScaleY: 1.5,
 });
+
+/** Legacy name kept for older QA reads; the plinth is the columns satin column. */
+export const PEDESTAL_SPEC = SUPPORT_SPEC;
 
 /**
  * The columns deliverable bakes `manifestTilePx x UV_DENSITY_SCALE` world px per
@@ -175,11 +218,67 @@ export const SATIN_FALLBACK = Object.freeze({
   colorSrgb: '#969ba3',
 });
 
-/** Procedural map sizes (3:4 print/paper, square glow). */
+/**
+ * Procedural map sizes (3:4 mockup/paper, square glow). The round-4 per-sheet
+ * 768x1024 print maps are retired: ONE 512x683 unified mockup layout is painted
+ * twice (a white-ink floating layer and its blurred shadow) and shared by every
+ * sheet, because the mockup is a FLOATING LAYER, not paper albedo.
+ */
 export const TEXTURE_SPEC = Object.freeze({
-  print: Object.freeze({ width: 768, height: 1024 }),
+  mockup: Object.freeze({ width: 512, height: 683 }),
   paper: Object.freeze({ width: 384, height: 512 }),
   glow: Object.freeze({ width: 256, height: 256 }),
+});
+
+/**
+ * The unified text mockup (round 5). ONE abstract typographic pattern painted once
+ * from one seed and shared identically by all seven sheets; the per-treatment ink
+ * tone is the only difference (material colour, not a different layout).
+ *
+ * It is deliberately NOT paper albedo: the model builds a separate mockup mesh per
+ * sheet, lifted `lift` world px above the paper surface, with a transparent
+ * background, so the graphic floats over the paper instead of being baked into it.
+ * There is no readable content anywhere: the painter draws bars, rules, rounded
+ * chips and dots only — never letters, digits, words, amounts or a logo.
+ */
+export const MOCKUP_SPEC = Object.freeze({
+  seed: 4409,
+  width: TEXTURE_SPEC.mockup.width,
+  height: TEXTURE_SPEC.mockup.height,
+  lift: LAYER_SPEC.mockupLift,
+  opacity: 0.92,
+  unified: true,
+  /** Per-treatment ink tone (the unified pattern is identical for every sheet). */
+  ink: Object.freeze({ white: '#0b0b0c', gold: '#0a0a0b', pcb: '#dbe6f6' }),
+  /**
+   * Soft drop shadow of the floating layer, painted on the paper just under the
+   * ink. It is what makes the mockup read as DETACHED from the paper at the fixed
+   * 19° camera (a flat vertical gap alone is hard to see on a plain sheet): the
+   * ink floats `lift` px above the paper and casts a blurred shadow on it.
+   * Both the ink and the shadow are separate layers — neither is paper albedo.
+   */
+  shadow: Object.freeze({
+    enabled: true,
+    opacity: 0.26,
+    blurPx: 5,
+    offsetX: 1.1,
+    offsetY: 2.4,
+    lift: 0.4,
+    // The blurred white-ink shadow map is tinted near-black by its material.
+    colorSrgb: '#050608',
+  }),
+});
+
+/**
+ * Paper face contract (round 5). The straight/front paper faces of the white and
+ * gold sheets are OPAQUE; the grey-blue PCB paper stays translucent exactly as the
+ * round-4 spec described. `depthWrite` follows the face: opaque faces write depth
+ * (so the stack composites cleanly), translucent faces do not.
+ */
+export const PAPER_FACE = Object.freeze({
+  white: Object.freeze({ opaque: true, transparent: false, opacity: 1, depthWrite: true }),
+  gold: Object.freeze({ opaque: true, transparent: false, opacity: 1, depthWrite: true }),
+  pcb: Object.freeze({ opaque: false, transparent: true, opacity: 0.56, depthWrite: false }),
 });
 
 /**
@@ -280,7 +379,6 @@ export const ANIMATION_SPEC = Object.freeze({
 const DEG_TO_RAD = Math.PI / 180;
 const HALF_SHEET_COUNT = (SHEET_COUNT - 1) / 2;
 const TAU = Math.PI * 2;
-const PRINT_PAD = 56;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (from, to, t) => from + (to - from) * t;
@@ -398,11 +496,15 @@ const TREATMENT_PALETTES = Object.freeze({
   pcb: PCB_PALETTE,
 });
 
-/** Abstract mark colours per treatment (metadata; also drives the print painter). */
+/**
+ * Unified-mockup ink tone per treatment (one pattern, different ink). Metadata for
+ * QA/docs; the painter itself draws in white and the mockup material's colour
+ * multiplies it.
+ */
 const TREATMENT_MARKS = Object.freeze({
-  white: Object.freeze(['#0a0a0b']),
-  gold: Object.freeze(['#0a0a0b', '#c9d6e6']),
-  pcb: Object.freeze(['#dbe6f6', '#8ea4bf']),
+  white: Object.freeze([MOCKUP_SPEC.ink.white]),
+  gold: Object.freeze([MOCKUP_SPEC.ink.gold]),
+  pcb: Object.freeze([MOCKUP_SPEC.ink.pcb]),
 });
 
 /** Fixed paper-texture seeds (one paper map per treatment). */
@@ -411,8 +513,9 @@ const PAPER_SEEDS = Object.freeze({ white: 8101, gold: 8209, pcb: 8317 });
 /** Fixed glow-texture seeds (one underlight map per treatment). */
 const GLOW_SEEDS = Object.freeze({ white: 9101, gold: 9209, pcb: 9317 });
 
-function makeSheetMeta({ id, label, code, treatment, seed, opacity, glowOpacity }) {
+function makeSheetMeta({ id, label, code, treatment, glowOpacity }) {
   const palette = TREATMENT_PALETTES[treatment];
+  const face = PAPER_FACE[treatment];
   return Object.freeze({
     id,
     label,
@@ -420,12 +523,15 @@ function makeSheetMeta({ id, label, code, treatment, seed, opacity, glowOpacity 
     treatment,
     tone: treatment,
     group: treatment,
-    seed,
-    // Paper top-surface opacity: low enough that the underside print + underlight
-    // read through, high enough that the sheet still reads as paper.
-    opacity,
+    // Paper face contract: white/gold opaque, PCB translucent (round 5).
+    face: face.opaque ? 'opaque' : 'translucent',
+    faceOpacity: face.opacity,
+    faceTransparent: face.transparent,
     // Underlight card opacity: ramp brightest at the bottom of the stack.
     glowOpacity,
+    // The one unified mockup pattern; only this ink tone varies per treatment.
+    ink: MOCKUP_SPEC.ink[treatment],
+    mockupLift: MOCKUP_SPEC.lift,
     paper: palette.paper,
     marks: TREATMENT_MARKS[treatment],
     underlight: palette.underlight,
@@ -440,13 +546,13 @@ function makeSheetMeta({ id, label, code, treatment, seed, opacity, glowOpacity 
  * text exists anywhere in the artwork.
  */
 export const SHEET_META = Object.freeze([
-  makeSheetMeta({ id: 'doc-01', label: 'White statement', code: 'DOC 2401', treatment: 'white', seed: 1021, opacity: 0.52, glowOpacity: 0.66 }),
-  makeSheetMeta({ id: 'doc-02', label: 'White ledger', code: 'DOC 2402', treatment: 'white', seed: 2069, opacity: 0.52, glowOpacity: 0.44 }),
-  makeSheetMeta({ id: 'doc-03', label: 'Gold statement', code: 'DOC 2403', treatment: 'gold', seed: 3121, opacity: 0.54, glowOpacity: 0.55 }),
-  makeSheetMeta({ id: 'doc-04', label: 'Gold ledger', code: 'DOC 2404', treatment: 'gold', seed: 4177, opacity: 0.54, glowOpacity: 0.42 }),
-  makeSheetMeta({ id: 'doc-05', label: 'PCB statement', code: 'DOC 2405', treatment: 'pcb', seed: 5233, opacity: 0.56, glowOpacity: 0.56 }),
-  makeSheetMeta({ id: 'doc-06', label: 'PCB ledger', code: 'DOC 2406', treatment: 'pcb', seed: 6277, opacity: 0.56, glowOpacity: 0.44 }),
-  makeSheetMeta({ id: 'doc-07', label: 'PCB archive', code: 'DOC 2407', treatment: 'pcb', seed: 7331, opacity: 0.56, glowOpacity: 0.34 }),
+  makeSheetMeta({ id: 'doc-01', label: 'White statement', code: 'DOC 2401', treatment: 'white', glowOpacity: 0.66 }),
+  makeSheetMeta({ id: 'doc-02', label: 'White ledger', code: 'DOC 2402', treatment: 'white', glowOpacity: 0.44 }),
+  makeSheetMeta({ id: 'doc-03', label: 'Gold statement', code: 'DOC 2403', treatment: 'gold', glowOpacity: 0.55 }),
+  makeSheetMeta({ id: 'doc-04', label: 'Gold ledger', code: 'DOC 2404', treatment: 'gold', glowOpacity: 0.42 }),
+  makeSheetMeta({ id: 'doc-05', label: 'PCB statement', code: 'DOC 2405', treatment: 'pcb', glowOpacity: 0.56 }),
+  makeSheetMeta({ id: 'doc-06', label: 'PCB ledger', code: 'DOC 2406', treatment: 'pcb', glowOpacity: 0.44 }),
+  makeSheetMeta({ id: 'doc-07', label: 'PCB archive', code: 'DOC 2407', treatment: 'pcb', glowOpacity: 0.34 }),
 ]);
 
 /**
@@ -538,12 +644,16 @@ export function applySheetPose(sheet, pose) {
 
 /**
  * Axis-aligned bounds of the seven sheet groups (all four layers included: the
- * underlight card is 1.1x the sheet) in `stack` local space.
+ * underlight card is 1.1x the sheet and the floating mockup sits above the bowed
+ * paper) in `stack` local space.
  */
 export function computeStackBounds(mode = 'expanded') {
   const halfW = (SHEET_SPEC.width * LAYER_SPEC.glowScale) / 2;
   const halfH = (SHEET_SPEC.height * LAYER_SPEC.glowScale) / 2;
-  const halfD = SHEET_SPEC.thickness / 2 + LAYER_SPEC.glowDrop + 1;
+  const halfD = Math.max(
+    SHEET_SPEC.bow + LAYER_SPEC.mockupLift,
+    SHEET_SPEC.thickness / 2 + LAYER_SPEC.glowDrop,
+  ) + 1;
   const min = { x: Infinity, y: Infinity, z: Infinity };
   const max = { x: -Infinity, y: -Infinity, z: -Infinity };
   for (let index = 0; index < SHEET_COUNT; index += 1) {
@@ -573,8 +683,25 @@ export function computeStackBounds(mode = 'expanded') {
 }
 
 /* ------------------------------------------------------------------------- */
-/* Procedural print artwork (2D canvas, deterministic, abstract only)        */
+/* Unified text-mockup artwork (2D canvas, deterministic, abstract only)     */
 /* ------------------------------------------------------------------------- */
+
+/**
+ * ONE unified abstract typographic pattern for every sheet (round 5). The canvas
+ * background stays TRANSPARENT: only ink is painted, in white, so each sheet's
+ * mockup material multiplies its per-treatment ink tone (dark for the white/gold
+ * paper, light grey-blue for the PCB paper).
+ *
+ * The pattern is a mock statement: a header chip row, a title bar and subtitle
+ * bar, seven body line rows (left label + word-rhythm bars + a right-hand amount
+ * bar), a dot-matrix reference block, a total row and footer rules. It NEVER forms
+ * a letter, digit, word, amount, code or logo — bars, rules, rounded chips and
+ * dots only — and there is deliberately no `fillText` in this module.
+ *
+ * The layout is IDENTICAL for all seven sheets (that is the round-5 "one text
+ * mockup pattern" requirement); only the ink tone differs.
+ */
+const MOCKUP_PAD = 40;
 
 /** Rounded-rect path helper (no ctx.roundRect dependency). */
 function pathRoundRect(ctx, x, y, width, height, radius) {
@@ -598,37 +725,47 @@ function fillRoundRect(ctx, x, y, width, height, radius, fillStyle) {
   ctx.fill();
 }
 
-function strokeRoundRect(ctx, x, y, width, height, radius, strokeStyle, lineWidth) {
-  pathRoundRect(ctx, x, y, width, height, radius);
-  ctx.strokeStyle = strokeStyle;
-  ctx.lineWidth = lineWidth;
-  ctx.stroke();
-}
-
-function dot(ctx, x, y, radius, color) {
+function dot(ctx, x, y, radius, fillStyle) {
   ctx.beginPath();
   ctx.arc(x, y, Math.max(0.6, radius), 0, TAU);
-  ctx.fillStyle = color;
+  ctx.fillStyle = fillStyle;
   ctx.fill();
 }
 
-/** Thin unlit rules (abstract underlines / column rules). */
-function drawRules(ctx, { x, width, ys, color, thickness }) {
-  ctx.fillStyle = color;
-  for (const y of ys) ctx.fillRect(x, y, width, thickness);
+/** Rounded bar in the layer's ink/fill style. */
+function mockupBar(ctx, x, y, width, height, fillStyle) {
+  fillRoundRect(
+    ctx,
+    Math.max(0, x),
+    y,
+    Math.max(1, width),
+    Math.max(1.5, height),
+    Math.min(height, width) / 2,
+    fillStyle,
+  );
 }
 
-/** Corner registration ticks (abstract security-print marks, no letters). */
-function drawCornerTicks(ctx, width, height, color) {
-  const inset = 76;
-  const tick = 36;
+/** Thin rule in the layer's ink/fill style. */
+function mockupRule(ctx, x, y, width, thickness, fillStyle) {
+  ctx.fillStyle = fillStyle;
+  ctx.fillRect(x, y, width, thickness);
+}
+
+/** Dot in the layer's ink/fill style. */
+function mockupInkDot(ctx, x, y, radius, fillStyle) {
+  dot(ctx, x, y, radius, fillStyle);
+}
+
+/** Abstract corner registration ticks (security-print marks, no letters). */
+function drawMockupCornerTicks(ctx, width, height, pad, color) {
+  const tick = width * 0.07;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = Math.max(1.5, width * 0.004);
   const corners = [
-    { x: inset, y: inset, dx: 1, dy: 1 },
-    { x: width - inset, y: inset, dx: -1, dy: 1 },
-    { x: inset, y: height - inset, dx: 1, dy: -1 },
-    { x: width - inset, y: height - inset, dx: -1, dy: -1 },
+    { x: pad, y: pad, dx: 1, dy: 1 },
+    { x: width - pad, y: pad, dx: -1, dy: 1 },
+    { x: pad, y: height - pad, dx: 1, dy: -1 },
+    { x: width - pad, y: height - pad, dx: -1, dy: -1 },
   ];
   for (const corner of corners) {
     ctx.beginPath();
@@ -639,390 +776,136 @@ function drawCornerTicks(ctx, width, height, color) {
   }
 }
 
-/** Printed frame: rounded outer rule, inner hairline and corner ticks. */
-function drawPrintFrame(ctx, spec, frameColor, hairlineColor, tickColor) {
+/**
+ * Paint the unified text mockup. Deterministic: one seeded stream, identical
+ * output on every reload/machine, identical for every sheet.
+ *
+ * `spec.inkColor` selects the paint tone (white ink for the ink layer, near-black
+ * for the soft shadow layer) and `spec.blurPx` optionally blurs the paint (shadow
+ * only). Both layers are painted from the SAME layout, so the shadow is exactly
+ * the pattern the floating ink casts on the paper.
+ */
+export function drawMockupArtwork(ctx, spec) {
   const width = spec.width;
   const height = spec.height;
-  const outer = 34;
-  strokeRoundRect(ctx, outer, outer, width - outer * 2, height - outer * 2, Math.max(10, spec.radiusPx - 18), frameColor, 4);
-  const inner = 52;
-  strokeRoundRect(ctx, inner, inner, width - inner * 2, height - inner * 2, Math.max(8, spec.radiusPx - 34), hairlineColor, 1.6);
-  drawCornerTicks(ctx, width, height, tickColor);
-}
+  const pad = MOCKUP_PAD * (width / 512);
+  const inner = width - pad * 2;
+  const px = width / 512;
+  const random = createSeededRandom(spec.seed);
+  const inkColor = spec.inkColor || '#ffffff';
+  const ink = (alpha) => rgba(inkColor, alpha);
+  ctx.clearRect(0, 0, width, height);
+  if (spec.blurPx > 0) {
+    // Shadow layer: a soft blurred copy of the same marks (filter support is a
+    // canvas-2D feature; any engine that lacks it still gets an unblurred shadow).
+    ctx.filter = 'blur(' + Number(spec.blurPx).toFixed(2) + 'px)';
+  } else {
+    ctx.filter = 'none';
+  }
 
-/**
- * Thick short bars in loose rows: the rhythm of statement lines without ever
- * forming a letter (bars only, rounded caps, varying lengths per seeded stream).
- */
-function drawBarRows(ctx, random, options) {
-  const { x, y, width, rows, rowGap, height, minScale, maxScale, colors } = options;
-  for (let row = 0; row < rows; row += 1) {
-    const rowY = y + row * rowGap;
-    const count = 1 + (random() > 0.5 ? 1 : 0) + (random() > 0.85 ? 1 : 0);
-    let cursor = x + width * randomBetween(random, 0, 0.12);
+  // 1. Header: two small chips (left document label + right reference).
+  mockupBar(ctx, pad, height * 0.058, inner * 0.15, 11 * px, ink(0.82));
+  mockupBar(ctx, pad + inner - inner * 0.11, height * 0.058, inner * 0.11, 9 * px, ink(0.5));
+
+  // 2. Title bar + subtitle bar.
+  mockupBar(ctx, pad, height * 0.096, inner * 0.48, 15 * px, ink(0.95));
+  mockupBar(ctx, pad, height * 0.146, inner * 0.27, 7 * px, ink(0.55));
+
+  // 3. Header rule.
+  mockupRule(ctx, pad, height * 0.176, inner, 1.6 * px, ink(0.34));
+
+  // 4. Body "text" rows: left label + word-rhythm line bars + right amount bar.
+  const rowTop = height * 0.208;
+  const rowGap = height * 0.047;
+  const lineH = 8 * px;
+  for (let row = 0; row < 7; row += 1) {
+    const y = rowTop + row * rowGap;
+    mockupBar(ctx, pad, y, inner * randomBetween(random, 0.1, 0.16), lineH, ink(randomBetween(random, 0.4, 0.62)));
+    let cursor = pad + inner * 0.2;
+    const count = 2 + Math.round(random() * 2);
     for (let i = 0; i < count; i += 1) {
-      const barWidth = Math.min(width * randomBetween(random, minScale, maxScale), x + width - cursor);
-      if (barWidth < height * 1.2) break;
-      const color = colors[Math.floor(random() * colors.length) % colors.length];
-      fillRoundRect(ctx, cursor, rowY, barWidth, height, height / 2, color);
-      cursor += barWidth + width * randomBetween(random, 0.05, 0.14);
+      const barWidth = inner * randomBetween(random, 0.07, 0.19);
+      mockupBar(ctx, cursor, y, barWidth, lineH, ink(randomBetween(random, 0.72, 0.95)));
+      cursor += barWidth + inner * randomBetween(random, 0.02, 0.05);
+      if (cursor > pad + inner * 0.66) break;
     }
+    mockupBar(
+      ctx,
+      pad + inner - inner * randomBetween(random, 0.075, 0.11),
+      y,
+      inner * 0.075,
+      lineH,
+      ink(randomBetween(random, 0.66, 0.9)),
+    );
   }
-}
 
-/** Rows of dashes (gold treatment's grey-blue rhythm marks). */
-function drawDashRows(ctx, random, options) {
-  const { x, y, width, rows, rowGap, height, colors } = options;
-  for (let row = 0; row < rows; row += 1) {
-    const rowY = y + row * rowGap;
-    let cursor = x + width * randomBetween(random, 0, 0.08);
-    while (cursor < x + width - height) {
-      const dash = width * randomBetween(random, 0.022, 0.07);
-      const visible = Math.min(dash, x + width - cursor);
-      const color = colors[Math.floor(random() * colors.length) % colors.length];
-      fillRoundRect(ctx, cursor, rowY, visible, height, height / 2, color);
-      cursor += dash + width * randomBetween(random, 0.012, 0.042);
-    }
-  }
-}
-
-/** Dot-matrix data field (abstract dots only). */
-function drawDotField(ctx, random, options) {
-  const { x, y, width, height, cols, rows, skip, radius, colors } = options;
-  const stepX = width / cols;
-  const stepY = height / rows;
+  // 5. Divider + dot-matrix reference block (transaction-id rhythm) + chips.
+  mockupRule(ctx, pad, height * 0.563, inner, 1.6 * px, ink(0.3));
+  const fieldTop = height * 0.592;
+  const fieldLeft = pad;
+  const fieldWidth = inner * 0.56;
+  const fieldHeight = height * 0.085;
+  const cols = 14;
+  const rows = 4;
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
-      if (random() < skip) continue;
-      const jitterX = randomBetween(random, -stepX * 0.12, stepX * 0.12);
-      const jitterY = randomBetween(random, -stepY * 0.12, stepY * 0.12);
-      const r = radius * randomBetween(random, 0.7, 1.25);
-      const color = colors[Math.floor(random() * colors.length) % colors.length];
-      dot(ctx, x + stepX * (col + 0.5) + jitterX, y + stepY * (row + 0.5) + jitterY, r, color);
+      if (random() < 0.22) continue;
+      const cx = fieldLeft + (fieldWidth / cols) * (col + 0.5) + randomBetween(random, -1.2, 1.2) * px;
+      const cy = fieldTop + (fieldHeight / rows) * (row + 0.5) + randomBetween(random, -1.2, 1.2) * px;
+      mockupInkDot(ctx, cx, cy, 3.2 * px, ink(randomBetween(random, 0.3, 0.9)));
     }
   }
-}
+  mockupBar(ctx, pad + inner * 0.64, fieldTop, inner * 0.22, 6 * px, ink(0.58));
+  mockupBar(ctx, pad + inner * 0.64, fieldTop + 11 * px, inner * 0.14, 6 * px, ink(0.4));
+  mockupRule(ctx, pad, height * 0.702, inner, 1.4 * px, ink(0.26));
 
-/** PCB-like traces: 90°/45° segments with rounded caps/joins, pads and vias. */
-function drawPcbTraces(ctx, random, spec, count) {
-  const width = spec.width;
-  const height = spec.height;
-  const light = spec.palette.ink;
-  const deep = spec.palette.inkSoft;
-  const scale = width / 768;
-  for (let trace = 0; trace < count; trace += 1) {
-    let x = randomBetween(random, width * 0.08, width * 0.92);
-    let y = randomBetween(random, height * 0.1, height * 0.9);
-    const isDeep = random() > 0.72;
-    const style = rgba(isDeep ? deep : light, isDeep ? 0.66 : 0.9);
-    const lineWidth = randomBetween(random, 8, 13) * scale;
-    const segments = 3 + Math.floor(random() * 4);
-    let angle = [0, 45, 90, 135, 180, 225, 270, 315][Math.floor(random() * 8)];
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let segment = 0; segment < segments; segment += 1) {
-      angle += [90, -90, 45, -45][Math.floor(random() * 4)];
-      const length = randomBetween(random, 46, 165) * scale;
-      const radians = (angle * Math.PI) / 180;
-      x += Math.cos(radians) * length;
-      y += Math.sin(radians) * length;
-      ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = style;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    // terminal pad / via (ring)
-    ctx.beginPath();
-    ctx.arc(x, y, lineWidth * 1.7, 0, TAU);
-    ctx.strokeStyle = style;
-    ctx.lineWidth = Math.max(2, lineWidth * 0.45);
-    ctx.stroke();
-  }
-}
+  // 6. Total row: bold label bar + bold amount bar.
+  mockupBar(ctx, pad, height * 0.722, inner * 0.24, 11 * px, ink(0.9));
+  mockupBar(ctx, pad + inner - inner * 0.19, height * 0.718, inner * 0.19, 12 * px, ink(0.98));
+  mockupRule(ctx, pad, height * 0.772, inner, 1.8 * px, ink(0.32));
 
-/** Scattered abstract specks (print grain). */
-function drawSpecks(ctx, random, { width, height, count, colorFn }) {
-  for (let i = 0; i < count; i += 1) {
-    const x = randomBetween(random, PRINT_PAD, width - PRINT_PAD);
-    const y = randomBetween(random, height * 0.26, height * 0.76);
-    const size = width * randomBetween(random, 0.004, 0.01);
-    fillRoundRect(ctx, x, y, size, size, size * 0.4, colorFn());
-  }
-}
+  // 7. Footer: two thin rules + three legal chips.
+  mockupRule(ctx, pad, height * 0.808, inner * 0.62, 1.2 * px, ink(0.27));
+  mockupRule(ctx, pad, height * 0.822, inner * 0.48, 1.2 * px, ink(0.2));
+  mockupBar(ctx, pad, height * 0.878, inner * 0.2, 6 * px, ink(0.42));
+  mockupBar(ctx, pad + inner * 0.26, height * 0.878, inner * 0.13, 6 * px, ink(0.3));
+  mockupBar(ctx, pad + inner * 0.65, height * 0.878, inner * 0.35, 6 * px, ink(0.22));
 
-/* ------------------------------------------------------------------------- */
-/* WHITE print: black abstract marks on transparent background               */
-/* ------------------------------------------------------------------------- */
+  // 8. Corner registration ticks (abstract marks, no letters).
+  drawMockupCornerTicks(ctx, width, height, pad, ink(0.4));
 
-function drawWhitePrint(ctx, spec, random) {
-  const width = spec.width;
-  const height = spec.height;
-  const pad = PRINT_PAD;
-  const ink = spec.palette.ink;
-  const soft = spec.palette.inkSoft;
-
-  // 1. Loose colour fields (soft black print washes).
-  fillRoundRect(ctx, pad, height * 0.085, width - pad * 2, height * 0.3, 30, rgba(ink, 0.045));
-  fillRoundRect(ctx, pad, height * 0.72, width - pad * 2, height * 0.16, 26, rgba(ink, 0.03));
-
-  // 2. Printed frame + corner registration ticks.
-  drawPrintFrame(ctx, spec, rgba(ink, 0.5), rgba(ink, 0.2), rgba(ink, 0.6));
-
-  // 3. Thick short bars in loose rows (abstract statement-line rhythm).
-  drawBarRows(ctx, random, {
-    x: pad,
-    y: height * 0.14,
-    width: width - pad * 2,
-    rows: 5,
-    rowGap: height * 0.06,
-    height: Math.round(width * 0.033),
-    minScale: 0.16,
-    maxScale: 0.44,
-    colors: [rgba(ink, 0.96), rgba(ink, 0.84), rgba(ink, 0.66)],
-  });
-
-  // 4. Caption-sized bar cluster.
-  let cursor = pad;
-  for (let i = 0; i < 9; i += 1) {
-    const barWidth = width * randomBetween(random, 0.018, 0.042);
-    fillRoundRect(ctx, cursor, height * 0.455, barWidth, Math.round(width * 0.019), Math.round(width * 0.01), rgba(ink, randomBetween(random, 0.28, 0.58)));
-    cursor += barWidth + width * randomBetween(random, 0.012, 0.028);
-  }
-
-  // 5. Dot-matrix field + right-hand dot strip.
-  drawDotField(ctx, random, {
-    x: pad,
-    y: height * 0.525,
-    width: width * 0.52,
-    height: height * 0.2,
-    cols: 12,
-    rows: 7,
-    skip: 0.15,
-    radius: width * 0.0082,
-    colors: [rgba(ink, 0.4), rgba(ink, 0.68), rgba(ink, 0.94)],
-  });
-  for (let i = 0; i < 12; i += 1) {
-    dot(ctx, width - pad - width * 0.1, height * 0.525 + i * height * 0.017, width * 0.009, rgba(ink, 0.3 + random() * 0.55));
-  }
-
-  // 6. Thin rules.
-  drawRules(ctx, { x: pad, width: width - pad * 2, ys: [height * 0.772, height * 0.798], color: rgba(ink, 0.22), thickness: 2 });
-  drawRules(ctx, { x: pad, width: (width - pad * 2) * 0.42, ys: [height * 0.823], color: rgba(ink, 0.35), thickness: 3 });
-
-  // 7. Chunky headline bars near the bottom (suggestion only, no glyphs).
-  fillRoundRect(ctx, pad, height * 0.858, width * 0.46, Math.round(width * 0.044), Math.round(width * 0.022), rgba(ink, 0.92));
-  fillRoundRect(ctx, pad, height * 0.918, width * 0.3, Math.round(width * 0.044), Math.round(width * 0.022), rgba(ink, 0.86));
-  fillRoundRect(ctx, pad + width * 0.34, height * 0.918, width * 0.12, Math.round(width * 0.044), Math.round(width * 0.022), rgba(soft, 0.8));
-
-  // 8. Print grain.
-  drawSpecks(ctx, random, { width, height, count: 26, colorFn: () => rgba(ink, randomBetween(random, 0.15, 0.45)) });
-}
-
-/* ------------------------------------------------------------------------- */
-/* GOLD print: black + light grey-blue marks on transparent background       */
-/* ------------------------------------------------------------------------- */
-
-function drawGoldPrint(ctx, spec, random) {
-  const width = spec.width;
-  const height = spec.height;
-  const pad = PRINT_PAD;
-  const ink = spec.palette.ink;
-  const light = spec.palette.inkSoft;
-
-  // 1. Soft grey-blue colour fields + a faint dark wash.
-  fillRoundRect(ctx, width * 0.46, height * 0.08, width * 0.42, height * 0.17, 44, rgba(light, 0.2));
-  fillRoundRect(ctx, pad, height * 0.335, width * 0.5, height * 0.1, 30, rgba(light, 0.12));
-  fillRoundRect(ctx, pad, height * 0.74, width - pad * 2, height * 0.12, 26, rgba(ink, 0.05));
-  fillRoundRect(ctx, width * 0.58, height * 0.5, width * 0.32, height * 0.16, 34, rgba(light, 0.08));
-
-  // 2. Printed frame in grey-blue + black ticks.
-  drawPrintFrame(ctx, spec, rgba(light, 0.52), rgba(ink, 0.16), rgba(ink, 0.5));
-
-  // 3. Black line rows (thick bars, abstract only).
-  drawBarRows(ctx, random, {
-    x: pad,
-    y: height * 0.15,
-    width: width - pad * 2,
-    rows: 3,
-    rowGap: height * 0.062,
-    height: Math.round(width * 0.032),
-    minScale: 0.18,
-    maxScale: 0.46,
-    colors: [rgba(ink, 0.96), rgba(ink, 0.82), rgba(ink, 0.64)],
-  });
-
-  // 4. Grey-blue dash rows.
-  drawDashRows(ctx, random, {
-    x: pad,
-    y: height * 0.375,
-    width: width - pad * 2,
-    rows: 3,
-    rowGap: height * 0.057,
-    height: Math.round(width * 0.025),
-    colors: [rgba(light, 0.94), rgba(light, 0.76), rgba(light, 0.56)],
-  });
-
-  // 5. Dot-matrix field.
-  drawDotField(ctx, random, {
-    x: pad,
-    y: height * 0.55,
-    width: width * 0.5,
-    height: height * 0.17,
-    cols: 9,
-    rows: 5,
-    skip: 0.18,
-    radius: width * 0.0105,
-    colors: [rgba(light, 0.5), rgba(light, 0.74), rgba(light, 0.95)],
-  });
-
-  // 6. Thin rules + short accent rule.
-  drawRules(ctx, { x: pad, width: width - pad * 2, ys: [height * 0.782, height * 0.806], color: rgba(light, 0.34), thickness: 2 });
-  drawRules(ctx, { x: pad, width: width * 0.34, ys: [height * 0.833], color: rgba(ink, 0.3), thickness: 3 });
-
-  // 7. Bottom bars: two black headline bars + a grey-blue field bar.
-  fillRoundRect(ctx, pad, height * 0.852, width * 0.47, Math.round(width * 0.046), Math.round(width * 0.023), rgba(ink, 0.9));
-  fillRoundRect(ctx, pad, height * 0.912, width * 0.28, Math.round(width * 0.046), Math.round(width * 0.023), rgba(ink, 0.84));
-  fillRoundRect(ctx, pad + width * 0.32, height * 0.912, width * 0.19, Math.round(width * 0.046), Math.round(width * 0.023), rgba(light, 0.72));
-
-  // 8. Print grain (mixed ink + grey-blue specks).
-  drawSpecks(ctx, random, {
-    width,
-    height,
-    count: 30,
-    colorFn: () => (random() > 0.6 ? rgba(light, randomBetween(random, 0.3, 0.65)) : rgba(ink, randomBetween(random, 0.12, 0.35))),
-  });
-}
-
-/* ------------------------------------------------------------------------- */
-/* PCB print: lighter same-tone marks (never black) on transparent bg        */
-/* ------------------------------------------------------------------------- */
-
-function drawPcbPrint(ctx, spec, random) {
-  const width = spec.width;
-  const height = spec.height;
-  const pad = PRINT_PAD;
-  const light = spec.palette.ink;
-  const deep = spec.palette.inkSoft;
-
-  // 1. Same-tone colour fields.
-  fillRoundRect(ctx, pad, height * 0.09, width - pad * 2, height * 0.26, 34, rgba(light, 0.1));
-  fillRoundRect(ctx, pad, height * 0.62, width - pad * 2, height * 0.28, 30, rgba(deep, 0.06));
-
-  // 2. Printed frame in the light tone + deeper hairline.
-  drawPrintFrame(ctx, spec, rgba(light, 0.5), rgba(deep, 0.3), rgba(light, 0.6));
-
-  // 3. PCB traces first so the bars/pads layer above them.
-  drawPcbTraces(ctx, random, spec, 16);
-
-  // 4. Pads and vias (ring + filled core), light/deep same-tone only.
-  for (let i = 0; i < 12; i += 1) {
-    const x = randomBetween(random, width * 0.1, width * 0.9);
-    const y = randomBetween(random, height * 0.14, height * 0.82);
-    const radius = width * randomBetween(random, 0.016, 0.03);
-    const isDeep = random() > 0.7;
-    const style = rgba(isDeep ? deep : light, isDeep ? 0.66 : 0.9);
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, TAU);
-    ctx.strokeStyle = style;
-    ctx.lineWidth = Math.max(2, width * 0.005);
-    ctx.stroke();
-    dot(ctx, x, y, radius * 0.34, rgba(isDeep ? light : deep, 0.6));
-  }
-
-  // 5. Fine dot grid.
-  drawDotField(ctx, random, {
-    x: width * 0.08,
-    y: height * 0.425,
-    width: width * 0.84,
-    height: height * 0.42,
-    cols: 16,
-    rows: 9,
-    skip: 0.2,
-    radius: width * 0.0084,
-    colors: [rgba(light, 0.42), rgba(light, 0.68), rgba(deep, 0.54)],
-  });
-
-  // 6. Thick abstract bars in the upper third (the same statement rhythm, in
-  //    lighter same-tone marks).
-  drawBarRows(ctx, random, {
-    x: pad,
-    y: height * 0.145,
-    width: width - pad * 2,
-    rows: 2,
-    rowGap: height * 0.072,
-    height: Math.round(width * 0.03),
-    minScale: 0.18,
-    maxScale: 0.42,
-    colors: [rgba(light, 0.95), rgba(light, 0.76), rgba(deep, 0.6)],
-  });
-
-  // 7. Deeper same-tone rules + bottom headline bars.
-  drawRules(ctx, { x: pad, width: width - pad * 2, ys: [height * 0.885], color: rgba(deep, 0.36), thickness: 2 });
-  fillRoundRect(ctx, pad, height * 0.9, width * 0.42, Math.round(width * 0.04), Math.round(width * 0.02), rgba(light, 0.6));
-  fillRoundRect(ctx, pad, height * 0.95, width * 0.26, Math.round(width * 0.04), Math.round(width * 0.02), rgba(deep, 0.45));
-
-  // 8. Same-tone print grain.
-  drawSpecks(ctx, random, {
-    width,
-    height,
-    count: 34,
-    colorFn: () => rgba(random() > 0.55 ? light : deep, randomBetween(random, 0.2, 0.55)),
-  });
-}
-
-/**
- * Everything `drawSheetArtwork` needs for one sheet's print map. Kept as a plain
- * object so the painter can be unit-tested in Node against a mock 2D context.
- * @param {number} index 0..6
- * @param {number} [width] canvas width
- * @param {number} [height] canvas height
- */
-export function artworkSpecFor(index, width = TEXTURE_SPEC.print.width, height = TEXTURE_SPEC.print.height) {
-  const meta = SHEET_META[index];
-  if (!meta) throw new Error('billing-model: no artwork spec for sheet index ' + index);
-  return {
-    kind: 'print',
-    index,
-    id: meta.id,
-    treatment: meta.treatment,
-    label: meta.label,
-    code: meta.code,
-    seed: meta.seed,
-    width,
-    height,
-    radiusPx: Math.round((SHEET_SPEC.radius / SHEET_SPEC.width) * width),
-    palette: meta.palette,
-    marks: meta.marks,
-    underlight: meta.underlight,
-    faceDown: true,
-  };
-}
-
-/**
- * Draw the deterministic abstract UNDERSIDE artwork for one sheet. The canvas
- * background stays TRANSPARENT — only marks/pattern colour fields are painted, so
- * the underlight card below the print glows through the gaps.
- *
- * There is deliberately no `fillText` anywhere in this module: no wordmark, no
- * amounts, no transaction copy, no letters or digits on any sheet.
- */
-export function drawSheetArtwork(ctx, spec) {
-  const width = spec.width;
-  const height = spec.height;
-  ctx.clearRect(0, 0, width, height);
-  const random = createSeededRandom(spec.seed);
-  if (spec.treatment === 'white') drawWhitePrint(ctx, spec, random);
-  else if (spec.treatment === 'gold') drawGoldPrint(ctx, spec, random);
-  else if (spec.treatment === 'pcb') drawPcbPrint(ctx, spec, random);
-  else throw new Error('billing-model: unknown print treatment "' + spec.treatment + '"');
+  // Reset the paint state so the canvas is not left with a filter/translate.
+  ctx.filter = 'none';
   return spec;
 }
 
-/* ------------------------------------------------------------------------- */
-/* Paper maps + underlight glow maps (deterministic canvas)                  */
-/* ------------------------------------------------------------------------- */
+/**
+ * Spec for one unified mockup map shared by all seven sheets. Two variants are
+ * painted from the same deterministic layout:
+ *   - `ink`    white marks, the floating graphic itself (material tint = treatment)
+ *   - `shadow` white marks blurred, tinted near-black by its material and offset
+ *              in the plane, painted on the paper just under the ink so the
+ *              floating layer visibly detaches from the paper
+ * `ink` (the per-treatment tone map) is metadata for QA/docs.
+ */
+export function mockupArtworkSpecFor({ variant = 'ink', width = MOCKUP_SPEC.width, height = MOCKUP_SPEC.height } = {}) {
+  const isShadow = variant === 'shadow';
+  return {
+    kind: isShadow ? 'mockup-shadow' : 'mockup',
+    variant: isShadow ? 'shadow' : 'ink',
+    unified: true,
+    seed: MOCKUP_SPEC.seed,
+    width,
+    height,
+    lift: MOCKUP_SPEC.lift,
+    opacity: MOCKUP_SPEC.opacity,
+    ink: { ...MOCKUP_SPEC.ink },
+    inkColor: '#ffffff',
+    blurPx: isShadow ? MOCKUP_SPEC.shadow.blurPx : 0,
+    treatments: TREATMENTS.map((treatment) => treatment.id),
+    faceDown: true,
+  };
+}
 
 /** Spec for one treatment's opaque paper map (the blank back of the sheet). */
 export function paperArtworkSpecFor(treatment, width = TEXTURE_SPEC.paper.width, height = TEXTURE_SPEC.paper.height) {
@@ -1242,36 +1125,46 @@ function configureCanvasTexture(canvas, meta, anisotropy) {
 }
 
 /**
- * Create the deterministic underside PRINT canvas texture for one sheet
- * (transparent background + abstract marks only).
- * @param {number} index 0..6
- * @param {{createCanvas?:() => HTMLCanvasElement}} [options] test hook
+ * Create the deterministic unified TEXT-MOCKUP canvas textures shared by all seven
+ * sheets (transparent background + white ink; the per-sheet material tints it).
+ * There are exactly two variants in the whole model, painted from the SAME layout:
+ * `ink` (the floating graphic) and `shadow` (the same marks blurred, printed on the
+ * paper under the ink so the graphic reads as detached). Both are shared by every
+ * sheet — one pattern on all seven sheets, as required by round 5.
+ * @param {{createCanvas?:() => HTMLCanvasElement, variant?:'ink'|'shadow'}} [options]
  * @returns {{texture:THREE.CanvasTexture, canvas:object, spec:object}}
  */
-export function createSheetTexture(index, { createCanvas } = {}) {
+export function createMockupTexture({ createCanvas, variant = 'ink' } = {}) {
   const canvas = resolveCanvas(createCanvas);
   if (!canvas) {
-    throw new Error('billing-model: createSheetTexture() requires a DOM canvas (document.createElement) or a createCanvas factory');
+    throw new Error('billing-model: createMockupTexture() requires a DOM canvas (document.createElement) or a createCanvas factory');
   }
-  const spec = artworkSpecFor(index);
+  const spec = mockupArtworkSpecFor({ variant });
   canvas.width = spec.width;
   canvas.height = spec.height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('billing-model: could not acquire a 2D canvas context for sheet ' + index);
-  drawSheetArtwork(ctx, spec);
+  if (!ctx) throw new Error('billing-model: could not acquire a 2D canvas context for the unified text mockup');
+  drawMockupArtwork(ctx, spec);
+  const isShadow = spec.variant === 'shadow';
   const texture = configureCanvasTexture(canvas, {
-    name: 'billing-sheet-print:' + spec.id,
+    name: isShadow ? 'billing-text-mockup-shadow:unified' : 'billing-text-mockup:unified',
     width: spec.width,
     height: spec.height,
     seed: spec.seed,
     userData: {
-      role: 'sheet-print',
-      kind: 'print',
-      sheetId: spec.id,
-      sheetIndex: spec.index,
-      treatment: spec.treatment,
+      role: isShadow ? 'sheet-mockup-shadow' : 'sheet-mockup',
+      kind: spec.kind,
+      unified: true,
+      variant: spec.variant,
+      sharedBySheets: SHEET_COUNT,
+      lift: spec.lift,
+      ink: spec.ink,
+      blurPx: spec.blurPx,
       faceDown: true,
-      background: 'transparent (marks only; the underlight glows through the gaps)',
+      background: 'transparent (white paint only; the material multiplies the tone)',
+      note: isShadow
+        ? 'soft shadow of the floating mockup, painted on the paper under the ink (not paper albedo)'
+        : 'not paper albedo — rendered as a separate floating layer above the paper',
     },
   }, 8);
   return { texture, canvas, spec };
@@ -1302,7 +1195,7 @@ export function createPaperTexture(treatment, { createCanvas } = {}) {
       role: 'sheet-paper',
       kind: 'paper',
       treatment,
-      marks: 'none (the printed side lives on the print layer below)',
+      marks: 'none (the unified text mockup is a separate floating layer above the paper; it is never baked into this map)',
     },
   }, 4);
   return { texture, canvas, spec };
@@ -1380,7 +1273,8 @@ function sheetGridPoint(spec, i, j) {
 
 /**
  * Build the shared sheet surface + bright rim geometries.
- * All seven sheets share this pair (the paper / print / glow maps differ).
+ * All seven sheets share this pair (the paper / glow maps differ; the floating
+ * mockup layer reuses the surface geometry, lifted in +Z).
  * @returns {{surface:THREE.BufferGeometry, rim:THREE.BufferGeometry}}
  */
 export function buildSheetGeometries(spec = SHEET_SPEC) {
@@ -1531,116 +1425,107 @@ export function buildSheetGeometries(spec = SHEET_SPEC) {
   return { surface, rim };
 }
 
-/** Rounded-rect plan shape for the pedestal (centred on the origin). */
-function roundedRectShape(width, depth, radius) {
-  const shape = new THREE.Shape();
-  const halfW = width / 2;
-  const halfD = depth / 2;
-  const r = Math.max(0, Math.min(radius, halfW, halfD));
-  shape.moveTo(-halfW + r, -halfD);
-  shape.lineTo(halfW - r, -halfD);
-  shape.quadraticCurveTo(halfW, -halfD, halfW, -halfD + r);
-  shape.lineTo(halfW, halfD - r);
-  shape.quadraticCurveTo(halfW, halfD, halfW - r, halfD);
-  shape.lineTo(-halfW + r, halfD);
-  shape.quadraticCurveTo(-halfW, halfD, -halfW, halfD - r);
-  shape.lineTo(-halfW, -halfD + r);
-  shape.quadraticCurveTo(-halfW, -halfD, -halfW + r, -halfD);
-  shape.closePath();
-  return shape;
+/* ------------------------------------------------------------------------- */
+/* Support: the columns deliverable's satin column, reused as the pedestal    */
+/* ------------------------------------------------------------------------- */
+
+/** Read the source (columns-deliverable) width/depth/height of a column mesh. */
+function readColumnSourceSize(mesh) {
+  const userData = mesh && mesh.userData && typeof mesh.userData === 'object' ? mesh.userData : {};
+  let width = Number(userData.width);
+  let depth = Number(userData.depth);
+  let height = Number(userData.heightPx);
+  const geometry = mesh && mesh.geometry;
+  if ((!Number.isFinite(width) || !Number.isFinite(depth) || !Number.isFinite(height)) && geometry) {
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    if (box) {
+      width = Number.isFinite(width) ? width : box.max.x - box.min.x;
+      depth = Number.isFinite(depth) ? depth : box.max.z - box.min.z;
+      height = Number.isFinite(height) ? height : box.max.y - box.min.y;
+    }
+  }
+  return {
+    width: Number.isFinite(width) && width > 0 ? width : 140,
+    depth: Number.isFinite(depth) && depth > 0 ? depth : 140,
+    height: Number.isFinite(height) && height > 0 ? height : 600,
+  };
 }
 
 /**
- * Build the satin pedestal: a bevelled rounded box standing on y = 0 with
- * world-scale per-face UVs (and uv2 for the satin aoMap), matching the columns
- * model's density (one tile = manifestTilePx x UV_DENSITY_SCALE world px).
- * @param {object} [spec=PEDESTAL_SPEC]
- * @param {number} [satinTilePx=SATIN_TILE_PX]
- * @returns {THREE.BufferGeometry}
+ * Compute the non-uniform scale that fits the reused column's cross-section to the
+ * billing footprint (SUPPORT_SPEC.width x depth) and keeps it tall enough to run
+ * past the stage bottom. 1 world unit = 1 source px both here and in the columns
+ * deliverable, so this is a pure instance scale — the column geometry/UVs are
+ * never rebuilt. The slight grain-scale change caused by the non-uniform cross
+ * section scale is an accepted consequence of reusing the instance.
  */
-export function buildPedestalGeometry(spec = PEDESTAL_SPEC, satinTilePx = SATIN_TILE_PX) {
-  const bevel = Math.max(0.5, spec.bevel);
-  const innerWidth = Math.max(4, spec.width - bevel * 2);
-  const innerDepth = Math.max(4, spec.depth - bevel * 2);
-  const innerRadius = Math.max(2, spec.radius - bevel);
-  const shape = roundedRectShape(innerWidth, innerDepth, innerRadius);
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: Math.max(4, spec.height - bevel * 2),
-    bevelEnabled: true,
-    bevelThickness: bevel,
-    bevelSize: bevel,
-    bevelSegments: 4,
-    curveSegments: 14,
-    steps: 1,
-  });
-  geometry.rotateX(-Math.PI / 2);
-  geometry.translate(spec.centerX, 0, spec.centerZ);
-  geometry.computeBoundingBox();
-  const minY = geometry.boundingBox ? geometry.boundingBox.min.y : 0;
-  if (Math.abs(minY) > 1e-6) geometry.translate(0, -minY, 0);
-  geometry.computeBoundingBox();
-
-  // World-scale, right-handed planar UVs per dominant face axis (grain wraps
-  // around the pedestal's vertical corners exactly like the columns' boxes).
-  const effectiveTilePx = Math.max(1, Number(satinTilePx) || SATIN_TILE_PX) * UV_DENSITY_SCALE;
-  const invTile = 1 / effectiveTilePx;
-  const position = geometry.getAttribute('position');
-  const normal = geometry.getAttribute('normal');
-  const uv = new Float32Array(position.count * 2);
-  const uv2 = new Float32Array(position.count * 2);
-  for (let i = 0; i < position.count; i += 1) {
-    const x = position.getX(i);
-    const y = position.getY(i);
-    const z = position.getZ(i);
-    const nx = normal.getX(i);
-    const ny = normal.getY(i);
-    const nz = normal.getZ(i);
-    const ax = Math.abs(nx);
-    const ay = Math.abs(ny);
-    const az = Math.abs(nz);
-    let u;
-    let v;
-    if (ay >= ax && ay >= az) {
-      u = x * invTile;
-      v = (ny >= 0 ? -z : z) * invTile;
-    } else if (ax >= az) {
-      u = (nx >= 0 ? -z : z) * invTile;
-      v = y * invTile;
-    } else {
-      u = (nz >= 0 ? x : -x) * invTile;
-      v = y * invTile;
-    }
-    uv[i * 2] = u;
-    uv[i * 2 + 1] = v;
-    uv2[i * 2] = u;
-    uv2[i * 2 + 1] = v;
-  }
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  geometry.setAttribute('uv2', new THREE.BufferAttribute(uv2, 2));
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  const bounds = geometry.boundingBox;
-  geometry.name = 'billing-pedestal';
-  geometry.userData = Object.freeze({
-    role: 'pedestal',
-    width: spec.width,
-    depth: spec.depth,
-    height: spec.height,
-    radius: spec.radius,
-    bevel: spec.bevel,
-    centerX: spec.centerX,
-    centerZ: spec.centerZ,
-    satinTilePx: Number(satinTilePx) || SATIN_TILE_PX,
-    effectiveTilePx,
-    uvDensityScale: UV_DENSITY_SCALE,
-    uvMode: 'world-scale per-face planar mapping (dominant axis), right-handed; one tile = tilePx x 1.3 world px',
-    uv2: 'duplicated UVs for the satin aoMap (three r151 samples aoMap from uv2 when the texture channel is 1)',
-    bounds: Object.freeze({
-      min: Object.freeze({ x: bounds.min.x, y: bounds.min.y, z: bounds.min.z }),
-      max: Object.freeze({ x: bounds.max.x, y: bounds.max.y, z: bounds.max.z }),
+export function resolveSupportScale(mesh, spec = SUPPORT_SPEC) {
+  const source = readColumnSourceSize(mesh);
+  const scaledHeight = source.height * spec.columnScaleY;
+  return Object.freeze({
+    source,
+    scale: Object.freeze({
+      x: spec.width / source.width,
+      y: spec.columnScaleY,
+      z: spec.depth / source.depth,
     }),
+    scaledHeight,
+    // The cropped column bottom (far below the stage; only the top band is framed).
+    bottomY: spec.topY - scaledHeight,
   });
-  return geometry;
+}
+
+/**
+ * Reuse the columns deliverable's satin column mesh as the billing pedestal:
+ * detach it from the columns group, scale it to the billing footprint, stand its
+ * top face at SUPPORT_SPEC.topY and let its lower part run out of the bottom of the
+ * stage (the paper stack keeps its round-4 scale; the column is never shrunk to
+ * fit the whole column into the frame). The geometry/UVs are left untouched.
+ */
+export function prepareColumnSupport(mesh, spec = SUPPORT_SPEC) {
+  if (!mesh || mesh.isMesh !== true || !mesh.geometry) {
+    throw new Error('billing-model: prepareColumnSupport() needs the columns deliverable satin column mesh (a THREE.Mesh with geometry)');
+  }
+  if (mesh.parent) mesh.parent.remove(mesh);
+  const { source, scale, scaledHeight, bottomY } = resolveSupportScale(mesh, spec);
+  const sourceUserData = mesh.userData && typeof mesh.userData === 'object' ? mesh.userData : {};
+  mesh.name = 'billing-support:satin-column';
+  mesh.position.set(spec.centerX, spec.topY - scaledHeight / 2, spec.centerZ);
+  mesh.scale.set(scale.x, scale.y, scale.z);
+  mesh.rotation.set(0, 0, 0);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.userData = {
+    ...sourceUserData,
+    role: 'support',
+    source: 'columns-model',
+    reusedColumn: true,
+    columnId: sourceUserData.columnId || spec.columnId,
+    footprint: { width: spec.width, depth: spec.depth },
+    topY: spec.topY,
+    bottomY,
+    cropY: spec.cropY,
+    sourceSize: source,
+    scale: { x: scale.x, y: scale.y, z: scale.z },
+    scaledHeight,
+    note: 'columns deliverable satin column instance, rescaled to the billing footprint; its lower part is cropped by the stage (never shrunk to fit)',
+  };
+  mesh.updateMatrixWorld(true);
+  return mesh;
+}
+
+/** Axis-aligned world bounds of the reused support mesh. */
+export function computeSupportBounds(mesh) {
+  if (!mesh) return null;
+  mesh.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(mesh);
+  return {
+    min: { x: box.min.x, y: box.min.y, z: box.min.z },
+    max: { x: box.max.x, y: box.max.y, z: box.max.z },
+    center: { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2, z: (box.min.z + box.max.z) / 2 },
+    size: { x: box.max.x - box.min.x, y: box.max.y - box.min.y, z: box.max.z - box.min.z },
+  };
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1670,9 +1555,11 @@ function materialValues(material) {
  * Fallback satin material used only when the columns bank cannot be loaded. It
  * mirrors the columns satin's numeric contract (metalness 1.0, roughness 0.8,
  * envMapIntensity 2.4) but has no derived maps; debug() reports
- * `satin.source = 'fallback'` so QA can tell the difference.
+ * `satin.source = 'fallback'` so QA can tell the difference. Without the columns
+ * deliverable there is no column instance to reuse, so the page renders the stack
+ * with no support (QA warning, no console error).
  */
-export function createFallbackSatinMaterial({ tilePx = SATIN_TILE_PX, name = 'billing-pedestal-satin-fallback' } = {}) {
+export function createFallbackSatinMaterial({ tilePx = SATIN_TILE_PX, name = 'billing-support-satin-fallback' } = {}) {
   const material = new THREE.MeshStandardMaterial({
     name,
     color: srgbColor(SATIN_FALLBACK.colorSrgb),
@@ -1682,11 +1569,11 @@ export function createFallbackSatinMaterial({ tilePx = SATIN_TILE_PX, name = 'bi
     dithering: true,
   });
   material.userData = {
-    role: 'pedestal-satin',
+    role: 'support-satin',
     source: 'fallback',
     materialId: 'satin',
     tilePx,
-    note: 'columns-model loadColumnBank() was unavailable; numeric satin contract preserved, derived grain/reflection maps missing',
+    note: 'columns-model loadColumnBank() was unavailable; no columns satin column instance to reuse; numeric satin contract preserved, derived grain/reflection maps missing',
   };
   return material;
 }
@@ -1694,11 +1581,11 @@ export function createFallbackSatinMaterial({ tilePx = SATIN_TILE_PX, name = 'bi
 function prepareSatin(source, satinTilePx) {
   if (source && source.isMaterial) {
     const clone = source.clone();
-    clone.name = 'billing-pedestal-satin';
+    clone.name = 'billing-support-satin';
     const sourceUserData = source.userData && typeof source.userData === 'object' ? source.userData : {};
     clone.userData = {
       ...sourceUserData,
-      role: 'pedestal-satin',
+      role: 'support-satin',
       source: 'columns-model',
       clonedFrom: source.name || 'column-material:satin',
       envMode: 'scene.environment (cloned envMap is null; the page PMREM studio environment feeds it)',
@@ -1728,25 +1615,34 @@ function prepareSatin(source, satinTilePx) {
 /* ------------------------------------------------------------------------- */
 
 /**
- * Build the four materials of one face-down sheet:
- *   paper  MeshStandardMaterial (blank translucent top surface, the camera's view)
- *   print  MeshBasicMaterial, BackSide (the underside artwork seen through paper)
- *   glow   MeshBasicMaterial, additive (the underlight card below the print)
+ * Build the materials of one face-down sheet (round 5):
+ *   paper  MeshStandardMaterial — the paper top surface. White and gold are OPAQUE
+ *          (transparent:false, opacity 1, depthWrite true); the grey-blue PCB paper
+ *          keeps the round-4 translucent spec (transparent, opacity < 1, no depth
+ *          write).
+ *   mockup MeshBasicMaterial — the unified text mockup: a SEPARATE layer floating
+ *          above the paper (own shared map, own per-treatment ink tone, transparent
+ *          background). It is not paper albedo.
+ *   shadow MeshBasicMaterial — the same mockup layout blurred and tinted near-black,
+ *          painted on the paper just under the ink so the floating layer visibly
+ *          detaches from the paper (also not paper albedo).
+ *   glow   MeshBasicMaterial, additive (the underlight card below the paper)
  *   edge   MeshBasicMaterial (the bright rim strip)
  * `face` is a legacy alias of `paper`.
  */
 function createSheetMaterials(meta, index, textures) {
+  const face = PAPER_FACE[meta.treatment] || PAPER_FACE.white;
   const paper = new THREE.MeshStandardMaterial({
     name: 'billing-sheet-paper:' + meta.id,
     map: textures.paper,
     color: 0xffffff,
-    transparent: true,
-    opacity: meta.opacity,
+    transparent: face.transparent,
+    opacity: face.opacity,
     roughness: 0.6,
     metalness: 0.0,
     envMapIntensity: 0.55,
     side: THREE.FrontSide,
-    depthWrite: false,
+    depthWrite: face.depthWrite,
     dithering: true,
     toneMapped: true,
   });
@@ -1757,31 +1653,62 @@ function createSheetMaterials(meta, index, textures) {
     sheetIndex: index,
     treatment: meta.treatment,
     faceDown: true,
-    baseOpacity: meta.opacity,
+    face: face.opaque ? 'opaque' : 'translucent',
+    opaque: face.opaque,
+    baseOpacity: face.opacity,
     maps: { map: true },
-    note: 'blank translucent paper back (no marks); the print + underlight read through it',
+    note: face.opaque
+      ? 'opaque paper face (round 5); the unified text mockup is a separate floating layer above it'
+      : 'translucent PCB paper (round-4 spec); the underlight card below reads through it while the mockup floats above it',
   };
 
-  const print = new THREE.MeshBasicMaterial({
-    name: 'billing-sheet-print:' + meta.id,
-    map: textures.print,
-    color: 0xffffff,
+  const mockup = new THREE.MeshBasicMaterial({
+    name: 'billing-sheet-mockup:' + meta.id,
+    map: textures.mockup,
+    color: srgbColor(meta.ink),
     transparent: true,
-    opacity: 0.9,
-    side: THREE.BackSide,
+    opacity: MOCKUP_SPEC.opacity,
+    side: THREE.FrontSide,
     depthWrite: false,
     dithering: true,
     toneMapped: true,
   });
-  print.userData = {
-    role: 'sheet-print',
-    layer: 'print',
+  mockup.userData = {
+    role: 'sheet-mockup',
+    layer: 'mockup',
     sheetId: meta.id,
     sheetIndex: index,
     treatment: meta.treatment,
     faceDown: true,
-    baseOpacity: 0.9,
-    note: 'underside abstract print (transparent background, marks only); mesh is rotated PI about X so its normal faces down',
+    ink: meta.ink,
+    lift: MOCKUP_SPEC.lift,
+    unified: true,
+    baseOpacity: MOCKUP_SPEC.opacity,
+    note: 'unified abstract text mockup (one shared pattern for all sheets), floating above the paper surface as a separate layer; transparent background, per-treatment ink tone, no readable text',
+  };
+
+  const shadow = new THREE.MeshBasicMaterial({
+    name: 'billing-sheet-mockup-shadow:' + meta.id,
+    map: textures.mockupShadow,
+    color: srgbColor(MOCKUP_SPEC.shadow.colorSrgb),
+    transparent: true,
+    opacity: MOCKUP_SPEC.shadow.opacity,
+    side: THREE.FrontSide,
+    depthWrite: false,
+    dithering: true,
+    toneMapped: true,
+  });
+  shadow.userData = {
+    role: 'sheet-mockup-shadow',
+    layer: 'shadow',
+    sheetId: meta.id,
+    sheetIndex: index,
+    treatment: meta.treatment,
+    faceDown: true,
+    blurred: MOCKUP_SPEC.shadow.blurPx,
+    unified: true,
+    baseOpacity: MOCKUP_SPEC.shadow.opacity,
+    note: 'soft blurred shadow of the floating mockup, printed on the paper under the ink (separate layer, not paper albedo) — it makes the graphic read as detached from the sheet',
   };
 
   const glow = new THREE.MeshBasicMaterial({
@@ -1804,7 +1731,7 @@ function createSheetMaterials(meta, index, textures) {
     treatment: meta.treatment,
     light: meta.underlight,
     baseOpacity: meta.glowOpacity,
-    note: 'additive underlight card below the print; fades to black at its edges',
+    note: 'additive underlight card below the paper; fades to black at its edges (its halo is what keeps the light visible around the opaque sheets)',
   };
 
   const edge = new THREE.MeshBasicMaterial({
@@ -1826,7 +1753,7 @@ function createSheetMaterials(meta, index, textures) {
     light: meta.edge,
   };
 
-  return { paper, print, glow, edge, face: paper };
+  return { paper, mockup, shadow, glow, edge, face: paper };
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1834,16 +1761,29 @@ function createSheetMaterials(meta, index, textures) {
 /* ------------------------------------------------------------------------- */
 
 /**
- * Build the complete billing object: satin pedestal + seven face-down paper
- * sheets, each with glow (underlight), print (underside), paper (top) and rim.
+ * Build the complete billing object (round 5): the columns deliverable's satin
+ * column reused as the support + seven face-down paper sheets, each with glow
+ * (underlight), paper (opaque white/gold, translucent PCB), the FLOATING unified
+ * text mockup and the bright rim.
  *
  * @param {object} [options]
  * @param {THREE.Material} [options.satinMaterial] `loadColumnBank().materials.satin`
  *        (cloned, never mutated); when omitted a numeric-contract fallback is used.
  * @param {number} [options.satinTilePx] satin manifest tilePx (default 260)
+ * @param {THREE.Mesh} [options.columnInstance] the columns deliverable satin column
+ *        mesh (e.g. `createColumns(bank).columnsById['satin-large-long'].mesh`).
+ *        The model REUSES that instance as the pedestal: it is detached from the
+ *        columns group, rescaled to the SUPPORT_SPEC footprint and stood on its top
+ *        face, with its lower part running out of the bottom of the stage. Its
+ *        geometry is never rebuilt here and never disposed here (the page's columns
+ *        instance owns it). When omitted the stack renders with no support and QA
+ *        reports the degraded path.
+ * @param {{columnId?:string,width?:number,depth?:number,heightPx?:number}} [options.columnSource]
+ *        optional fallback metadata for the reused column; normally read from the
+ *        columns mesh userData (createColumns() writes width/depth/heightPx there).
  * @param {'hero'|'preview'} [options.quality] accepted for API symmetry
- * @param {(index:number)=>{texture:THREE.Texture, canvas:object, spec:object}} [options.sheetTextureFactory]
- *        test hook for the per-sheet print maps (same shape as createSheetTexture)
+ * @param {()=>{texture:THREE.Texture, canvas:object, spec:object}} [options.mockupTextureFactory]
+ *        test hook for the single shared unified mockup map
  * @param {(treatment:string)=>{texture:THREE.Texture, canvas:object, spec:object}} [options.paperTextureFactory]
  *        test hook for the treatment paper maps
  * @param {(treatment:string)=>{texture:THREE.Texture, canvas:object, spec:object}} [options.glowTextureFactory]
@@ -1853,36 +1793,79 @@ function createSheetMaterials(meta, index, textures) {
 export function createBillingModel({
   satinMaterial = null,
   satinTilePx = SATIN_TILE_PX,
+  columnInstance = null,
+  columnSource = null,
   quality = 'hero',
-  sheetTextureFactory = null,
+  mockupTextureFactory = null,
   paperTextureFactory = null,
   glowTextureFactory = null,
 } = {}) {
   const root = new THREE.Group();
   root.name = 'billing-object';
-  root.userData = { role: 'billing-object' };
 
   const tilePx = Number(satinTilePx) > 0 ? Number(satinTilePx) : SATIN_TILE_PX;
   const satin = prepareSatin(satinMaterial, tilePx);
-  const pedestalGeometry = buildPedestalGeometry(PEDESTAL_SPEC, tilePx);
-  const pedestal = new THREE.Mesh(pedestalGeometry, satin.material);
-  pedestal.name = 'billing-pedestal';
-  pedestal.castShadow = false;
-  pedestal.receiveShadow = true;
-  pedestal.userData = {
-    role: 'pedestal',
-    geometry: 'bevelled rounded box (extruded rounded-rect plan)',
-    materialSource: satin.source,
-    topY: PEDESTAL_SPEC.height,
-  };
-  root.add(pedestal);
 
+  // ---- Support: reuse the columns deliverable's satin column instance --------
+  // No pedestal/column geometry is built here (round 5). The instance is owned by
+  // the page's columns model: this module only rescales/positions/attaches it and
+  // reassigns the cloned satin material; it never disposes the column geometry.
+  let support = null;
+  let supportInfo = null;
+  if (columnInstance) {
+    if (columnInstance.isMesh !== true || !columnInstance.geometry) {
+      throw new Error('billing-model: columnInstance must be the columns deliverable satin column mesh (THREE.Mesh)');
+    }
+    if (columnSource && typeof columnSource === 'object') {
+      const userData = { ...(columnInstance.userData && typeof columnInstance.userData === 'object' ? columnInstance.userData : {}) };
+      if (userData.columnId == null && columnSource.columnId) userData.columnId = columnSource.columnId;
+      if (userData.width == null && columnSource.width != null) userData.width = columnSource.width;
+      if (userData.depth == null && columnSource.depth != null) userData.depth = columnSource.depth;
+      if (userData.heightPx == null && columnSource.heightPx != null) userData.heightPx = columnSource.heightPx;
+      columnInstance.userData = userData;
+    }
+    support = prepareColumnSupport(columnInstance, SUPPORT_SPEC);
+    support.material = satin.material; // the cloned columns satin, never the bank original
+    root.add(support);
+    supportInfo = {
+      reused: true,
+      source: 'columns-model',
+      columnId: support.userData.columnId || SUPPORT_SPEC.columnId,
+      meshName: support.name,
+      geometryUuid: support.geometry ? support.geometry.uuid : null,
+      materialSource: satin.source,
+      footprint: { width: SUPPORT_SPEC.width, depth: SUPPORT_SPEC.depth },
+      topY: SUPPORT_SPEC.topY,
+      bottomY: support.userData.bottomY,
+      cropY: SUPPORT_SPEC.cropY,
+      visibleHeight: SUPPORT_SPEC.topY - SUPPORT_SPEC.cropY,
+      sourceSize: support.userData.sourceSize,
+      scale: support.userData.scale,
+      scaledHeight: support.userData.scaledHeight,
+      croppedByStage: true,
+      otherColumnsPlaced: false,
+    };
+  }
+  root.userData = {
+    role: 'billing-object',
+    version: MODEL_VERSION,
+    faceDown: true,
+    unifiedMockup: true,
+    floatingMockup: true,
+    opaqueFaces: ['white', 'gold'],
+    translucentFaces: ['pcb'],
+    support: support ? 'columns-satin-column' : 'none',
+  };
+
+  // ---- Document stack -------------------------------------------------------
   const stack = new THREE.Group();
   stack.name = 'billing-stack';
-  stack.userData = { role: 'document-stack', faceDown: true };
+  stack.userData = { role: 'document-stack', faceDown: true, mockupLayer: 'floating' };
   root.add(stack);
 
-  // Shared geometry: sheet surface + rim + the 1.1x underlight card plane.
+  // Shared geometry: sheet surface + rim + the 1.1x underlight card plane. The
+  // floating mockup layer reuses the sheet surface geometry, offset in +Z (world
+  // UP once pitched flat).
   const geometries = buildSheetGeometries(SHEET_SPEC);
   geometries.glow = new THREE.PlaneGeometry(
     SHEET_SPEC.width * LAYER_SPEC.glowScale,
@@ -1897,7 +1880,20 @@ export function createBillingModel({
     offsetZ: -(SHEET_SPEC.thickness / 2 + LAYER_SPEC.glowDrop),
   });
 
-  // Treatment maps are shared by the sheets of one group; print maps are per sheet.
+  // ONE shared unified mockup pattern for all seven sheets (round 5): the ink layer
+  // is the floating graphic itself; the shadow layer is the same pattern blurred,
+  // painted on the paper below so the graphic reads as detached from the sheet.
+  const mockupFactory = typeof mockupTextureFactory === 'function'
+    ? mockupTextureFactory
+    : (variant) => createMockupTexture({ variant });
+  const mockupCreated = mockupFactory('ink');
+  const mockupTexture = mockupCreated.texture;
+  const mockupSpec = mockupCreated.spec || mockupArtworkSpecFor({ variant: 'ink' });
+  const shadowCreated = mockupFactory('shadow');
+  const mockupShadowTexture = shadowCreated.texture;
+  const mockupShadowSpec = (shadowCreated && shadowCreated.spec) || mockupArtworkSpecFor({ variant: 'shadow' });
+
+  // Paper + underlight maps are shared by the sheets of one treatment.
   const paperTextures = new Map();
   const glowTextures = new Map();
   for (const treatment of TREATMENTS) {
@@ -1911,16 +1907,11 @@ export function createBillingModel({
     glowTextures.set(treatment.id, glowCreated.texture);
   }
 
-  const printTextures = [];
   const sheets = SHEET_META.map((meta, index) => {
-    const printCreated = typeof sheetTextureFactory === 'function'
-      ? sheetTextureFactory(index)
-      : createSheetTexture(index);
-    printTextures.push(printCreated.texture);
-
     const faceTextures = {
       paper: paperTextures.get(meta.treatment),
-      print: printCreated.texture,
+      mockup: mockupTexture,
+      mockupShadow: mockupShadowTexture,
       glow: glowTextures.get(meta.treatment),
     };
     const materials = createSheetMaterials(meta, index, faceTextures);
@@ -1933,6 +1924,7 @@ export function createBillingModel({
       treatment: meta.treatment,
       group: meta.treatment,
       label: meta.label,
+      face: meta.face,
       faceDown: true,
     };
 
@@ -1947,43 +1939,75 @@ export function createBillingModel({
     glow.receiveShadow = false;
     glow.userData = { role: 'sheet-glow', sheetId: meta.id, sheetIndex: index, orderOffset: 0 };
 
-    // print (underside artwork; rotated PI about X so its normal faces DOWN) -- base + 1
-    const print = new THREE.Mesh(geometries.surface, materials.print);
-    print.name = 'billing-sheet-print:' + meta.id;
-    print.rotation.x = Math.PI;
-    print.position.z = -(SHEET_SPEC.thickness / 2 + LAYER_SPEC.printDrop);
-    print.renderOrder = base + 1;
-    print.castShadow = false;
-    print.receiveShadow = false;
-    print.userData = { role: 'sheet-print', sheetId: meta.id, sheetIndex: index, orderOffset: 1, faceDown: true };
-
-    // paper (blank translucent top surface, visible from above) ------- base + 2
+    // paper (opaque white/gold, translucent PCB) ----------------- base + 1
     const paper = new THREE.Mesh(geometries.surface, materials.paper);
     paper.name = 'billing-sheet-paper:' + meta.id;
-    paper.renderOrder = base + 2;
+    paper.renderOrder = base + 1;
     paper.castShadow = false;
     paper.receiveShadow = false;
-    paper.userData = { role: 'sheet-paper', sheetId: meta.id, sheetIndex: index, orderOffset: 2 };
+    paper.userData = { role: 'sheet-paper', sheetId: meta.id, sheetIndex: index, orderOffset: 1, face: meta.face };
 
-    // rim (bright edge strip) --------------------------------- base + 3
+    // shadow (blurred mockup shadow, painted on the paper) ------- base + 2
+    const shadow = new THREE.Mesh(geometries.surface, materials.shadow);
+    shadow.name = 'billing-sheet-mockup-shadow:' + meta.id;
+    shadow.position.set(MOCKUP_SPEC.shadow.offsetX, MOCKUP_SPEC.shadow.offsetY, MOCKUP_SPEC.shadow.lift);
+    shadow.renderOrder = base + 2;
+    shadow.castShadow = false;
+    shadow.receiveShadow = false;
+    shadow.userData = {
+      role: 'sheet-mockup-shadow',
+      layer: 'shadow',
+      sheetId: meta.id,
+      sheetIndex: index,
+      orderOffset: 2,
+      unified: true,
+      blurred: MOCKUP_SPEC.shadow.blurPx,
+      lift: MOCKUP_SPEC.shadow.lift,
+      geometrySource: 'billing-sheet-surface',
+    };
+
+    // mockup (unified text mockup, floating ABOVE the paper) ------ base + 3
+    const mockup = new THREE.Mesh(geometries.surface, materials.mockup);
+    mockup.name = 'billing-sheet-mockup:' + meta.id;
+    mockup.position.z = LAYER_SPEC.mockupLift;
+    mockup.renderOrder = base + 3;
+    mockup.castShadow = false;
+    mockup.receiveShadow = false;
+    mockup.userData = {
+      role: 'sheet-mockup',
+      layer: 'mockup',
+      sheetId: meta.id,
+      sheetIndex: index,
+      orderOffset: 3,
+      unified: true,
+      floating: true,
+      lift: LAYER_SPEC.mockupLift,
+      ink: meta.ink,
+      geometrySource: 'billing-sheet-surface',
+      noReadableText: true,
+    };
+
+    // rim (bright edge strip) --------------------------------- base + 4
     const rim = new THREE.Mesh(geometries.rim, materials.edge);
     rim.name = 'billing-sheet-rim:' + meta.id;
-    rim.renderOrder = base + 3;
+    rim.renderOrder = base + 4;
     rim.castShadow = false;
     rim.receiveShadow = false;
-    rim.userData = { role: 'sheet-rim', sheetId: meta.id, sheetIndex: index, orderOffset: 3 };
+    rim.userData = { role: 'sheet-rim', sheetId: meta.id, sheetIndex: index, orderOffset: 4 };
 
     mesh.add(glow);
-    mesh.add(print);
     mesh.add(paper);
+    mesh.add(shadow);
+    mesh.add(mockup);
     mesh.add(rim);
     stack.add(mesh);
 
     const layers = [
       { mesh: glow, role: 'glow', orderOffset: 0 },
-      { mesh: print, role: 'print', orderOffset: 1 },
-      { mesh: paper, role: 'paper', orderOffset: 2 },
-      { mesh: rim, role: 'rim', orderOffset: 3 },
+      { mesh: paper, role: 'paper', orderOffset: 1 },
+      { mesh: shadow, role: 'shadow', orderOffset: 2 },
+      { mesh: mockup, role: 'mockup', orderOffset: 3 },
+      { mesh: rim, role: 'rim', orderOffset: 4 },
     ];
 
     const expanded = sheetPose(index, 'expanded');
@@ -1998,17 +2022,30 @@ export function createBillingModel({
       code: meta.code,
       underlight: meta.underlight,
       edge: meta.edge,
+      ink: meta.ink,
+      face: meta.face,
+      faceOpacity: meta.faceOpacity,
+      faceTransparent: meta.faceTransparent,
       palette: meta.palette,
       marks: meta.marks,
       mesh,
       layers,
       surface: paper,
+      shadow,
+      mockup,
       rim,
       materials,
-      texture: printCreated.texture,
+      // Legacy alias kept for older QA reads: the sheet's artwork map is now the
+      // shared floating mockup map, not a per-sheet print map.
+      texture: mockupTexture,
+      mockupTexture,
+      mockupShadowTexture,
+      mockupSpec,
+      mockupShadowSpec,
+      mockupLift: LAYER_SPEC.mockupLift,
       paperTexture: faceTextures.paper,
       glowTexture: faceTextures.glow,
-      artworkSpec: printCreated.spec || null,
+      artworkSpec: mockupSpec,
       expanded,
       condensed,
       quality,
@@ -2031,11 +2068,17 @@ export function createBillingModel({
   expandedBox.setFromObject(stack);
   applyMode('condensed');
   condensedBox.setFromObject(stack);
-  // Include the pedestal in the framing bounds (it is static, so its box is the
-  // same in both modes).
-  const pedestalBox = new THREE.Box3().setFromObject(pedestal);
-  for (const box of [expandedBox, condensedBox]) {
-    box.union(pedestalBox);
+
+  // The support is static and much taller than the crop: its reported bounds are
+  // clipped to the framing crop line (only that band is ever visible), while the
+  // full support bounds are exposed separately for QA.
+  const supportBounds = support ? computeSupportBounds(support) : null;
+  if (supportBounds) {
+    const clipped = new THREE.Box3(
+      new THREE.Vector3(supportBounds.min.x, Math.max(supportBounds.min.y, SUPPORT_SPEC.cropY), supportBounds.min.z),
+      new THREE.Vector3(supportBounds.max.x, supportBounds.max.y, supportBounds.max.z),
+    );
+    for (const box of [expandedBox, condensedBox]) box.union(clipped);
   }
   applyMode('expanded');
 
@@ -2047,8 +2090,10 @@ export function createBillingModel({
   });
 
   // Exact silhouette point cloud used by the page's camera fit: the real sheet
-  // surface + rim vertices, the four corners of each underlight card (so the
-  // glow halo is never clipped) and the rounded pedestal vertices.
+  // surface + rim vertices, the four corners and centre of each underlight card,
+  // the floating mockup's corners + centre (lifted above the paper) and ONLY the
+  // support vertices at/above SUPPORT_SPEC.cropY. The column's lower part is
+  // deliberately excluded so the paper stack keeps its round-4 scale.
   const collectFitPoints = (mode) => {
     applyMode(mode);
     const points = [];
@@ -2076,12 +2121,40 @@ export function createBillingModel({
           points.push(local.x, local.y, local.z);
         }
       }
+      // The floating mockup is the same bowed surface mesh, already lifted by
+      // LAYER_SPEC.mockupLift: sample its REAL geometry vertices through the mockup
+      // mesh (never add the lift a second time) so the fit follows the graphic's
+      // true silhouette, including the bow at the centre.
+      const mockupMesh = sheet.mockup;
+      for (let i = 0; i < surfacePositions.count; i += 3) {
+        local.fromBufferAttribute(surfacePositions, i);
+        mockupMesh.localToWorld(local);
+        points.push(local.x, local.y, local.z);
+      }
     }
-    const pedestalPositions = pedestalGeometry.getAttribute('position');
-    const pedestalMatrix = pedestal.matrixWorld;
-    for (let i = 0; i < pedestalPositions.count; i += 1) {
-      local.set(pedestalPositions.getX(i), pedestalPositions.getY(i), pedestalPositions.getZ(i)).applyMatrix4(pedestalMatrix);
-      points.push(local.x, local.y, local.z);
+    if (support && support.geometry) {
+      const position = support.geometry.getAttribute('position');
+      if (position) {
+        const matrix = support.matrixWorld;
+        for (let i = 0; i < position.count; i += 1) {
+          local.set(position.getX(i), position.getY(i), position.getZ(i)).applyMatrix4(matrix);
+          if (local.y < SUPPORT_SPEC.cropY) continue;
+          points.push(local.x, local.y, local.z);
+        }
+        // The reused column is a plain box: it has vertices only at its top and
+        // bottom, so the crop-line cross-section must be synthesized explicitly.
+        // Framing on it keeps the paper stack at its round-4 scale while the
+        // column's lower part continues out of the bottom of the stage.
+        for (const sx of [-1, 1]) {
+          for (const sz of [-1, 1]) {
+            points.push(
+              SUPPORT_SPEC.centerX + (sx * SUPPORT_SPEC.width) / 2,
+              SUPPORT_SPEC.cropY,
+              SUPPORT_SPEC.centerZ + (sz * SUPPORT_SPEC.depth) / 2,
+            );
+          }
+        }
+      }
     }
     return Float32Array.from(points);
   };
@@ -2094,14 +2167,14 @@ export function createBillingModel({
     disposed = true;
     const seenMaterials = new Set();
     for (const sheet of sheets) {
-      for (const material of [sheet.materials.paper, sheet.materials.print, sheet.materials.glow, sheet.materials.edge]) {
+      for (const material of [sheet.materials.paper, sheet.materials.mockup, sheet.materials.shadow, sheet.materials.glow, sheet.materials.edge]) {
         if (!material || seenMaterials.has(material)) continue;
         seenMaterials.add(material);
         material.dispose();
       }
     }
     const seenTextures = new Set();
-    const allTextures = [...printTextures, ...paperTextures.values(), ...glowTextures.values()];
+    const allTextures = [mockupTexture, mockupShadowTexture, ...paperTextures.values(), ...glowTextures.values()];
     for (const texture of allTextures) {
       if (!texture || seenTextures.has(texture)) continue;
       seenTextures.add(texture);
@@ -2110,8 +2183,10 @@ export function createBillingModel({
     geometries.surface.dispose();
     geometries.rim.dispose();
     geometries.glow.dispose();
-    pedestalGeometry.dispose();
     satin.material.dispose();
+    // The reused column instance and its geometry stay owned by the page's columns
+    // model (columns.dispose()); only the cloned satin material above belongs here.
+    if (support) support.removeFromParent();
     stack.clear();
     root.clear();
   };
@@ -2120,12 +2195,31 @@ export function createBillingModel({
     version: MODEL_VERSION,
     quality,
     faceDown: true,
+    unifiedMockup: true,
     root,
     stack,
-    pedestal,
+    support,
+    // Legacy alias: older QA/docs called the support the pedestal.
+    pedestal: support,
+    supportInfo,
+    supportBounds,
     sheets,
     geometries,
-    textures: printTextures,
+    mockup: {
+      unified: true,
+      floating: true,
+      detached: true,
+      texture: mockupTexture,
+      textureCount: 1,
+      shadowTexture: mockupShadowTexture,
+      shadowTextureCount: 1,
+      shadow: { ...MOCKUP_SPEC.shadow },
+      sheetCount: sheets.length,
+      lift: LAYER_SPEC.mockupLift,
+      spec: mockupSpec,
+      shadowSpec: mockupShadowSpec,
+    },
+    textures: [mockupTexture, mockupShadowTexture],
     paperTextures: Array.from(paperTextures.values()),
     glowTextures: Array.from(glowTextures.values()),
     satin,
@@ -2138,6 +2232,7 @@ export function createBillingModel({
       condensed: computeStackBounds('condensed'),
     },
     fitPoints,
+    fitCropY: SUPPORT_SPEC.cropY,
     sheetCount: sheets.length,
     treatments: { ...TREATMENT_COUNTS },
     goldStartIndex: GOLD_START_INDEX,

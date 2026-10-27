@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="TEKO — Connection crystal. Two right-angle acrylic plates interlocked without touching, ribbed satin bodies, a continuous silver conduit threading the 36 px acrylic air gap and leaving both open ends through clear rod bundles. Dark editorial studio, deterministic 7 s loop.">
+<title>Connection crystal — TEKO</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2308090b'/%3E%3Cpath d='M6 9h13v5H11v9H6z' fill='%239fb0c4'/%3E%3Cpath d='M13 13h13v10h-5v-5h-8z' fill='%23dfe6ee' fill-opacity='.7'/%3E%3Cpath d='M14 16h6' stroke='%23ff7a2a' stroke-width='1.2'/%3E%3Cpath d='M20 21h6' stroke='%235b8cff' stroke-width='1.2'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/connection-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-satin="none" data-qa-motion="auto" data-qa-playing="0" data-still="0" data-shot="0" data-reduced-motion="0" data-qa-mode="0">
+
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="TEKO — collection home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">
+          <path d="M4 5.5h11.5v3.2H7.2V18H4z"></path>
+          <path d="M11 10.2h9v8.3h-3.2v-5.1H11z"></path>
+          <path d="M9.4 12.1h5.2" stroke-width="1.1"></path>
+        </svg>
+      </span>
+      <span class="brand-name">TEKO</span>
+      <span class="brand-divider" aria-hidden="true"></span>
+      <span class="brand-product">Connection</span>
+    </a>
+
+    <nav class="collection-nav" aria-label="Collections">
+      <a href="./">Coin</a>
+      <a href="./card.html">Metal Card</a>
+      <a href="./columns.html">Columns</a>
+      <a href="./billing.html">Billing</a>
+      <a href="./shield.html">Shield</a>
+      <a href="./currency-blocks.html">Currency Blocks</a>
+      <a href="./vault.html">Vault</a>
+      <a href="./paperplane.html">Plane</a>
+      <span class="current" aria-current="page">Connection</span>
+    </nav>
+
+    <span class="edition">Object 010 &mdash; interlock study</span>
+  </header>
+
+  <main class="studio">
+    <h1 class="sr-only">Connection crystal — two interlocked right-angle acrylic plates with a continuous silver conduit threading their air gap</h1>
+
+    <section class="intro" aria-labelledby="connection-display">
+      <p class="eyebrow">Studio / interlocked acrylic</p>
+      <p class="intro-display" id="connection-display" aria-hidden="true">Connection<span>Crystal conduit.</span></p>
+      <p class="description">Two right-angle volumes, interlocked without touching.<br>Ribbed satin bodies under layered clear and dark acrylic.<br>A silver conduit threads the gap and leaves both open ends.</p>
+      <div class="dimensions" aria-label="Nominal model extents">
+        <span>1&thinsp;120 <small>SPAN</small></span>
+        <span>1&thinsp;150 <small>HEIGHT</small></span>
+        <span>7.0 s <small>FLOW LOOP</small></span>
+      </div>
+      <p class="intro-note">Object 010 / 010 <span aria-hidden="true">&middot;</span> TEKO props</p>
+    </section>
+
+    <section class="stage" id="stage" aria-label="Interactive connection crystal viewer">
+      <canvas id="stage-canvas" aria-label="Two interlocked right-angle plates: ribbed satin bodies under clear and dark acrylic caps on satin columns, with a silver conduit crossing the interlock and clear rod bundles at both open ends. Drag to orbit, scroll to zoom, press R to reset."></canvas>
+
+      <div class="stage-meta stage-meta--top">
+        <span class="stage-dot" aria-hidden="true"></span>
+        <span>Live 3D</span>
+        <span class="stage-tag">Interlock clearance 34</span>
+      </div>
+      <div class="stage-index" aria-hidden="true"><span>010</span><span class="stage-index-rule"></span><span class="stage-index-total">010</span></div>
+      <div class="stage-bottom">
+        <div class="stage-legend" aria-hidden="true">
+          <span class="legend-item"><i class="legend-dot legend-dot--orange"></i>Flow in</span>
+          <span class="legend-item"><i class="legend-dot legend-dot--blue"></i>Flow out</span>
+        </div>
+        <div class="stage-hint" aria-hidden="true">Drag to orbit <span>&middot;</span> scroll to zoom <span>&middot;</span> R resets</div>
+      </div>
+
+      <div class="veil" id="stage-veil">
+        <span class="veil-mark" aria-hidden="true"></span>
+        <span id="veil-text">Preparing the studio</span>
+      </div>
+
+      <div class="stage-fallback" id="fallback" hidden>
+        <div class="fallback-inner">
+          <p class="fallback-kicker">Static preview</p>
+          <h2 class="fallback-title">3D preview unavailable</h2>
+          <p class="fallback-message" id="fallback-message">The interactive connection crystal needs WebGL. Here is a static poster of the two interlocked L plates: ribbed satin bodies, layered clear and dark acrylic, a silver conduit and the clear rod bundles at both open ends.</p>
+          <svg class="fallback-poster" viewBox="0 0 360 280" role="img" aria-label="Static illustration of the connection crystal: an upper right-angle plate over a lower right-angle plate on two satin columns, with a silver-orange-to-blue conduit threading the gap and thin clear rods leaving both open ends">
+            <defs>
+              <linearGradient id="connBodyMetal" x1="0" y1="0" x2="0.16" y2="1">
+                <stop offset="0" stop-color="#c3ccd7"></stop>
+                <stop offset="0.4" stop-color="#8b98a6"></stop>
+                <stop offset="0.72" stop-color="#4c5764"></stop>
+                <stop offset="1" stop-color="#77848f"></stop>
+              </linearGradient>
+              <linearGradient id="connDarkGlass" x1="0" y1="0" x2="0.72" y2="1">
+                <stop offset="0" stop-color="#263449"></stop>
+                <stop offset="0.42" stop-color="#101722"></stop>
+                <stop offset="1" stop-color="#090d14"></stop>
+              </linearGradient>
+              <linearGradient id="connClearAcrylic" x1="0" y1="0" x2="0.42" y2="1">
+                <stop offset="0" stop-color="#eaf3ff" stop-opacity="0.32"></stop>
+                <stop offset="0.55" stop-color="#9db6d6" stop-opacity="0.13"></stop>
+                <stop offset="1" stop-color="#e2efff" stop-opacity="0.24"></stop>
+              </linearGradient>
+              <linearGradient id="connSatin" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#c4ccd6"></stop>
+                <stop offset="0.34" stop-color="#7b8795"></stop>
+                <stop offset="0.68" stop-color="#3a434f"></stop>
+                <stop offset="1" stop-color="#909dab"></stop>
+              </linearGradient>
+              <linearGradient id="connEdge" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stop-color="#e9f2ff" stop-opacity="0.4"></stop>
+                <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.95"></stop>
+                <stop offset="1" stop-color="#b7c9e2" stop-opacity="0.55"></stop>
+              </linearGradient>
+              <linearGradient id="connFlow" x1="354" y1="0" x2="5" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#ff9a45"></stop>
+                <stop offset="0.26" stop-color="#ffd9b0"></stop>
+                <stop offset="0.55" stop-color="#eef4ff"></stop>
+                <stop offset="0.8" stop-color="#9ec2ff"></stop>
+                <stop offset="1" stop-color="#5b8cff"></stop>
+              </linearGradient>
+              <linearGradient id="connTopGlint" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#dbe9fb" stop-opacity="0.16"></stop>
+                <stop offset="0.5" stop-color="#7f9cc4" stop-opacity="0.05"></stop>
+                <stop offset="1" stop-color="#dbe9fb" stop-opacity="0.12"></stop>
+              </linearGradient>
+              <pattern id="connRibs" width="5" height="3.8" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0.9" x2="5" y2="0.9" stroke="rgba(0,0,0,0.46)" stroke-width="0.9"></line>
+                <line x1="0" y1="2.4" x2="5" y2="2.4" stroke="rgba(255,255,255,0.12)" stroke-width="0.6"></line>
+              </pattern>
+              <filter id="connGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="2.4" result="blur"></feGaussianBlur>
+                <feMerge>
+                  <feMergeNode in="blur"></feMergeNode>
+                  <feMergeNode in="SourceGraphic"></feMergeNode>
+                </feMerge>
+              </filter>
+              <filter id="connBlur" x="-90%" y="-90%" width="280%" height="280%">
+                <feGaussianBlur stdDeviation="3.2"></feGaussianBlur>
+              </filter>
+            </defs>
+
+            <!-- satin columns on the dark floor -->
+
+            <ellipse cx="92.9" cy="257" rx="22" ry="6" fill="#000" opacity="0.55" filter="url(#connBlur)"></ellipse>
+            <ellipse cx="258.8" cy="240" rx="15" ry="4" fill="#000" opacity="0.5" filter="url(#connBlur)"></ellipse>
+            <polygon points="74.4,258.4 96.8,265.7 96.8,179.3 74.4,172" fill="url(#connSatin)"></polygon>
+            <polygon points="111.4,253.4 96.8,265.7 96.8,179.3 111.4,167" fill="url(#connSatin)" opacity="0.72"></polygon>
+            <polygon points="248.2,240.6 261,244.8 261,158.4 248.2,154.2" fill="url(#connSatin)" opacity="0.9"></polygon>
+            <polygon points="269.4,237.7 261,244.8 261,158.4 269.4,151.3" fill="url(#connSatin)" opacity="0.6"></polygon>
+
+            <!-- lower plate (LL): ribbed body, clear cap, flow gap, dark glass cap -->
+
+            <polygon points="42.7,176.3 209.1,230.4 209.1,208.8 42.7,154.7" fill="url(#connBodyMetal)"></polygon>
+            <polygon points="42.7,176.3 209.1,230.4 209.1,208.8 42.7,154.7" fill="url(#connRibs)"></polygon>
+            <polygon points="317.3,138.9 209.1,230.4 209.1,208.8 317.3,117.3" fill="url(#connBodyMetal)" opacity="0.9"></polygon>
+            <polygon points="317.3,138.9 209.1,230.4 209.1,208.8 317.3,117.3" fill="url(#connRibs)"></polygon>
+            <polygon points="39.6,155.2 209.8,210.5 209.8,204.7 39.6,149.4" fill="url(#connClearAcrylic)"></polygon>
+            <polygon points="320.4,116.8 209.8,210.5 209.8,204.7 320.4,111.1" fill="url(#connClearAcrylic)" opacity="0.8"></polygon>
+            <polygon points="39.6,149.4 209.8,204.7 209.8,199.5 39.6,144.2" fill="#04060a"></polygon>
+            <polygon points="320.4,111.1 209.8,204.7 209.8,199.5 320.4,105.9" fill="#04060a" opacity="0.92"></polygon>
+            <polygon points="35.9,144.7 210.6,201.5 210.6,197.5 35.9,140.7" fill="url(#connDarkGlass)"></polygon>
+            <polygon points="324.1,105.4 210.6,201.5 210.6,197.5 324.1,101.4" fill="url(#connDarkGlass)" opacity="0.85"></polygon>
+            <polygon points="78.7,104.4 187.5,139.8 258.2,79.9 324.1,101.4 210.6,197.5 35.9,140.7" fill="url(#connDarkGlass)" opacity="0.9"></polygon>
+            <polygon points="78.7,104.4 187.5,139.8 258.2,79.9 324.1,101.4 210.6,197.5 35.9,140.7" fill="url(#connTopGlint)"></polygon>
+            <polygon points="78.7,104.4 187.5,139.8 258.2,79.9 324.1,101.4 210.6,197.5 35.9,140.7" fill="none" stroke="url(#connEdge)" stroke-width="0.9" stroke-linejoin="round"></polygon>
+            <polyline points="35.9,140.7 210.6,197.5" fill="none" stroke="url(#connEdge)" stroke-width="1.1" opacity="0.85"></polyline>
+            <polyline points="210.6,197.5 324.1,101.4" fill="none" stroke="url(#connEdge)" stroke-width="0.9" opacity="0.7"></polyline>
+            <polygon points="39.6,144.2 209.8,199.5 210.6,201.5 35.9,144.7" fill="#020305"></polygon>
+            <polygon points="320.4,105.9 209.8,199.5 210.6,201.5 324.1,105.4" fill="#020305" opacity="0.9"></polygon>
+
+            <!-- upper plate (UL) drawn last: it occludes the interlock -->
+
+            <polygon points="171,90 279.8,125.3 279.8,103.7 171,68.4" fill="url(#connBodyMetal)"></polygon>
+            <polygon points="171,90 279.8,125.3 279.8,103.7 171,68.4" fill="url(#connRibs)"></polygon>
+            <polygon points="317.3,93.7 279.8,125.3 279.8,103.7 317.3,72.1" fill="url(#connBodyMetal)" opacity="0.9"></polygon>
+            <polygon points="317.3,93.7 279.8,125.3 279.8,103.7 317.3,72.1" fill="url(#connRibs)"></polygon>
+            <polygon points="171,90 121.1,132.2 121.1,110.6 171,68.4" fill="url(#connBodyMetal)" opacity="0.94"></polygon>
+            <polygon points="171,90 121.1,132.2 121.1,110.6 171,68.4" fill="url(#connRibs)"></polygon>
+            <polygon points="63.5,113.5 121.1,132.2 121.1,110.6 63.5,91.9" fill="url(#connBodyMetal)" opacity="0.86"></polygon>
+            <polygon points="63.5,113.5 121.1,132.2 121.1,110.6 63.5,91.9" fill="url(#connRibs)"></polygon>
+
+            <polygon points="170.4,66.7 283,103.3 283,97.6 170.4,60.9" fill="url(#connClearAcrylic)"></polygon>
+            <polygon points="320.4,71.6 283,103.3 283,97.6 320.4,65.9" fill="url(#connClearAcrylic)" opacity="0.8"></polygon>
+            <polygon points="170.4,66.7 118,111.1 118,105.3 170.4,60.9" fill="url(#connClearAcrylic)" opacity="0.9"></polygon>
+            <polygon points="60.4,92.3 118,111.1 118,105.3 60.4,86.6" fill="url(#connClearAcrylic)" opacity="0.75"></polygon>
+
+            <polygon points="170.4,60.9 283,97.6 283,92.4 170.4,55.8" fill="#04060a"></polygon>
+            <polygon points="320.4,65.9 283,97.6 283,92.4 320.4,60.7" fill="#04060a" opacity="0.9"></polygon>
+            <polygon points="170.4,60.9 118,105.3 118,100.1 170.4,55.8" fill="#04060a" opacity="0.94"></polygon>
+            <polygon points="60.4,86.6 118,105.3 118,100.1 60.4,81.4" fill="#04060a" opacity="0.88"></polygon>
+
+            <polygon points="164.2,58.4 281.3,96.4 281.3,92.4 164.2,54.3" fill="url(#connDarkGlass)"></polygon>
+            <polygon points="324.1,60.2 281.3,96.4 281.3,92.4 324.1,56.2" fill="url(#connDarkGlass)" opacity="0.85"></polygon>
+            <polygon points="164.2,58.4 114.3,100.6 114.3,96.6 164.2,54.3" fill="url(#connDarkGlass)" opacity="0.94"></polygon>
+            <polygon points="56.7,81.9 114.3,100.6 114.3,96.6 56.7,77.9" fill="url(#connDarkGlass)" opacity="0.9"></polygon>
+
+            <polygon points="149.4,-0.6 324.1,56.2 281.3,92.4 164.2,54.3 114.3,96.6 56.7,77.9" fill="url(#connDarkGlass)"></polygon>
+            <polygon points="149.4,-0.6 324.1,56.2 281.3,92.4 164.2,54.3 114.3,96.6 56.7,77.9" fill="url(#connTopGlint)"></polygon>
+            <polygon points="149.4,-0.6 324.1,56.2 281.3,92.4 164.2,54.3 114.3,96.6 56.7,77.9" fill="none" stroke="url(#connEdge)" stroke-width="0.9" stroke-linejoin="round"></polygon>
+            <polyline points="149.4,-0.6 324.1,56.2" fill="none" stroke="#7fa6ee" stroke-width="1.3" opacity="0.62"></polyline>
+            <polyline points="149.4,-0.6 324.1,56.2" fill="none" stroke="url(#connEdge)" stroke-width="0.6" opacity="0.9"></polyline>
+            <polyline points="56.7,77.9 114.3,96.6 164.2,54.3" fill="none" stroke="url(#connEdge)" stroke-width="0.9" opacity="0.75"></polyline>
+
+            <polygon points="170.4,55.8 283,92.4 281.3,96.4 164.2,58.4" fill="#020305"></polygon>
+            <polygon points="320.4,60.7 283,92.4 281.3,96.4 324.1,60.2" fill="#020305" opacity="0.9"></polygon>
+            <polygon points="170.4,55.8 118,100.1 114.3,100.6 164.2,58.4" fill="#020305"></polygon>
+            <polygon points="118,100.1 60.4,81.4 56.7,81.9 114.3,100.6" fill="#020305" opacity="0.9"></polygon>
+
+            <!-- clear rod bundles leaving the two open ends -->
+
+            <g stroke="#cfe0f5" stroke-width="0.8" opacity="0.34">
+              <line x1="297.4" y1="85.8" x2="347.3" y2="105.9"></line>
+              <line x1="304.5" y1="79.8" x2="362.1" y2="93.4"></line>
+              <line x1="299.9" y1="78.8" x2="364.5" y2="100.5"></line>
+              <line x1="302.2" y1="86.6" x2="369.3" y2="106.2"></line>
+              <line x1="304.1" y1="77.5" x2="367.6" y2="93.6"></line>
+              <line x1="55.5" y1="130.3" x2="-2.1" y2="116.4"></line>
+              <line x1="62.6" y1="124.3" x2="12.7" y2="103.8"></line>
+              <line x1="58" y1="123.3" x2="-8.9" y2="103.2"></line>
+              <line x1="60.3" y1="131.2" x2="-4.1" y2="108.9"></line>
+              <line x1="62.2" y1="122.1" x2="5.5" y2="99.9"></line>
+            </g>
+            <g stroke="#ffffff" stroke-width="0.34" opacity="0.5">
+              <line x1="298.4" y1="85.5" x2="346.3" y2="104.7"></line>
+              <line x1="305.4" y1="79.7" x2="361.1" y2="92.9"></line>
+              <line x1="300.8" y1="78.8" x2="363.4" y2="99.8"></line>
+              <line x1="56.4" y1="129.9" x2="-1.2" y2="116.2"></line>
+              <line x1="63.3" y1="124.1" x2="13.5" y2="103.9"></line>
+              <line x1="61.2" y1="130.7" x2="-3.2" y2="108.9"></line>
+            </g>
+
+            <!-- chrome bolt dots on the two open-end faces -->
+
+            <g fill="#dfe6ee" opacity="0.75">
+              <circle cx="59.3" cy="124.2" r="1.5"></circle>
+              <circle cx="56.6" cy="132.3" r="1.5"></circle>
+              <circle cx="61.8" cy="128.3" r="1.5"></circle>
+              <circle cx="301" cy="79.6" r="1.5"></circle>
+              <circle cx="298.3" cy="87.7" r="1.5"></circle>
+              <circle cx="303.5" cy="82.6" r="1.5"></circle>
+            </g>
+
+            <!-- the silver conduit: dim through the acrylic, bright in free air -->
+
+            <polyline points="354.4,100.1 301,82.8 162.1,37.6 92.2,96.8 92.2,131 118.8,108.5 118.8,119.5 95.5,139.2 59.4,127.4 5.6,109.9" fill="none" stroke="url(#connFlow)" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.3" filter="url(#connGlow)"></polyline>
+            <polyline points="354.4,100.1 301,82.8 162.1,37.6 92.2,96.8 92.2,131 118.8,108.5 118.8,119.5 95.5,139.2 59.4,127.4 5.6,109.9" fill="none" stroke="url(#connFlow)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.62"></polyline>
+            <polyline points="354.4,100.1 301,82.8" fill="none" stroke="url(#connFlow)" stroke-width="1.7" stroke-linecap="round" opacity="0.95" filter="url(#connGlow)"></polyline>
+            <polyline points="92.2,96.8 92.2,131 118.8,108.5" fill="none" stroke="url(#connFlow)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"></polyline>
+            <polyline points="59.4,127.4 5.6,109.9" fill="none" stroke="url(#connFlow)" stroke-width="1.7" stroke-linecap="round" opacity="0.95" filter="url(#connGlow)"></polyline>
+
+            <!-- warm / cool accent lines sitting in the acrylic air gaps -->
+
+            <line x1="35.9" y1="147.6" x2="210.6" y2="204.4" stroke="#ff7a2a" stroke-width="1.3" opacity="0.92" filter="url(#connGlow)"></line>
+            <line x1="281.3" y1="99.3" x2="164.2" y2="61.3" stroke="#5b8cff" stroke-width="1.2" opacity="0.85" filter="url(#connGlow)"></line>
+          </svg>
+          <p class="fallback-explain">The procedural rib maps, the satin column bank, the 7 s conduit loop and the clearance report are skipped in this static view. Everything on this page is local.</p>
+        </div>
+      </div>
+    </section>
+
+    <aside class="info" aria-label="Assembly, flow and studio controls">
+      <div class="panel-head">
+        <h2 class="panel-title">Assembly</h2>
+        <span class="panel-count">01 / 03</span>
+      </div>
+      <div class="swatch" aria-hidden="true"></div>
+      <p class="swatch-name">Satin + dark acrylic</p>
+      <p class="swatch-note">Ribbed silver body &middot; layered clear / dark glass &middot; warm + cool accents</p>
+
+      <dl class="specs">
+        <div class="spec-row"><dt>Satin</dt><dd id="spec-satin">&mdash;</dd></div>
+        <div class="spec-row"><dt>Flow clearance</dt><dd id="spec-flow-clearance">&mdash;</dd></div>
+        <div class="spec-row"><dt>Conduit</dt><dd id="spec-flow-length">&mdash;</dd></div>
+        <div class="spec-row"><dt>Blocks</dt><dd id="spec-blocks">&mdash;</dd></div>
+        <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">&mdash;</dd></div>
+        <div class="spec-row"><dt>Materials</dt><dd id="spec-materials">&mdash;</dd></div>
+      </dl>
+
+      <div class="panel-head panel-head--second">
+        <h2 class="panel-title">Flow</h2>
+        <span class="panel-count">02 / 03</span>
+      </div>
+      <div class="controls">
+        <button type="button" class="toggle" id="flow-toggle" aria-pressed="true" aria-keyshortcuts="Space">
+          Flow <span>ON</span>
+        </button>
+        <button type="button" class="quiet" id="reset" aria-keyshortcuts="R">Reset view <span aria-hidden="true">&#8599;</span></button>
+      </div>
+      <div class="flow-legend" aria-hidden="true">
+        <span class="legend-item"><i class="legend-dot legend-dot--orange"></i>Flow in</span>
+        <span class="legend-item"><i class="legend-dot legend-dot--blue"></i>Flow out</span>
+      </div>
+      <p class="hint" id="studio-status">Preparing the studio</p>
+
+      <div class="panel-head panel-head--second">
+        <h2 class="panel-title">Notes</h2>
+        <span class="panel-count">03 / 03</span>
+      </div>
+      <ul class="notes">
+        <li><span class="note-key">Interlock</span> Two right-angle plates nest 180&deg; in plan with a 34 px vertical clearance: the upper short arm crosses the lower long arm and vice versa. They never touch; two polished pads carry the upper plate.</li>
+        <li><span class="note-key">Conduit</span> One continuous 6 px radius tube runs in the 28 px light seam between the clear and dark glass caps, crosses the interlock void and leaves both open ends under the cap overhangs.</li>
+        <li><span class="note-key">Modes</span> Autoplay is a 7.0 s loop; frozen at phase 0.36 under <code>?still=1</code>, <code>?shot=1</code> and reduced motion. <code>?flow=0</code> pauses. Clamped delta, local assets only.</li>
+      </ul>
+    </aside>
+  </main>
+
+  <footer class="site-footer">
+    <p class="footer-note">Two interlocked L plates <span aria-hidden="true">&middot;</span> 7.0 s conduit loop <span aria-hidden="true">&middot;</span> three.js r151</p>
+    <p class="footer-note footer-note--dim">Local assets only <span aria-hidden="true">&middot;</span> no network requests</p>
+    <p class="footer-note footer-note--dim" id="footer-state">Connection crystal / 010 / 010</p>
+  </footer>
+
+  <div class="curtain" id="loading" role="status" aria-live="polite">
+    <div class="curtain-inner">
+      <span class="curtain-mark" aria-hidden="true"></span>
+      <span class="curtain-wordmark">TEKO</span>
+      <p class="curtain-title" id="loading-title">Forming the crystal</p>
+      <span class="curtain-line" aria-hidden="true"><i></i></span>
+      <p class="curtain-note">Satin bank &middot; interlock clearance &middot; silver conduit</p>
+    </div>
+  </div>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <span class="error-mark" aria-hidden="true">!</span>
+    <div class="error-body">
+      <strong>Preview error</strong>
+      <p id="error-text"></p>
+    </div>
+  </div>
+
+  <div class="sr-only" id="live-status" role="status" aria-live="polite"></div>
+  <pre id="qa-diag" hidden></pre>
+
+  <noscript>
+    <style>
+      .curtain, .studio, .site-footer, .stage-fallback, .error-banner { display: none !important; }
+      .noscript-panel { display: block; }
+    </style>
+    <section class="noscript-panel" aria-labelledby="noscript-title">
+      <div class="fallback-inner">
+        <p class="fallback-kicker">Static preview</p>
+        <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
+        <p class="fallback-message">This page builds the connection crystal with JavaScript and WebGL: two interlocked right-angle plates on satin columns, with one continuous silver conduit threading the acrylic air gap. Everything is local; enable JavaScript to see the animated three.js studio.</p>
+      </div>
+    </section>
+  </noscript>
+
+  <script>
+  /* Early QA capture: runs before any module so import/loading failures are recorded. */
+  (function () {
+    var qa = window.__TEKO_CONNECTION_QA = window.__TEKO_CONNECTION_QA || { errors: [], warnings: [], webgl: null };
+    function push(list, kind, message) {
+      try {
+        list.push(kind + ': ' + message);
+        if (list.length > 60) list.splice(0, list.length - 60);
+      } catch (err) { /* keep capture best-effort */ }
+    }
+    function describe(value) {
+      var text;
+      if (value && typeof value === 'object') {
+        if (value.message) text = String(value.message);
+        else if (value.isBufferGeometry) text = 'BufferGeometry';
+        else if (value.isMaterial) text = 'THREE.Material';
+        else if (value.isObject3D) text = 'THREE.Object3D';
+        else { try { text = JSON.stringify(value); } catch (err) { text = String(value); } }
+      } else {
+        text = String(value);
+      }
+      return text.length > 220 ? text.slice(0, 217) + '...' : text;
+    }
+    window.addEventListener('error', function (event) {
+      if (event && event.target && event.target !== window && event.target.tagName) {
+        var src = event.target.currentSrc || event.target.src || event.target.href || event.target.tagName;
+        push(qa.errors, 'resource', 'failed to load ' + src);
+        return;
+      }
+      var location = event && event.filename ? ' (' + event.filename + ':' + (event.lineno || 0) + ')' : '';
+      push(qa.errors, 'error', (event && event.message ? event.message : 'unknown error') + location);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+      push(qa.errors, 'unhandledrejection', describe(event && event.reason));
+    });
+    var nativeError = console.error.bind(console);
+    var nativeWarn = console.warn.bind(console);
+    console.error = function () {
+      push(qa.errors, 'console.error', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeError.apply(null, arguments);
+    };
+    console.warn = function () {
+      push(qa.warnings, 'console.warn', Array.prototype.map.call(arguments, describe).join(' '));
+      nativeWarn.apply(null, arguments);
+    };
+  })();
+  </script>
+  <script type="module" src="./src/connection-preview.js"></script>
+  <script>
+  /* Module-load safety net: if the module never boots (parse/import failure),
+     reveal the static poster instead of leaving the curtain up. */
+  (function () {
+    window.setTimeout(function () {
+      try {
+        var body = document.body;
+        if (!body || body.dataset.qaReady === '1' || body.dataset.fallback === '1') return;
+        var fallback = document.getElementById('fallback');
+        if (fallback) fallback.hidden = false;
+        body.dataset.fallback = '1';
+        body.dataset.qaFallback = '1';
+        var banner = document.getElementById('error-banner');
+        var text = document.getElementById('error-text');
+        if (banner && text) {
+          text.textContent = 'The interactive preview module could not start. A static poster of the connection crystal is shown.';
+          banner.hidden = false;
+        }
+        var curtain = document.getElementById('loading');
+        if (curtain) curtain.hidden = true;
+        var veil = document.getElementById('stage-veil');
+        if (veil) veil.hidden = true;
+      } catch (err) { /* best effort only */ }
+    }, 26000);
+  })();
+  </script>
+</body>
+</html>

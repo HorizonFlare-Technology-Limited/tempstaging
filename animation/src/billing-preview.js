@@ -1,26 +1,29 @@
 /**
- * tekoanimation — Billing documents preview controller (round 4, model v2).
+ * tekoanimation — Billing documents preview controller (round 5, model v3).
  *
  * Standalone collection page controller for `billing.html` (docs/billing-contract.md):
- * a dark editorial three.js studio showing SEVEN rounded-rect Revolut-style
- * paper sheets FACE DOWN in a horizontal stack above a satin pedestal. The camera
- * (fixed 45° three-quarter) sees the blank paper back of each sheet; the printed
- * artwork sits on the underside and, because the paper is translucent, the print
- * and the light from underneath read through the top surface. The satin material
- * is the columns deliverable's satin material (`loadColumnBank().materials.satin`
- * cloned, so it inherits the current satin grain + soft blurred reflection); the
- * sheets, their underside print maps and the per-treatment underlight glow cards
- * come from ./billing-model.js.
+ * a dark editorial three.js studio showing SEVEN rounded-rect paper sheets FACE DOWN
+ * in a horizontal stack above the COLUMNS DELIVERABLE'S SATIN COLUMN. The camera
+ * (fixed 45° three-quarter) sees the blank paper backs; each sheet carries:
+ *   - a paper face that is OPAQUE for the two white and two gold sheets and stays
+ *     translucent for the three grey-blue PCB sheets (round 5);
+ *   - ONE unified abstract text-mockup pattern (identical on every sheet; only the
+ *     ink tone differs) rendered as a SEPARATE floating layer a small offset ABOVE
+ *     the paper — not baked into the paper albedo;
+ *   - a treatment-tinted additive underlight glow card below the sheet.
+ * There is no readable text anywhere: no words, numbers, amounts, codes or logos,
+ * only abstract text-line bars, rules, dot fields and rounded chips.
  *
- * Three treatments bottom -> top (2 white / 2 gold / 3 PCB): white paper + black
- * abstract marks under a white underlight; white-to-gold radial paper + black and
- * light grey-blue marks under a gold underlight; light grey-blue PCB-pattern paper
- * with lighter same-tone marks under a cool underlight. No readable text, amounts
- * or logos are painted on any sheet — only abstract strokes, dot-matrix fields,
- * line/PCB-like traces and colour fields.
+ * Support: the columns deliverable's satin column instance
+ * (`createColumns(bank).columnsById['satin-large-long']`) is reused as the pedestal,
+ * rescaled to the billing footprint and deliberately run past the bottom of the
+ * stage (cropped) so the paper stack keeps its round-4 scale. The satin material is
+ * `loadColumnBank().materials.satin` cloned, so it inherits the current satin grain
+ * + the page's captured blurred studio reflection.
  *
  * Camera: fixed 45° three-quarter (azimuth 45°, elevation 19°), numerically fitted
- * to the expanded object at every stage aspect (1440x900 / 1200x900 / 390x844).
+ * to the expanded stack + the support's visible top band at every stage aspect
+ * (1440x900 / 1200x900 / 390x844). The off-frame column base is never framed.
  *
  * Animation: the condensed pile on the right unfolds upward (right -> left,
  * staggered, ease-in-out) ONCE when the stage enters the viewport (IO threshold
@@ -29,8 +32,9 @@
  * ?play=0 shows the condensed initial state (see docs/billing.md).
  *
  * Light from below: besides the per-sheet underlight cards owned by the model, the
- * studio adds one under-stack point light + a soft additive pool on the pedestal
- * top so the light source is visible around the stack (white bounce on the satin).
+ * studio adds one soft additive underlight pool on the support's top face so the
+ * light source reads in the gap under the stack. There is no point light (a close
+ * point light blew the satin support out to pure white).
  *
  * QA hook: window.__tekoBilling = { ready, errors, play(), replay(), debug() }
  * plus body[data-qa-*] attributes and the hidden #qa-diag JSON mirror.
@@ -39,7 +43,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
 import * as BillingModel from './billing-model.js';
 
-const VERSION = '2.0.0';
+const VERSION = '3.0.0';
 
 const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -48,6 +52,7 @@ const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefin
 const MODEL = BillingModel;
 const CAMERA = MODEL.CAMERA_SPEC;
 const SHEET_COUNT = MODEL.SHEET_COUNT;
+const SUPPORT = MODEL.SUPPORT_SPEC;
 
 // Columns material bank (read-only dependency; the satin material is cloned).
 const COLUMN_MODEL_URL = new URL('./columns-model.js', import.meta.url);
@@ -85,31 +90,22 @@ const LIGHTS = Object.freeze({
   rim: { color: 0xe4edf8, intensity: 2.4, position: [300, 640, -820], target: [0, 320, 0] },
   ambient: { color: 0x3a4552, intensity: 0.32 },
 });
-// Dark studio floor: an unlit radial "pool" fading to nothing (no hard plane
-// edge, contract B2) plus a baked soft contact shadow under the pedestal.
-const FLOOR = Object.freeze({
-  radius: 1500,
-  y: -1.2,
-  opacity: 0.55,
-  shadowWidth: 560,
-  shadowDepth: 380,
-  shadowY: 0.6,
-  shadowOpacity: 0.72,
-});
-// Round-4: light from below the stack. Each sheet carries its own
-// treatment-tinted additive underlight glow card (billing-model.js) — those are
-// the actual white/gold/cool light through the paper. The studio adds only a
-// soft additive pool where that light spills onto the satin pedestal top (the
-// visible source in the pedestal gap). Deliberately NO close point light: the
-// satin clone is metalness 1 / envMapIntensity 2.4 and a point light 26 px above
-// the plinth top blew the whole pedestal pure white (verified by isolation).
-// The pool is placed between the condensed pile and the expanded bottom sheet so
-// both animation states stay lit. No shadow maps, no network.
+// Round 5: the reused satin column IS the pedestal and it runs out of the bottom
+// of the stage, so there is no floor plane and no baked contact shadow any more —
+// a floor ellipse would intersect the column it is supposed to stand on. The stage
+// CSS aura is the only studio bed; the underlight pool stays on the support top.
+// Light from below the stack: each sheet carries its own treatment-tinted additive
+// underlight glow card (billing-model.js). The studio adds only a soft additive
+// pool where that light spills onto the satin column's top face. Deliberately NO
+// close point light: the satin clone is metalness 1 / envMapIntensity 2.4 and a
+// point light just above the support top blew the whole support pure white
+// (verified by isolation in round 4). The pool is placed between the condensed
+// pile and the expanded bottom sheet so both animation states stay lit.
 const UNDERLIGHT = Object.freeze({
   pool: Object.freeze({
     radius: 250,
     depthScale: 0.6,
-    y: 91.6,
+    y: MODEL.SUPPORT_SPEC.topY + 1.6,
     color: 0xfff3e4,
     opacity: 0.16,
   }),
@@ -127,6 +123,18 @@ const SATIN_REFLECTION = Object.freeze({
   far: 12000,
   centerY: 150,
   accents: Object.freeze([
+    // Broad neutral studio fill behind the reused column (reflection only): the
+    // column is metalness ~1, so without a mid-grey backdrop its large vertical
+    // faces reflect the black stage and read as a dark slab. These panels keep the
+    // columns-satin grey/grain readable at the thicker billing scale.
+    Object.freeze({ position: [-2400, 520, -2000], size: [3400, 2000], color: 0x8fa0b4, intensity: 1.2 }),
+    Object.freeze({ position: [-1500, 260, 1800], size: [2200, 1200], color: 0x7f8fa2, intensity: 0.85 }),
+    // Low "floor bounce" panels: a vertical face seen from the 19° camera reflects
+    // DOWNWARD (the ground direction), so the big satin faces only light up with
+    // something below them. Reflection-only, above the stage floor — nothing here
+    // is visible in the rendered scene.
+    Object.freeze({ position: [2400, -900, -1500], size: [3200, 1600], color: 0x8a9aad, intensity: 0.95 }),
+    Object.freeze({ position: [-1900, -900, 2100], size: [3200, 1600], color: 0x8090a3, intensity: 0.85 }),
     // Warm accent reflected off the pedestal's front/right faces.
     Object.freeze({ position: [1500, 620, 900], size: [900, 520], color: 0xff7a2a, intensity: 3.2 }),
     // Cool steel accent from the left.
@@ -218,9 +226,13 @@ const state = {
   booting: true,
   webgl: null,
   bank: null,
+  columns: null,
+  columnInstance: null,
+  columnGeometry: null,
   model: null,
   studio: null,
   satinSource: 'unknown',
+  supportSource: 'unknown',
   satinTilePx: SATIN_TILE_FALLBACK,
   still: urlParams.get('still') === '1',
   shot: urlParams.get('shot') === '1',
@@ -293,7 +305,9 @@ function initDom() {
   dom.specSheetSize = byId('spec-sheet-size');
   dom.specTreatments = byId('spec-treatments');
   dom.specUnderlight = byId('spec-underlight');
-  dom.specArtwork = byId('spec-artwork');
+  dom.specFaces = byId('spec-faces');
+  dom.specMockup = byId('spec-mockup');
+  dom.specSupport = byId('spec-support');
   dom.specCamera = byId('spec-camera');
   dom.specAnimation = byId('spec-animation');
   dom.assetNote = byId('asset-note');
@@ -351,9 +365,25 @@ function syncObjectFacts() {
   if (dom.specUnderlight && MODEL.TREATMENTS) {
     dom.specUnderlight.textContent = MODEL.TREATMENTS.map((treatment) => treatment.lightId).join(' · ');
   }
-  if (dom.specArtwork) dom.specArtwork.textContent = 'abstract print · underside · no text';
+  if (dom.specFaces && Array.isArray(model.sheets)) {
+    const opaque = model.sheets.filter((sheet) => sheet.face === 'opaque').length;
+    const translucent = model.sheets.filter((sheet) => sheet.face === 'translucent').length;
+    dom.specFaces.textContent =
+      (opaque ? model.sheets.filter((sheet) => sheet.face === 'opaque').map((sheet) => sheet.treatment).filter((value, index, list) => list.indexOf(value) === index).join(' + ') + ' opaque' : 'none opaque') +
+      ' · ' + translucent + ' PCB translucent';
+  }
+  if (dom.specMockup && model.mockup) {
+    dom.specMockup.textContent = 'unified · floating +' + model.mockup.lift + ' px · no text';
+  }
   if (dom.specSatinSource) {
-    dom.specSatinSource.textContent = state.satinSource === 'columns' ? 'Columns satin' : 'Satin (numeric fallback)';
+    dom.specSatinSource.textContent = state.supportSource === 'columns-satin-column' ? 'Columns satin column' : 'None (columns unavailable)';
+  }
+  if (dom.specSupport && model.supportInfo) {
+    const scale = model.supportInfo.scale;
+    dom.specSupport.textContent =
+      model.supportInfo.columnId + ' · ×' + Number(scale.x).toFixed(2) + ' / ×' + Number(scale.z).toFixed(2) + ' · cropped';
+  } else if (dom.specSupport) {
+    dom.specSupport.textContent = 'none · paper stack floats';
   }
   if (dom.specSatinMetalness && values.metalness !== null) dom.specSatinMetalness.textContent = Number(values.metalness).toFixed(2);
   if (dom.specSatinRoughness && values.roughness !== null) dom.specSatinRoughness.textContent = Number(values.roughness).toFixed(2);
@@ -367,9 +397,9 @@ function syncObjectFacts() {
   }
   if (dom.assetNote) {
     dom.assetNote.textContent =
-      state.satinSource === 'columns'
-        ? 'Face-down paper sheets · underside print · satin from columns-model.js · no network'
-        : 'Face-down paper sheets · columns satin unavailable (numeric fallback) · no network';
+      state.supportSource === 'columns-satin-column'
+        ? 'Seven paper sheets · floating text mockup · columns satin column · no network'
+        : 'Seven paper sheets · floating text mockup · columns satin unavailable (no support) · no network';
   }
 }
 
@@ -403,6 +433,16 @@ function publishState() {
   }
   if (body.dataset.qaWarmSheet !== undefined) delete body.dataset.qaWarmSheet;
   body.dataset.qaSatin = state.satinSource;
+  body.dataset.qaSupport = state.supportSource;
+  if (state.model && Array.isArray(state.model.sheets)) {
+    body.dataset.qaMockup = state.model.mockup && state.model.mockup.unified ? 'unified' : 'unknown';
+    body.dataset.qaMockupLift = String(round(state.model.mockup ? state.model.mockup.lift : 0, 2));
+    body.dataset.qaFaces = state.model.sheets.map((sheet) => sheet.face || 'unknown').join(',');
+  } else {
+    body.dataset.qaMockup = 'unknown';
+    body.dataset.qaMockupLift = '';
+    body.dataset.qaFaces = '';
+  }
   body.dataset.qaCamera = camera ? round(camera.azimuthDeg, 1) + ',' + round(camera.elevationDeg, 1) : '';
   body.dataset.qaDistance = camera ? String(round(camera.distance, 1)) : '';
   const objectRect = studio ? studio.getObjectScreenRect() : null;
@@ -436,8 +476,6 @@ class BillingStudio {
     this.scene = null;
     this.camera = null;
     this.envRT = null;
-    this.floor = null;
-    this.contactShadow = null;
     this.lights = {};
     this.underlightPool = null;
     this.underlightAnchor = null;
@@ -533,13 +571,11 @@ class BillingStudio {
     scene.add(ambient);
     this.lights.ambient = ambient;
 
-    this.buildFloor();
-    this.buildContactShadow();
     this.buildUnderlight();
 
     scene.add(this.model.root);
-    // Capture the satin pedestal's blurred studio reflection while the stack is
-    // in its final expanded pose (the deterministic / captured state).
+    // Capture the satin column's blurred studio reflection while the stack is in
+    // its final expanded pose (the deterministic / captured state).
     this.captureSatinReflection();
     this.applyStaticPose('condensed');
 
@@ -586,102 +622,18 @@ class BillingStudio {
     pmremGenerator.dispose();
   }
 
-  /** Unlit radial floor pool: no plane edge, just a soft studio bed. */
-  buildFloor() {
-    const size = 512;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, size, size);
-      const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-      gradient.addColorStop(0, 'rgba(150, 172, 204, 0.22)');
-      gradient.addColorStop(0.36, 'rgba(112, 134, 170, 0.12)');
-      gradient.addColorStop(0.68, 'rgba(64, 80, 108, 0.04)');
-      gradient.addColorStop(1, 'rgba(8, 9, 11, 0)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, size, size);
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.name = 'billing-floor-pool';
-      texture.encoding = THREE.sRGBEncoding;
-      texture.anisotropy = 4;
-      texture.needsUpdate = true;
-      texture.userData = { role: 'studio-floor-pool', procedural: true, local: true };
-      const geometry = new THREE.CircleGeometry(FLOOR.radius, 96);
-      const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        depthWrite: false,
-        toneMapped: false,
-        opacity: FLOOR.opacity,
-      });
-      const floor = new THREE.Mesh(geometry, material);
-      floor.name = 'studio-floor-pool';
-      floor.rotation.x = -Math.PI / 2;
-      floor.position.y = FLOOR.y;
-      floor.renderOrder = 0;
-      this.scene.add(floor);
-      this.floor = floor;
-    }
-  }
-
-  /** Baked soft contact shadow under the pedestal (deterministic, no shadow map). */
-  buildContactShadow() {
-    const width = 512;
-    const height = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, width, height);
-    ctx.save();
-    ctx.translate(width / 2, height / 2);
-    ctx.scale(1, height / width);
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, width / 2);
-    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.52)');
-    gradient.addColorStop(0.42, 'rgba(0, 0, 0, 0.32)');
-    gradient.addColorStop(0.74, 'rgba(0, 0, 0, 0.1)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, width / 2, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.name = 'billing-contact-shadow';
-    texture.anisotropy = 4;
-    texture.needsUpdate = true;
-    texture.userData = { role: 'contact-shadow', procedural: true, local: true };
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      depthWrite: false,
-      toneMapped: false,
-      opacity: FLOOR.shadowOpacity,
-    });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR.shadowWidth, FLOOR.shadowDepth), material);
-    mesh.name = 'studio-contact-shadow';
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(MODEL.PEDESTAL_SPEC.centerX, FLOOR.shadowY, MODEL.PEDESTAL_SPEC.centerZ);
-    mesh.renderOrder = 1;
-    this.scene.add(mesh);
-    this.contactShadow = mesh;
-  }
-
   /**
-   * Round-4 light from below the stack: a soft additive pool on the pedestal top.
-   * The per-sheet white/gold/cool glow cards (and therefore the actual light
-   * through the paper) are owned by the model; this pool only shows that light
-   * spilling onto the satin plinth so the source reads in the pedestal gap. No
-   * point light on purpose — see the UNDERLIGHT comment (satin blow-out).
+   * Round-5 light from below the stack: a soft additive pool on the reused satin
+   * column's top face. The per-sheet white/gold/cool glow cards are owned by the
+   * model; this pool only shows that light spilling onto the support so the source
+   * reads in the gap under the paper stack. No point light on purpose — see the
+   * UNDERLIGHT comment (satin blow-out).
    */
   buildUnderlight() {
     const model = this.model;
     if (!model || !Array.isArray(model.sheets) || !model.sheets.length) return null;
     const first = model.sheets[0];
-    const expanded = first && first.expanded ? first.expanded.position : { x: MODEL.PEDESTAL_SPEC.centerX, z: MODEL.PEDESTAL_SPEC.centerZ };
+    const expanded = first && first.expanded ? first.expanded.position : { x: SUPPORT.centerX, z: SUPPORT.centerZ };
     const condensed = first && first.condensed ? first.condensed.position : expanded;
     const x = (expanded.x + condensed.x) / 2;
     const z = (expanded.z + condensed.z) / 2;
@@ -758,19 +710,19 @@ class BillingStudio {
   /**
    * Deterministic satin reflection capture, the same technique the columns
    * preview uses for its satin material: render a cube map of the studio from
-   * just above the pedestal (sheet colours above, dark stage around, plus a few
-   * reflection-only warm/cool accent panels), PMREM-filter it and assign it as
-   * the cloned satin material's envMap. The pedestal then shows the current
-   * columns satin grain over a soft studio reflection instead of the bright
+   * just above the reused satin column's top face (sheet colours above, dark stage
+   * around, plus a few reflection-only warm/cool accent panels), PMREM-filter it
+   * and assign it as the cloned satin material's envMap. The support then shows the
+   * current columns satin grain over a soft studio reflection instead of the bright
    * room environment (which read as hammered white metal in the first capture).
    */
   captureSatinReflection() {
     const satin = this.model && this.model.satin ? this.model.satin.material : null;
     if (!satin || this.satinReflectionCaptured || !this.renderer || !this.scene) return false;
     const center = new THREE.Vector3(
-      MODEL.PEDESTAL_SPEC.centerX,
+      SUPPORT.centerX,
       SATIN_REFLECTION.centerY,
-      MODEL.PEDESTAL_SPEC.centerZ,
+      SUPPORT.centerZ,
     );
     const group = new THREE.Group();
     group.name = 'satin-reflection-accents';
@@ -794,25 +746,21 @@ class BillingStudio {
     this.satinReflectionAccents = group;
 
     const hidden = [];
-    const pedestal = this.model.pedestal;
-    if (pedestal && pedestal.visible) {
-      pedestal.visible = false;
-      hidden.push(pedestal);
-    }
-    if (this.contactShadow && this.contactShadow.visible) {
-      this.contactShadow.visible = false;
-      hidden.push(this.contactShadow);
+    const support = this.model.support || this.model.pedestal;
+    if (support && support.visible) {
+      support.visible = false;
+      hidden.push(support);
     }
     if (this.underlightPool && this.underlightPool.visible) {
       this.underlightPool.visible = false;
       hidden.push(this.underlightPool);
     }
-    // The round-4 stack is now a horizontal stack that starts just above the
-    // pedestal, so the CubeCamera (centerY 150) sits INSIDE it and captures the
-    // bright white paper + additive glow from close range; the satin envMap then
-    // reads as a blown-out white plinth. Hide the whole sheet stack for the cube
-    // capture (the reflection-only warm/cool accents remain) so the satin reads
-    // as the columns-style blurred studio reflection, not a white box.
+    // The stack starts just above the support, so the CubeCamera (centerY 150)
+    // sits INSIDE it and would capture the bright paper + additive glow from close
+    // range; the satin envMap would then read as a blown-out white support. Hide
+    // the whole sheet stack for the cube capture (the reflection-only warm/cool
+    // accents remain) so the satin reads as the columns-style blurred studio
+    // reflection, not a white box.
     if (this.model && this.model.stack && this.model.stack.visible) {
       this.model.stack.visible = false;
       hidden.push(this.model.stack);
@@ -873,14 +821,13 @@ class BillingStudio {
   }
 
   /**
-   * Composite order for the translucent sheet layers. The round-4 stack is a
-   * flat pile seen from above, so the visible stacking order is the sheet index
-   * (bottom sheet first, top sheet last), NOT the camera-origin distance sort
-   * used by the v1 vertical fan (with the camera above a horizontal stack the
-   * far/top sheet can be nearer to the camera origin while still occluding the
-   * sheets below — the origin sort misordered the layers). Model v2 exposes
-   * `sheet.layers` (glow → print → paper → rim); the legacy v1 pair
-   * (`surface` + `rim`) is still supported.
+   * Composite order for the sheet layers. The stack is a flat pile seen from
+   * above, so the visible stacking order is the sheet index (bottom sheet first,
+   * top sheet last), NOT a camera-origin distance sort (with the camera above a
+   * horizontal stack the far/top sheet can be nearer to the camera origin while
+   * still occluding the sheets below — the origin sort misordered the layers).
+   * Model v3 exposes `sheet.layers` (glow → paper → shadow → mockup → rim); the
+   * legacy v1 pair (`surface` + `rim`) is still supported.
    */
   updateSheetRenderOrder() {
     if (!this.camera || !this.model) return;
@@ -1280,9 +1227,11 @@ class BillingStudio {
 
   /**
    * Screen-space bounding box of the *object only* (all seven sheets at their
-   * current poses + the pedestal), in stage-local pixels. This lets a capture
-   * harness measure entrance/unfold/fit without including the static stage
-   * caption / eyebrow / aura furniture that a plain luma-mask bbox would pick up.
+   * current poses, the floating mockup layer and the support's visible top band),
+   * in stage-local pixels. This lets a capture harness measure entrance/unfold/fit
+   * without including the static stage caption / eyebrow / aura furniture that a
+   * plain luma-mask bbox would pick up. The support's off-frame lower part is
+   * excluded exactly like the camera fit does.
    */
   getObjectScreenRect() {
     if (!this.camera || !this.model) return null;
@@ -1306,6 +1255,7 @@ class BillingStudio {
     const halfW = MODEL.SHEET_SPEC.width / 2;
     const halfH = MODEL.SHEET_SPEC.height / 2;
     const halfT = MODEL.SHEET_SPEC.thickness / 2;
+    const mockupLift = MODEL.LAYER_SPEC.mockupLift;
     for (const sheet of this.model.sheets) {
       sheet.mesh.updateMatrixWorld(true);
       for (const sx of [-halfW, halfW]) {
@@ -1323,14 +1273,32 @@ class BillingStudio {
         sheet.mesh.localToWorld(world);
         include(world);
       }
+      // the floating mockup layer (lifted above the paper, so it can extend the
+      // top of the silhouette by a few px)
+      for (const sx of [-halfW, halfW]) {
+        for (const sy of [-halfH, halfH]) {
+          world.set(sx, sy, mockupLift);
+          sheet.mesh.localToWorld(world);
+          include(world);
+        }
+      }
     }
-    const pedestal = this.model.pedestal;
-    const positions = pedestal.geometry.getAttribute('position');
-    if (positions) {
-      pedestal.updateMatrixWorld(true);
-      for (let index = 0; index < positions.count; index += 2) {
-        world.set(positions.getX(index), positions.getY(index), positions.getZ(index)).applyMatrix4(pedestal.matrixWorld);
-        include(world);
+    const support = this.model.support || this.model.pedestal;
+    if (support && support.geometry) {
+      support.updateMatrixWorld(true);
+      const positions = support.geometry.getAttribute('position');
+      if (positions) {
+        for (let index = 0; index < positions.count; index += 2) {
+          world.set(positions.getX(index), positions.getY(index), positions.getZ(index)).applyMatrix4(support.matrixWorld);
+          if (world.y < SUPPORT.cropY) continue;
+          include(world);
+        }
+      }
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          world.set(SUPPORT.centerX + (sx * SUPPORT.width) / 2, SUPPORT.cropY, SUPPORT.centerZ + (sz * SUPPORT.depth) / 2);
+          include(world);
+        }
       }
     }
     if (!Number.isFinite(minX)) return null;
@@ -1356,7 +1324,8 @@ class BillingStudio {
     return this.model.sheets.map((sheet) => {
       const materials = sheet.materials || {};
       const paper = materials.paper || materials.face || null;
-      const print = materials.print || null;
+      const mockup = materials.mockup || null;
+      const shadow = materials.shadow || null;
       const glow = materials.glow || null;
       const edge = materials.edge || null;
       const layers = Array.isArray(sheet.layers)
@@ -1374,6 +1343,9 @@ class BillingStudio {
         group: sheet.group || sheet.treatment || sheet.tone || null,
         label: sheet.label,
         code: sheet.code,
+        // Round 5: white/gold paper faces are opaque, PCB stays translucent.
+        face: sheet.face || (paper && paper.userData ? paper.userData.face : null),
+        ink: sheet.ink || null,
         underlight: sheet.underlight || (glow && glow.color && glow.color.getHexString ? '#' + glow.color.getHexString() : null),
         expanded: {
           position: { ...sheet.expanded.position },
@@ -1395,9 +1367,9 @@ class BillingStudio {
             z: round(radToDeg(sheet.mesh.rotation.z), 3),
           },
         },
-        // Face-down construction: paper = the blank back the camera sees,
-        // print = the underside artwork seen through it, glow = the underlight
-        // card below the print, edge = the thin bright rim.
+        // Face-down construction: paper = the top face the camera sees (opaque or
+        // translucent), mockup = the ONE unified floating text-mockup layer lifted
+        // above it, glow = the underlight card below, edge = the thin bright rim.
         material: paper
           ? {
               transparent: Boolean(paper.transparent),
@@ -1406,8 +1378,33 @@ class BillingStudio {
               metalness: round(paper.metalness, 4),
               envMapIntensity: round(paper.envMapIntensity, 4),
               hasMap: Boolean(paper.map),
+              depthWrite: Boolean(paper.depthWrite),
               emissiveIntensity: round(paper.emissiveIntensity, 3),
               side: paper.side,
+              face: sheet.face || null,
+              opaque: sheet.face === 'opaque',
+            }
+          : null,
+        mockup: mockup
+          ? {
+              unified: true,
+              floating: true,
+              lift: round(sheet.mockupLift || 0, 3),
+              map: Boolean(mockup.map),
+              transparent: Boolean(mockup.transparent),
+              opacity: round(mockup.opacity, 4),
+              side: mockup.side,
+              depthWrite: Boolean(mockup.depthWrite),
+              color: mockup.color && typeof mockup.color.getHexString === 'function' ? '#' + mockup.color.getHexString() : null,
+              ink: sheet.ink || null,
+              shadow: shadow
+                ? {
+                    map: Boolean(shadow.map),
+                    blurred: (shadow.userData && shadow.userData.blurred) || null,
+                    opacity: round(shadow.opacity, 4),
+                    lift: (shadow.userData && shadow.userData.lift) || null,
+                  }
+                : null,
             }
           : null,
         layers: {
@@ -1415,20 +1412,35 @@ class BillingStudio {
             ? {
                 transparent: Boolean(paper.transparent),
                 opacity: round(paper.opacity, 4),
+                depthWrite: Boolean(paper.depthWrite),
                 roughness: round(paper.roughness, 4),
                 metalness: round(paper.metalness, 4),
                 map: Boolean(paper.map),
                 side: paper.side,
+                face: sheet.face || null,
               }
             : null,
-          print: print
+          mockup: mockup
             ? {
-                map: Boolean(print.map),
-                transparent: Boolean(print.transparent),
-                opacity: round(print.opacity, 4),
-                side: print.side,
-                depthWrite: Boolean(print.depthWrite),
-                faceDown: print.side === THREE.BackSide,
+                map: Boolean(mockup.map),
+                transparent: Boolean(mockup.transparent),
+                opacity: round(mockup.opacity, 4),
+                side: mockup.side,
+                depthWrite: Boolean(mockup.depthWrite),
+                unified: true,
+                floating: true,
+                lift: round(sheet.mockupLift || 0, 3),
+                color: mockup.color && typeof mockup.color.getHexString === 'function' ? '#' + mockup.color.getHexString() : null,
+              }
+            : null,
+          shadow: shadow
+            ? {
+                map: Boolean(shadow.map),
+                transparent: Boolean(shadow.transparent),
+                opacity: round(shadow.opacity, 4),
+                side: shadow.side,
+                depthWrite: Boolean(shadow.depthWrite),
+                blurred: (shadow.userData && shadow.userData.blurred) || null,
               }
             : null,
           glow: glow
@@ -1476,20 +1488,6 @@ class BillingStudio {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
-    }
-    if (this.floor) {
-      this.scene.remove(this.floor);
-      this.floor.geometry.dispose();
-      if (this.floor.material.map) this.floor.material.map.dispose();
-      this.floor.material.dispose();
-      this.floor = null;
-    }
-    if (this.contactShadow) {
-      this.scene.remove(this.contactShadow);
-      this.contactShadow.geometry.dispose();
-      if (this.contactShadow.material.map) this.contactShadow.material.map.dispose();
-      this.contactShadow.material.dispose();
-      this.contactShadow = null;
     }
     if (this.underlightPool) {
       this.scene.remove(this.underlightPool);
@@ -1612,6 +1610,46 @@ function buildDebug() {
     goldStartIndex: Number.isFinite(MODEL.GOLD_START_INDEX) ? MODEL.GOLD_START_INDEX : null,
     // Legacy alias kept for older capture scripts; points at the first gold sheet.
     warmSheetIndex: Number.isFinite(MODEL.WARM_SHEET_INDEX) ? MODEL.WARM_SHEET_INDEX : null,
+    // Round 5: ONE unified text mockup shared by all seven sheets, rendered as a
+    // separate floating layer above each paper face (never paper albedo).
+    mockup: state.model
+      ? {
+          unified: Boolean(state.model.mockup && state.model.mockup.unified),
+          floating: Boolean(state.model.mockup && state.model.mockup.floating),
+          detached: Boolean(state.model.mockup && state.model.mockup.detached),
+          textureCount: state.model.mockup ? state.model.mockup.textureCount : 0,
+          textureUuid: state.model.mockup && state.model.mockup.texture ? state.model.mockup.texture.uuid : null,
+          shadowTextureCount: state.model.mockup ? state.model.mockup.shadowTextureCount : 0,
+          shadowTextureUuid: state.model.mockup && state.model.mockup.shadowTexture ? state.model.mockup.shadowTexture.uuid : null,
+          shadow: state.model.mockup ? state.model.mockup.shadow : null,
+          sheetCount: state.model.mockup ? state.model.mockup.sheetCount : 0,
+          lift: state.model.mockup ? state.model.mockup.lift : null,
+          ink: MODEL.MOCKUP_SPEC.ink,
+          spec: state.model.mockup ? state.model.mockup.spec : null,
+          shadowSpec: state.model.mockup ? state.model.mockup.shadowSpec : null,
+        }
+      : null,
+    // Round 5 paper-face contract: white/gold opaque, PCB translucent.
+    faces: state.model
+      ? {
+          paperFace: MODEL.PAPER_FACE,
+          perSheet: state.model.sheets.map((sheet) => ({ id: sheet.id, treatment: sheet.treatment, face: sheet.face })),
+          opaque: state.model.sheets.filter((sheet) => sheet.face === 'opaque').map((sheet) => sheet.id),
+          translucent: state.model.sheets.filter((sheet) => sheet.face === 'translucent').map((sheet) => sheet.id),
+        }
+      : null,
+    // Round 5 support: the columns deliverable's satin column instance, reused.
+    support: state.model && state.model.supportInfo
+      ? {
+          ...state.model.supportInfo,
+          meshName: state.model.supportInfo.meshName,
+          fitCropY: state.model.fitCropY,
+          fitPoints: state.model.fitPoints && state.model.fitPoints.expanded ? state.model.fitPoints.expanded.length / 3 : 0,
+          fullBounds: state.model.supportBounds,
+        }
+      : state.model
+        ? { reused: false, source: 'none', note: 'columns satin column unavailable; stack rendered without support' }
+        : null,
     stackExpanded: Boolean(studio && studio.expanded),
     animation: studio
       ? studio.getAnimationDebug()
@@ -1652,7 +1690,8 @@ function buildDebug() {
                 : 'scene.environment',
               tilePx: state.model.satin.tilePx,
               uvDensityScale: MODEL.UV_DENSITY_SCALE,
-              pedestalBounds: MODEL.PEDESTAL_SPEC,
+              supportSpec: MODEL.SUPPORT_SPEC,
+              reusedColumnMesh: state.columnInstance ? state.columnInstance.uuid : null,
               reflection: {
                 captured: Boolean(state.studio && state.studio.satinReflectionCaptured),
                 cubeSize: SATIN_REFLECTION.cubeSize,
@@ -1668,8 +1707,8 @@ function buildDebug() {
             treatment: sheet.treatment,
             group: sheet.group,
             underlight: sheet.underlight,
-            // Flat alias of the paper (blank back) material for old capture
-            // scripts; layers.paper/print/glow/edge carry the full detail.
+            // Flat alias of the paper material for old capture scripts;
+            // layers.paper/shadow/mockup/glow/edge carry the full detail.
             transparent: sheet.material ? sheet.material.transparent : null,
             opacity: sheet.material ? sheet.material.opacity : null,
             roughness: sheet.material ? sheet.material.roughness : null,
@@ -1683,7 +1722,10 @@ function buildDebug() {
     model: {
       version: MODEL.MODEL_VERSION,
       sheetSpec: MODEL.SHEET_SPEC,
-      pedestalSpec: MODEL.PEDESTAL_SPEC,
+      layerSpec: MODEL.LAYER_SPEC,
+      supportSpec: MODEL.SUPPORT_SPEC,
+      mockupSpec: MODEL.MOCKUP_SPEC,
+      paperFace: MODEL.PAPER_FACE,
       cameraSpec: CAMERA,
       animationSpec: MODEL.ANIMATION_SPEC,
       layout: MODEL.LAYOUT,
@@ -1694,12 +1736,15 @@ function buildDebug() {
     },
     objects: studio
       ? {
-          pedestal: 1,
+          support: state.model && state.model.support ? 1 : 0,
+          // Legacy alias: the support column is the pedestal.
+          pedestal: state.model && state.model.support ? 1 : 0,
           sheets: SHEET_COUNT,
           sheetSurfaces: SHEET_COUNT,
           sheetRims: SHEET_COUNT,
-          sheetPrintLayers: SHEET_COUNT,
+          sheetMockupLayers: SHEET_COUNT,
           sheetGlowLayers: SHEET_COUNT,
+          floatingMockupLayers: SHEET_COUNT,
           lights: {
             directional: 3,
             ambient: 1,
@@ -1940,11 +1985,14 @@ async function waitForFonts() {
 /* -------------------------------------------------------------------- boot */
 
 async function loadColumnsBank() {
-  curtainProgress(0.1, 'Loading satin material', '0 / 0');
+  curtainProgress(0.1, 'Loading columns satin', '0 / 0');
   try {
     const columnModule = await import(COLUMN_MODEL_URL.href);
     if (!columnModule || typeof columnModule.loadColumnBank !== 'function') {
       throw new Error('columns-model.js did not expose loadColumnBank()');
+    }
+    if (typeof columnModule.createColumns !== 'function') {
+      throw new Error('columns-model.js did not expose createColumns()');
     }
     let lastError = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -1954,7 +2002,7 @@ async function loadColumnsBank() {
           onProgress: (loaded, total) => {
             const safeTotal = Number(total) || 0;
             const ratio = safeTotal > 0 ? clamp(loaded / safeTotal, 0, 1) : 0;
-            curtainProgress(0.1 + ratio * 0.55, 'Loading satin material', loaded + ' / ' + (safeTotal || '—'));
+            curtainProgress(0.1 + ratio * 0.5, 'Loading columns satin', loaded + ' / ' + (safeTotal || '—'));
           },
         });
         state.bank = bank;
@@ -1962,20 +2010,43 @@ async function loadColumnsBank() {
         if (!satin) throw new Error('columns bank has no satin material');
         state.satinSource = 'columns';
         state.satinTilePx = Number(bank.tilePx && bank.tilePx.satin) > 0 ? Number(bank.tilePx.satin) : SATIN_TILE_FALLBACK;
+
+        // Round 5: instantiate the columns deliverable and REUSE one satin column
+        // instance as the billing pedestal. The other 26 columns are never placed in
+        // the billing scene, so their geometries are disposed immediately (the
+        // extracted column's geometry is kept and disposed on pagehide).
+        curtainProgress(0.78, 'Reusing the satin column', '');
+        const columns = columnModule.createColumns(bank, { quality: 'hero' });
+        const supportId = SUPPORT.columnId;
+        const picked = (columns.columnsById && columns.columnsById[supportId])
+          || columns.columns.find((column) => column && column.spec && column.spec.material === 'satin');
+        if (!picked || !picked.mesh) throw new Error('columns model exposed no satin column to reuse');
+        for (const column of columns.columns) {
+          if (column === picked) continue;
+          if (column.mesh && column.mesh.parent) column.mesh.parent.remove(column.mesh);
+          if (column.mesh && column.mesh.geometry) column.mesh.geometry.dispose();
+        }
+        state.columns = columns;
+        state.columnInstance = picked.mesh;
+        state.columnGeometry = picked.mesh.geometry;
+        state.supportSource = 'columns-satin-column';
         return satin;
       } catch (error) {
         lastError = error;
         if (attempt === 0) {
-          pushWarning('columns satin load failed, retrying once: ' + errorMessage(error));
+          pushWarning('columns satin/column load failed, retrying once: ' + errorMessage(error));
           await new Promise((resolve) => window.setTimeout(resolve, 350));
         }
       }
     }
     if (lastError) throw lastError;
   } catch (error) {
-    pushWarning('columns satin material unavailable (' + errorMessage(error) + '); using the numeric satin fallback material');
+    pushWarning(
+      'columns satin column unavailable (' + errorMessage(error) + '); the paper stack renders WITHOUT the reused satin column support (no pedestal geometry is built by the billing model)',
+    );
   }
   state.satinSource = 'fallback';
+  state.supportSource = 'none';
   state.satinTilePx = SATIN_TILE_FALLBACK;
   return null;
 }
@@ -1992,6 +2063,7 @@ async function boot() {
   dom.body.dataset.qaAnimation = state.playParam === '0' ? 'condensed' : 'intro';
   dom.body.dataset.qaExpanded = '0';
   dom.body.dataset.qaSatin = 'unknown';
+  dom.body.dataset.qaSupport = 'unknown';
   if (state.still) dom.body.dataset.still = '1';
   if (state.shot) dom.body.dataset.shot = '1';
   if (state.qaMode) dom.body.dataset.qaMode = '1';
@@ -2020,6 +2092,7 @@ async function boot() {
     model = MODEL.createBillingModel({
       satinMaterial: satin,
       satinTilePx: state.satinTilePx,
+      columnInstance: state.columnInstance,
       quality: 'hero',
     });
     state.model = model;
@@ -2153,6 +2226,19 @@ function main() {
       }
       state.model = null;
     }
+    // The reused satin column geometry is owned by the page's columns instance
+    // (createColumns), not by the billing model, so it is disposed here. The
+    // other 26 column geometries were already disposed right after extraction.
+    if (state.columnGeometry) {
+      try {
+        state.columnGeometry.dispose();
+      } catch (error) {
+        /* best effort */
+      }
+      state.columnGeometry = null;
+    }
+    state.columnInstance = null;
+    state.columns = null;
     if (state.bank && typeof state.bank.dispose === 'function') {
       try {
         state.bank.dispose();

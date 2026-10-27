@@ -957,9 +957,9 @@
       638
     ],
     "world": {
-      "bevel": 0.042,
+      "bevel": 0.016,
       "cornerRadius": 0.122971,
-      "filletDepth": 0.021,
+      "filletDepth": 0.007,
       "height": 2.30028,
       "pixelsPerWorldUnit": 276.488095,
       "thickness": 0.06,
@@ -1027,8 +1027,8 @@
   },
   "finish": "sleek",
   "geometry": {
-    "bevel": 0.042,
-    "filletDepth": 0.021,
+    "bevel": 0.016,
+    "filletDepth": 0.007,
     "note": "front/back plates are inset by bevel; elliptical round-over of filletDepth connects them to the vertical edge band at the full silhouette (see src/card-model.js and docs/card-model.md)",
     "thickness": 0.06
   },
@@ -1436,16 +1436,23 @@
     }
   ],
   "tool": "tools/prepare-card-assets.py",
-  "toolVersion": "2.5.0",
+  "toolVersion": "2.6.0",
   "tuning": {
     "backEnvMapIntensity": 0.32,
     "backRoughness": 0.47,
     "backSteelBaseSrgb": 114.0,
-    "bevel": 0.042,
+    "bevel": 0.016,
     "cornerSegments": 40,
-    "edgeClearcoat": 0.8,
-    "edgeEnvMapIntensity": 2.0,
-    "edgeRoughness": 0.1,
+    "edgeClearcoat": 0.42,
+    "edgeClearcoatRoughness": 0.06,
+    "edgeEnvMapIntensity": {
+      "dark": 1.35,
+      "light": 1.45
+    },
+    "edgeMaterial": "mirror-chrome",
+    "edgeMetalness": 1.0,
+    "edgeNormalScale": 0,
+    "edgeRoughness": 0.04,
     "filletSegments": 22,
     "frontClearcoat": 0.45,
     "frontFieldEffectiveMetalness": {
@@ -1457,7 +1464,7 @@
       "light": 0.55
     },
     "frontRoughness": 0.32,
-    "note": "Lead capture tune after the first sleek render: the printed face field metalness is relaxed (0.90 -> 0.55 in the map, effective 0.506 with the 0.92 scalar) so the light card flat tone lands in the rendered 200-232 band; v2.1.1 then tuned the back to mid-grey (base 114 sRGB, roughness 0.47, env 0.32). v2.2.0 is the final corner-prominence tune: the in-plane plate chamfer widens 0.032 -> 0.042 (vertical round-over unchanged), detail rises to 40 corner / 22 fillet segments and the edge material becomes glossier (roughness 0.10, env 2.0, clearcoat 0.80) so the four rounded corners read as broader continuous bright arcs; the bezel/edge stays metalness 1.0",
+    "note": "Lead capture tune after the first sleek render: the printed face field metalness is relaxed (0.90 -> 0.55 in the map, effective 0.506 with the 0.92 scalar) so the light card flat tone lands in the rendered 200-232 band; v2.1.1 then tuned the back to mid-grey (base 114 sRGB, roughness 0.47, env 0.32). v2.2.0 is the final corner-prominence tune: the in-plane plate chamfer widens 0.032 -> 0.042 (vertical round-over unchanged), detail rises to 40 corner / 22 fillet segments and the edge material becomes glossier (roughness 0.10, env 2.0, clearcoat 0.80) so the four rounded corners read as broader continuous bright arcs; the bezel/edge stays metalness 1.0. Revision 8 (round 8, v2.6.0) supersedes the wide R2.3 bevel and the R4.2 dark satin frame: both cards' middle frame is now a mirror chrome material (metalness 1.0, roughness 0.04, no normal-map grain, light clearcoat) on a thin 0.016 flush rim (round-over 0.007) that never protrudes beyond the card plates; sleek-metal.png stays in the texture bank but the edge no longer samples it.",
     "round": "2.1"
   }
 }

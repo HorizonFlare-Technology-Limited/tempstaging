@@ -1,7 +1,7 @@
-﻿/**
- * tekoanimation - three.js metal payment-card model.  Revision 6.
+/**
+ * tekoanimation - three.js metal payment-card model.  Revision 8.
  *
- * Build contract: docs/card-model-contract.md (API frozen; Revision 6 binding).
+ * Build contract: docs/card-model-contract.md (API frozen; Revision 8 binding).
  * Derived assets are produced by tools/prepare-card-assets.py and documented in
  * docs/card-model.md; this module never loads anything outside the project and
  * never uses unseeded randomness (deterministic geometry and material setup).
@@ -20,10 +20,13 @@
  *   bank.dispose();                              // shared textures
  *
  * The card is a real 3-D object: a 3.36 x 2.3003 x 0.06 rounded-rectangle slab
- * whose front and back plates are inset by a wide 0.042 chamfer/bevel; an
- * elliptical round-over (vertical extent 0.021) connects the plate to a vertical
- * polished band at the full source silhouette (corner radius measured from the
+ * whose front and back plates are inset by a thin 0.016 chamfer/bevel; a short
+ * elliptical round-over (vertical extent 0.007) connects the plate to a vertical
+ * mirror band at the full source silhouette (corner radius measured from the
  * source alpha: 34 px at 929 px width).  Both cards share the same geometry.
+ * Revision 8: the plate chamfer and round-over are reduced from 0.042 / 0.021 so
+ * the bezel reads as a thin, flush mirror rim (never proud of the plate planes -
+ * the edge's outermost ring lies exactly on z = +/-thickness/2).
  *
  * Per-card materials:
  *  - DARK front (Revision 5, R5.1): smooth dark-gray metal.  The non-ink field
@@ -50,10 +53,12 @@
  *    envMapIntensity / normalScale are per card (dark/light).  Highlights still
  *    come only from the real key light + PMREM environment - the albedo carries
  *    no baked highlight.
- *  - Bezels are per card (round 4): the light card keeps the polished silver
- *    frame (four-corner rim arcs); the dark card uses its dark satin frame
- *    (#303137, metalness 0.72) so no silver/white line appears on the dark
- *    silhouette.
+ *  - Bezels are per card (Revision 8, round 8): BOTH cards now use a polished
+ *    mirror/chrome middle frame (metalness 1.0, roughness ~0.04, no normal-map
+ *    grain, tuned clearcoat + envMapIntensity) on the thin 0.016 flush rim, so
+ *    the frame reads as a mirror edge instead of the wider R2/R4 frame.  The
+ *    R4 dark satin frame and the R2 target of a wide bright bevel are superseded;
+ *    the chrome reflection is never allowed to clip to flat white.
  * All maps are local PNGs; no network.
  */
 import * as THREE from 'three';
@@ -100,11 +105,15 @@ export const CARD_METRICS = Object.freeze({
   height: 3.36 * (SOURCE_CONTENT.height / SOURCE_CONTENT.width),
   thickness: 0.06,
   cornerRadius: 3.36 * (SOURCE_CONTENT.cornerRadiusPx / SOURCE_CONTENT.width),
-  bevel: 0.042,
+  // Revision 8 (round 8): thin flush mirror bezel.  0.042 -> 0.016 (about 27 %
+  // of the 0.06 card thickness, well inside the "same width or thinner" target):
+  // the frame is a hairline chamfer so the printed plates come within 0.016 of
+  // the silhouette instead of the wide R2.2 0.042 border.
+  bevel: 0.016,
 });
 
 const DEFAULT_ASSET_BASE = new URL('../assets/textures/card/', import.meta.url).href;
-const MODEL_VERSION = '2.5.0';
+const MODEL_VERSION = '2.6.0';
 
 /** Geometry detail per quality level; hero is the page default (R2.3). */
 const DETAIL_LEVELS = Object.freeze({
@@ -113,23 +122,43 @@ const DETAIL_LEVELS = Object.freeze({
 });
 
 /**
- * Vertical extent of the plate-to-band round-over.  `CARD_METRICS.bevel` (0.032)
- * is the in-plane chamfer; the vertical extent must stay below half the card
- * thickness (0.06), so the round-over uses 0.021 and leaves a 0.018-high
- * polished band at the full silhouette.
+ * Vertical extent of the plate-to-band round-over (Revision 8: 0.021 -> 0.007).
+ * `CARD_METRICS.bevel` (0.016) is the in-plane chamfer; the vertical extent must
+ * stay below half the card thickness (0.06), so the round-over uses 0.007 and
+ * leaves a 0.046-high mirror band at the full silhouette.  The round-over stays
+ * short on purpose: a chrome mirror needs a nearly vertical band, and a shallow
+ * chamfer at plate level, to read as a flush hairline rim instead of a wide
+ * raised bevel.
  */
-const FILLET_DEPTH = 0.021;
+const FILLET_DEPTH = 0.007;
 
 /**
- * Round 4 (contract R4.2): the dark card's bezel uses the same dark tone as the
- * dark face.  The value is the novocard dark background (`#303137`, luma ~49),
- * converted from sRGB to linear because r151's ColorManagement legacy mode
- * treats material colors as linear - this makes the edge's metal F0 match the
- * sRGB-decoded face albedo instead of rendering ~6x brighter.
+ * Revision 8 (round 8): the middle frame/bezel of BOTH cards is a mirror chrome
+ * material.  This supersedes the Round-4 dark satin frame (contract R4.2) and the
+ * Round-2 wide polished bevel (R2.3): the user asked for a mirror frame that is
+ * visually flush with the card thickness and no longer protrudes beyond the card.
+ *
+ * Chrome means a fully metallic dielectric-free BRDF: metalness 1.0, a very low
+ * roughness (the specular lobe is the studio environment, not a blurred sheen),
+ * no normal-map grain (a mirror must not be bent by micro-structure), and a low
+ * clearcoat coat (a heavy coat would add a white dielectric sheen on top of the
+ * mirror and risk clipping).  `envMapIntensity` is tuned per card against the
+ * delivered dark studio: the dark card's frame must reflect the environment as a
+ * chrome edge without becoming a clipped white line, the light card's frame may
+ * sit slightly brighter because it sits on a light face.
  */
-const DARK_FRAME_COLOR_SRGB = 0x303137;
-/** The intended sRGB hex of the dark frame color (for debug/documentation). */
-const DARK_FRAME_COLOR_HEX = '#303137';
+const EDGE_MIRROR = Object.freeze({
+  metalness: 1.0,
+  roughness: 0.04,
+  // A light clearcoat keeps the chrome lobe clean; 0.42 also stays at/above the
+  // QA edge-clearcoat floor inherited from the round-2 bezel contract.
+  clearcoat: 0.42,
+  clearcoatRoughness: 0.06,
+  normalScale: 0,
+  clearcoatNormalScale: 0,
+  color: '#eef2f6',
+  envMapIntensity: Object.freeze({ dark: 1.35, light: 1.45 }),
+});
 
 /**
  * Revision 6 frozen per-card back-artwork contract (docs/card-model-contract.md
@@ -273,12 +302,13 @@ function buildPlateGeometry(metrics, detail, side) {
 }
 
 /**
- * Edge profile in (inset, z, normal) space: a wide elliptical round-over from
- * the plate boundary down to a vertical polished band at the full silhouette,
- * then mirror to the back plate.  In-plane chamfer = CARD_METRICS.bevel (0.032),
- * vertical extent = FILLET_DEPTH (0.021); the analytic ellipse normals are
- * continuous across the round-over so the glossy rim shades as one smooth arc
- * (no faceting/banding, R2.3).
+ * Edge profile in (inset, z, normal) space: a short elliptical round-over from
+ * the plate boundary down to a near-vertical mirror band at the full silhouette,
+ * then mirror to the back plate.  Revision 8: in-plane chamfer =
+ * CARD_METRICS.bevel (0.016), vertical extent = FILLET_DEPTH (0.007); the
+ * analytic ellipse normals are continuous across the round-over (max step
+ * 9.28 deg at the hero 22-segment subdivision, sub-pixel on the page) so the
+ * chrome rim shades as one smooth band with no faceting.
  */
 function buildEdgeProfile(metrics, detail) {
   const { thickness, bevel } = metrics;
@@ -630,7 +660,10 @@ function disposeTextures(textures) {
 
 function buildMaterials(spec, textures, meta) {
   const frontMap = textures[spec.face];
-  const sharedMetal = textures[meta.sleekMaps.metal.file];
+  // Revision 8: `sleek-metal.png` is still part of the validated texture bank
+  // (the asset contract and loader keep it), but the mirror bezel no longer
+  // samples it - a chrome F0 is the raw metal colour, not the flattened sleek
+  // albedo.
   const sharedRough = textures[meta.sleekMaps.rough.file];
   const sharedNormal = textures[meta.sleekMaps.normal.file];
   const cardMeta = meta.cards.find((entry) => entry.id === spec.id);
@@ -734,45 +767,35 @@ function buildMaterials(spec, textures, meta) {
     },
   };
 
-  // Round 4: per-card bezel.  The light card keeps the polished silver rim
-  // (R2.2; the four-corner bright arcs are an acceptance property).  The dark
-  // card's frame is the same dark metal tone as its face - a flat dark color,
-  // no albedo texture (so no baked/white stripe), satin/gloss body per R4.2.
-  const darkFrame = spec.id === 'dark';
-  const edge = new THREE.MeshPhysicalMaterial(darkFrame
-    ? {
-      name: 'card-' + spec.id + '-edge',
-      color: new THREE.Color(DARK_FRAME_COLOR_SRGB).convertSRGBToLinear(),
-      normalMap: sharedNormal,
-      normalScale: new THREE.Vector2(0.15, 0.15),
-      roughnessMap: sharedRough,
-      roughness: 0.37,
-      metalness: 0.72,
-      clearcoat: 0.38,
-      clearcoatRoughness: 0.18,
-      clearcoatNormalMap: sharedNormal,
-      clearcoatNormalScale: new THREE.Vector2(0.15, 0.15),
-      envMapIntensity: 0.95,
-    }
-    : {
-      name: 'card-' + spec.id + '-edge',
-      map: sharedMetal,
-      normalMap: sharedNormal,
-      normalScale: new THREE.Vector2(0.15, 0.15),
-      roughnessMap: sharedRough,
-      roughness: 0.10,
-      metalness: 1,
-      clearcoat: 0.8,
-      clearcoatRoughness: 0.12,
-      clearcoatNormalMap: sharedNormal,
-      clearcoatNormalScale: new THREE.Vector2(0.15, 0.15),
-      envMapIntensity: 2.0,
-    });
+  // Revision 8: mirror chrome middle frame for BOTH cards (supersedes R4.2's
+  // dark satin frame and R2.2's polished-silver/map-based bezel).  The material
+  // carries no albedo map and no normal-map grain: a mirror is defined by its
+  // environment reflection, so the normalScale is 0 and the roughness is a single
+  // low scalar (the sleek roughness map is intentionally NOT bound here - its
+  // micro variation would smear the chrome lobe).  Clearcoat is deliberately
+  // light: a heavy coat would add a white dielectric layer that reads as a
+  // painted frame instead of chrome and can clip under the reflection boost.
+  const edgeEnv = EDGE_MIRROR.envMapIntensity[spec.id] || EDGE_MIRROR.envMapIntensity.light;
+  const edge = new THREE.MeshPhysicalMaterial({
+    name: 'card-' + spec.id + '-edge',
+    color: new THREE.Color(EDGE_MIRROR.color).convertSRGBToLinear(),
+    normalScale: new THREE.Vector2(EDGE_MIRROR.normalScale, EDGE_MIRROR.normalScale),
+    roughness: EDGE_MIRROR.roughness,
+    metalness: EDGE_MIRROR.metalness,
+    clearcoat: EDGE_MIRROR.clearcoat,
+    clearcoatRoughness: EDGE_MIRROR.clearcoatRoughness,
+    clearcoatNormalScale: new THREE.Vector2(
+      EDGE_MIRROR.clearcoatNormalScale,
+      EDGE_MIRROR.clearcoatNormalScale,
+    ),
+    envMapIntensity: edgeEnv,
+  });
   edge.userData = {
     role: 'edge',
     cardId: spec.id,
-    finish: darkFrame ? 'dark-satin-frame' : 'polished-silver',
-    color: darkFrame ? DARK_FRAME_COLOR_HEX : '#ffffff',
+    finish: 'mirror-chrome',
+    color: EDGE_MIRROR.color,
+    glossyMirror: true,
   };
 
   return { front, back, edge };

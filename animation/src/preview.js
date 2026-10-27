@@ -24,6 +24,10 @@
  */
 import * as THREE from 'three';
 import { RING, STACK, COIN_GEOMETRY, stackPose } from './coin-compositions.js';
+import { WAVE } from './coin-wave.js';
+import { createWaveComposition, WAVE_ACCENT } from './coin-wave-scene.js';
+import { PARADE, paradePose, paradeCameraPose, paradeLoopTime, paradeRingSpacing } from './coin-parade.js';
+import { createParadeStudio, prepareParadeCoin } from './coin-parade-scene.js';
 
 const VERSION = '1.0.0';
 
@@ -57,7 +61,7 @@ const SOURCE_ASSETS = Object.freeze({ surface: 'satin.png', font: 'Lexend-Variab
  * opposite side (the reference's ring-of-eight), and the stack's top coin is
  * STACK.topId (GBP) because the seven-currency catalog has no RUB.
  */
-const MODES = Object.freeze(['hero', 'gallery', 'ring', 'stack']);
+const MODES = Object.freeze(['hero', 'gallery', 'ring', 'stack', 'wave', 'parade']);
 
 /** Revision 3: faces are "a"/"b"; legacy flag/symbol are accepted for compatibility. */
 function normalizeFace(value) {
@@ -85,6 +89,9 @@ const dom = {
   btnGallery: document.getElementById('btn-gallery'),
   btnRing: document.getElementById('btn-ring'),
   btnStack: document.getElementById('btn-stack'),
+  btnWave: document.getElementById('btn-wave'),
+  btnParade: document.getElementById('btn-parade'),
+  btnParadePlay: document.getElementById('btn-parade-play'),
   btnReplay: document.getElementById('btn-replay'),
   stageHint: document.getElementById('stage-hint'),
   rail: document.getElementById('currency-rail'),
@@ -114,6 +121,10 @@ const dom = {
 const urlParams = new URLSearchParams(window.location.search);
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+// Revision 14: ?capture=1 is a clean stage-only capture state (deterministic
+// Parade frames + reference-look screenshots); CSS hides the page chrome.
+if (urlParams.get('capture') === '1') document.body.dataset.capture = '1';
+
 function parseMode(value) {
   return MODES.includes(value) ? value : 'hero';
 }
@@ -131,6 +142,7 @@ const state = {
   shot: urlParams.get('shot') === '1' || urlParams.get('still') === '1',
   still: urlParams.get('still') === '1',
   tilt: urlParams.get('tilt') === '1',
+  capture: urlParams.get('capture') === '1',
   reducedMotion: reducedMotionQuery.matches,
   heroCoin: null,
   galleryCoins: [],
@@ -156,6 +168,40 @@ const state = {
     camera: null,
     topId: STACK.topId,
     duration: STACK.timing.duration,
+  },
+  /**
+   * Wave composition (round 6): a static broad twisted ribbon with four coins
+   * standing on it. No animation — the scene is frozen (studio.setStatic) while
+   * the 360° trackball view stays live. See src/coin-wave.js.
+   */
+  wave: {
+    group: null,
+    scene: null,
+    entries: [],
+    camera: null,
+    frameHook: null,
+  },
+  /**
+   * Parade composition (Revision 14): seven coins on a rotating vertical
+   * carousel with a deterministic 12 s loop, a black strip-lit PMREM studio and
+   * mode-local material clones. Animation is driven by a frame hook from
+   * paradePose(t); shot/still/reduced-motion hold the deterministic shot frame.
+   */
+  parade: {
+    group: null,
+    studio: null,
+    entries: [],
+    previousEnvironment: undefined,
+    previousBackground: undefined,
+    previousFog: undefined,
+    previousExposure: null,
+    previousToneMapping: null,
+    previousFov: 30,
+    playing: false,
+    time: PARADE.shotTime,
+    frameHook: null,
+    camera: null,
+    spacing: null,
   },
 };
 
@@ -283,7 +329,7 @@ function syncCoinUi(spec, { updatePanel = true } = {}) {
   dom.assetNote.textContent = SOURCE_ASSETS.surface + ' + ' + SOURCE_ASSETS.font;
   // Composition modes keep their own stage caption; the info card may still show
   // the currency selected with the rail / arrow keys.
-  if (state.mode === 'ring' || state.mode === 'stack') applyCompositionCaption();
+  if (state.mode === 'ring' || state.mode === 'stack' || state.mode === 'wave' || state.mode === 'parade') applyCompositionCaption();
 }
 
 function applyCompositionCaption() {
@@ -298,6 +344,18 @@ function applyCompositionCaption() {
     if (dom.stageIndexTotal) dom.stageIndexTotal.textContent = total;
     dom.stageCode.textContent = 'STACK';
     dom.stageName.textContent = STACK.count === 9 ? 'Nine coins' : STACK.count + ' coins';
+  } else if (state.mode === 'wave') {
+    const total = String(WAVE.count).padStart(2, '0');
+    dom.stageIndex.textContent = total;
+    if (dom.stageIndexTotal) dom.stageIndexTotal.textContent = total;
+    dom.stageCode.textContent = 'WAVE';
+    dom.stageName.textContent = WAVE.count === 4 ? 'Four coins' : WAVE.count + ' coins';
+  } else if (state.mode === 'parade') {
+    const total = String(PARADE.count).padStart(2, '0');
+    dom.stageIndex.textContent = total;
+    if (dom.stageIndexTotal) dom.stageIndexTotal.textContent = total;
+    dom.stageCode.textContent = 'PARADE';
+    dom.stageName.textContent = 'Seven coins';
   }
 }
 
@@ -309,7 +367,7 @@ function syncFaceUi() {
 const DEFAULT_HINT = 'Drag to rotate 360° · Shift-drag to roll · double-click to reset';
 
 function syncSpinUi() {
-  const composition = state.mode === 'ring' || state.mode === 'stack';
+  const composition = state.mode === 'ring' || state.mode === 'stack' || state.mode === 'wave' || state.mode === 'parade';
   dom.btnSpin.setAttribute('aria-pressed', String(state.spin && !composition));
   const unavailable = state.reducedMotion || composition;
   dom.btnSpin.disabled = unavailable;
@@ -331,25 +389,66 @@ function syncReplayUi() {
   else dom.btnReplay.title = 'Replay the unfold';
 }
 
+/** Visible Play/Pause affordance for the Parade timeline (stage control). */
+function syncParadeUi() {
+  if (!dom.btnParadePlay) return;
+  const parade = state.mode === 'parade';
+  dom.btnParadePlay.hidden = !parade;
+  const blocked = !parade || state.shot || !state.parade.group;
+  dom.btnParadePlay.disabled = Boolean(blocked);
+  const playing = parade && state.parade.playing;
+  dom.btnParadePlay.setAttribute('aria-pressed', String(playing));
+  dom.btnParadePlay.textContent = playing ? 'Pause' : 'Play';
+  dom.btnParadePlay.setAttribute(
+    'aria-label',
+    playing ? 'Pause the coin parade animation' : 'Play the coin parade animation'
+  );
+  if (!parade) dom.btnParadePlay.removeAttribute('title');
+  else if (state.shot) dom.btnParadePlay.title = 'Playback is frozen in deterministic capture mode.';
+  else dom.btnParadePlay.title = playing ? 'Pause the coin parade' : 'Play the coin parade';
+}
+
 function syncModeUi() {
   const ring = state.mode === 'ring';
   const gallery = state.mode === 'gallery';
   const stack = state.mode === 'stack';
+  const wave = state.mode === 'wave';
+  const parade = state.mode === 'parade';
   dom.body.dataset.mode = state.mode;
   dom.btnGallery.setAttribute('aria-pressed', String(gallery));
   if (dom.btnRing) dom.btnRing.setAttribute('aria-pressed', String(ring));
   if (dom.btnStack) dom.btnStack.setAttribute('aria-pressed', String(stack));
-  dom.stageEyebrow.textContent = stack
-    ? 'Stack · ' + STACK.count + ' coins'
-    : ring
-      ? 'Ring · eight coins'
-      : gallery
-        ? 'Gallery · seven coins'
-        : 'Silver studio';
-  dom.infoFootState.textContent = stack ? 'Stack' : ring ? 'Ring' : gallery ? 'Gallery' : 'Hero';
+  if (dom.btnWave) dom.btnWave.setAttribute('aria-pressed', String(wave));
+  if (dom.btnParade) dom.btnParade.setAttribute('aria-pressed', String(parade));
+  dom.stageEyebrow.textContent = parade
+    ? 'Parade · ' + PARADE.count + ' coins'
+    : wave
+      ? 'Wave · ' + WAVE.count + ' coins'
+      : stack
+        ? 'Stack · ' + STACK.count + ' coins'
+        : ring
+          ? 'Ring · eight coins'
+          : gallery
+            ? 'Gallery · seven coins'
+            : 'Silver studio';
+  dom.infoFootState.textContent = parade
+    ? 'Parade'
+    : wave
+      ? 'Wave'
+      : stack
+        ? 'Stack'
+        : ring
+          ? 'Ring'
+          : gallery
+            ? 'Gallery'
+            : 'Hero';
   dom.galleryLabels.hidden = !gallery;
   if (dom.stageHint) {
-    if (stack) {
+    if (parade) {
+      dom.stageHint.textContent = 'Drag to rotate 360° · Space play/pause';
+    } else if (wave) {
+      dom.stageHint.textContent = 'Drag to rotate 360° · Shift-drag to roll';
+    } else if (stack) {
       const unfolded = state.stack.state === 'unfolded';
       dom.stageHint.textContent =
         state.stack.playing
@@ -367,14 +466,27 @@ function syncModeUi() {
       dom.stageHint.textContent = DEFAULT_HINT;
     }
   }
-  if (ring || stack) applyCompositionCaption();
+  if (ring || stack || wave || parade) applyCompositionCaption();
   else {
     const spec = specById(state.coin);
     if (spec) syncCoinUi(spec, { updatePanel: false });
   }
   syncSpinUi();
   syncReplayUi();
-  if (state.ready) dom.footerStatus.textContent = stack ? 'Stack' : ring ? 'Ring' : gallery ? 'Gallery' : 'Ready';
+  if (state.ready) {
+    dom.footerStatus.textContent = parade
+      ? 'Parade'
+      : wave
+        ? 'Wave'
+        : stack
+          ? 'Stack'
+          : ring
+            ? 'Ring'
+            : gallery
+              ? 'Gallery'
+              : 'Ready';
+  }
+  syncParadeUi();
 }
 
 function syncShotUi() {
@@ -434,11 +546,15 @@ function buildDebug() {
   }
   let ring = null;
   let stack = null;
+  let wave = null;
+  let parade = null;
   let framing = null;
   try {
     ring = buildRingDebug();
     stack = buildStackDebug();
-    const active = ring || stack;
+    wave = buildWaveDebug();
+    parade = buildParadeDebug();
+    const active = wave || ring || stack || parade;
     framing =
       active && active.framing
         ? Object.assign({}, active.framing, {
@@ -448,6 +564,7 @@ function buildDebug() {
   } catch (error) {
     ring = null;
     stack = null;
+    wave = null;
     framing = null;
   }
   return {
@@ -469,6 +586,8 @@ function buildDebug() {
     coinScreen,
     ring,
     stack,
+    wave,
+    parade,
     framing,
     still: state.still,
     view: state.studio && state.studio.getView ? state.studio.getView() : { yaw: 0, pitch: 0, roll: 0, dragging: false },
@@ -509,6 +628,34 @@ function updateDiag() {
     delete dom.body.dataset.stackTop;
     delete dom.body.dataset.stackProgress;
     delete dom.body.dataset.stackSpacing;
+  }
+  if (debug.mode === 'wave' && debug.wave) {
+    dom.body.dataset.wave = '1';
+    dom.body.dataset.waveCount = String(debug.wave.count);
+    dom.body.dataset.waveIds = (debug.wave.ids || []).join(',');
+    dom.body.dataset.waveStatic = debug.wave.static ? '1' : '0';
+  } else {
+    delete dom.body.dataset.wave;
+    delete dom.body.dataset.waveCount;
+    delete dom.body.dataset.waveIds;
+    delete dom.body.dataset.waveStatic;
+  }
+  if (debug.mode === 'parade' && debug.parade) {
+    dom.body.dataset.parade = '1';
+    dom.body.dataset.paradeCount = String(debug.parade.count);
+    dom.body.dataset.paradeIds = (debug.parade.ids || []).join(',');
+    dom.body.dataset.paradePlaying = debug.parade.playing ? '1' : '0';
+    dom.body.dataset.paradeTime = String(debug.parade.time);
+    dom.body.dataset.paradeLoopTime = String(debug.parade.loopTime);
+    dom.body.dataset.paradeStatic = debug.parade.static ? '1' : '0';
+  } else {
+    delete dom.body.dataset.parade;
+    delete dom.body.dataset.paradeCount;
+    delete dom.body.dataset.paradeIds;
+    delete dom.body.dataset.paradePlaying;
+    delete dom.body.dataset.paradeTime;
+    delete dom.body.dataset.paradeLoopTime;
+    delete dom.body.dataset.paradeStatic;
   }
 }
 
@@ -563,6 +710,22 @@ const api = {
       return ok;
     });
   },
+  /** Plays/pauses the Parade timeline (no-op outside Parade / capture mode). */
+  setParadePlaying(enabled) {
+    return setParadePlaying(enabled);
+  },
+  /** Deterministic Parade time (seconds): pose + render, pauses playback. */
+  setParadeTime(seconds) {
+    if (state.mode !== 'parade' || !state.parade.group) return false;
+    const time = paradeLoopTime(Number(seconds));
+    state.parade.playing = false;
+    state.parade.time = time;
+    applyParadePose(time);
+    if (state.studio) state.studio.renderNow();
+    syncParadeUi();
+    updateDiag();
+    return time;
+  },
   /**
    * QA helper for the free trackball view. Accepts { quaternion: [x,y,z,w] },
    * { axis: [x,y,z], angle } or the legacy { yaw, pitch, roll } Euler form
@@ -599,7 +762,7 @@ function runExclusive(task) {
 async function selectCoin(id) {
   const spec = specById(id);
   if (!spec) return false;
-  if (state.mode === 'ring' || state.mode === 'stack') {
+  if (state.mode === 'ring' || state.mode === 'stack' || state.mode === 'wave' || state.mode === 'parade') {
     // Composition modes show all coins at once; selection only drives the info
     // card (and the rail highlight).
     state.coin = id;
@@ -640,9 +803,13 @@ async function applyMode(mode) {
       ? Boolean(state.ringGroup)
       : next === 'stack'
         ? Boolean(state.stack.group)
-        : next === 'gallery'
-          ? state.galleryCoins.length > 0
-          : Boolean(state.heroCoin);
+        : next === 'wave'
+          ? Boolean(state.wave.group)
+          : next === 'parade'
+            ? Boolean(state.parade.group)
+            : next === 'gallery'
+              ? state.galleryCoins.length > 0
+              : Boolean(state.heroCoin);
   if (state.mode === next && built) {
     syncModeUi();
     return;
@@ -658,6 +825,10 @@ async function applyMode(mode) {
     await buildRing();
   } else if (next === 'stack') {
     await buildStack();
+  } else if (next === 'wave') {
+    await buildWave();
+  } else if (next === 'parade') {
+    await buildParade();
   } else {
     state.studio.setMode(next);
     if (next === 'gallery') await buildGalleryCoins();
@@ -674,6 +845,8 @@ async function applyMode(mode) {
 function disposeView(nextMode) {
   if (nextMode !== 'ring') disposeRingView();
   if (nextMode !== 'stack') disposeStackView();
+  if (nextMode !== 'wave') disposeWaveView();
+  if (nextMode !== 'parade') disposeParadeView();
   if (nextMode !== 'gallery' && state.galleryCoins.length) {
     for (const coin of state.galleryCoins) disposeCoin(coin);
     state.galleryCoins = [];
@@ -909,6 +1082,8 @@ function installCompositionFraming(studio) {
     baseFit();
     if (state.mode === 'ring' && state.ringGroup) applyRingFraming();
     else if (state.mode === 'stack' && state.stack.group) applyStackFraming(state.stack.pose);
+    else if (state.mode === 'wave' && state.wave.group) applyWaveFraming();
+    else if (state.mode === 'parade' && state.parade.group) applyParadeFraming();
   };
   studio.__compositionFramingInstalled = true;
 }
@@ -1432,6 +1607,764 @@ function ringScreenBounds() {
   return groupScreenBounds(state.ringGroup);
 }
 
+/* ---------------------------------------------------------------- wave mode */
+
+const WAVE_ELEVATION = THREE.MathUtils.degToRad(
+  WAVE.camera && Number.isFinite(WAVE.camera.elevationDeg) ? WAVE.camera.elevationDeg : 12
+);
+const WAVE_FIT_MARGIN = WAVE.camera && WAVE.camera.fitMargin ? WAVE.camera.fitMargin : 1.06;
+const WAVE_FACE_SIZE = WAVE.faceSize || 512;
+const WAVE_GOLD_HEX = '#' + WAVE_ACCENT.gold.toString(16).padStart(6, '0');
+const WAVE_WHITE_HEX = '#' + WAVE_ACCENT.white.toString(16).padStart(6, '0');
+
+/** World bounding box of the wave composition (band + coins + shadow decals). */
+function waveBox() {
+  const group = state.wave.group;
+  if (!group) return null;
+  group.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(group);
+  return box.isEmpty() ? null : box;
+}
+
+function computeWaveDistance(studio) {
+  const box = waveBox();
+  if (!studio || !box) return null;
+  return fitCameraDistance(boxCorners(box), studioAspect(studio), {
+    fitMargin: WAVE_FIT_MARGIN,
+    camYFor: (distance) => distance * Math.tan(WAVE_ELEVATION),
+    fov: studioFov(studio),
+  });
+}
+
+/** Push the deterministic wave camera fit into the studio camera rig. */
+function applyWaveFraming() {
+  const studio = state.studio;
+  if (!studio || !state.wave.group) return;
+  const distance = computeWaveDistance(studio);
+  if (!distance) return;
+  const camY = distance * Math.tan(WAVE_ELEVATION);
+  studio._camTarget = distance;
+  studio._camDist = distance;
+  studio._camY = camY;
+  state.wave.camera = {
+    distance: round3(distance),
+    camY: round3(camY),
+    elevationDeg: round3(THREE.MathUtils.radToDeg(WAVE_ELEVATION)),
+    fitMargin: WAVE_FIT_MARGIN,
+  };
+  studio.camera.position.set(0, camY, distance);
+  studio.camera.lookAt(0, 0, 0);
+  studio.camera.updateMatrixWorld(true);
+  if (studio.glow) studio.glow.scale.setScalar(1.4);
+}
+
+/**
+ * Build Wave mode: the static broad twisted ribbon band (silver top / blue
+ * underside / polished rims) with four satin-silver coins standing on it, the
+ * white shadow-casting key and the brand-gold accent light. No animation: the
+ * studio is put in static mode so the only motion is the user's 360° orbit.
+ */
+async function buildWave() {
+  if (!state.bank || !state.studio) return;
+  setBusy(true, 'Building wave');
+  disposeWaveView();
+  const studio = state.studio;
+  try {
+    // Neutral internal studio mode — the wave rig/framing is page-owned.
+    studio.setMode('hero');
+    studio.heroRig.visible = false;
+    studio.galleryGroup.visible = false;
+    studio.shadow.visible = false;
+    if (studio.glow) studio.glow.visible = false;
+    studio.setSpin(false);
+    if (typeof studio.setStatic === 'function') studio.setStatic(true);
+    resetStudioView(studio);
+    studio._coinGroups = [];
+    // The wave is the only composition with a real shadow-casting key light.
+    if (studio.renderer) {
+      studio.renderer.shadowMap.enabled = true;
+      studio.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
+
+    const scene = createWaveComposition({
+      castShadow: Boolean(studio.renderer),
+      renderer: studio.renderer || null,
+    });
+    const group = scene.group;
+    // The wave owns a purpose-built PMREM studio; the page swaps
+    // scene.environment for it and restores the silver-studio env on exit.
+    const previousEnvironment = studio.scene ? studio.scene.environment : null;
+    if (scene.environment && studio.scene) studio.scene.environment = scene.environment.texture;
+    const entries = [];
+    for (const placement of WAVE.coins) {
+      const spec = specById(placement.id);
+      if (!spec) continue;
+      const coin = makeCoin(spec, WAVE_FACE_SIZE);
+      const holder = new THREE.Group();
+      holder.name = 'wave-coin:' + placement.id;
+      holder.position.fromArray(placement.position);
+      holder.quaternion.fromArray(placement.quaternion);
+      // placement.radius already includes WAVE.coinScale * the per-coin scale
+      coin.group.scale.setScalar(placement.radius);
+      // The wave studio environment is much brighter than the silver studio;
+      // clone the coin materials for this mode so the satin silver stays a mid
+      // tone with readable relief (the shared bank materials are untouched, so
+      // Hero/Gallery keep their exact finish).
+      const clonedMaterials = [];
+      coin.group.traverse((object) => {
+        if (!object.isMesh || !object.material) return;
+        const clone = object.material.clone();
+        const base = Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1;
+        clone.envMapIntensity = Math.max(0.08, base * 0.2);
+        // The wave band is the bright satin-silver subject; the coins read as a
+        // slightly deeper satin silver standing on it (reference contrast).
+        if (clone.color && clone.color.isColor) clone.color.multiplyScalar(0.7);
+        if (/face/i.test(object.name)) {
+          clone.roughness = 0.4;
+        } else {
+          clone.roughness = Math.min(0.5, (clone.roughness || 0.2) + 0.06);
+        }
+        object.material = clone;
+        clonedMaterials.push(clone);
+      });
+      holder.add(coin.group);
+      group.add(holder);
+      entries.push({ id: spec.id, index: entries.length, coin, holder, layout: placement, clonedMaterials });
+    }
+    if (!entries.length) throw new Error('no coin specs available for the wave');
+    studio.orbit.add(group);
+    state.wave = { group, scene, entries, camera: null, frameHook: null, previousEnvironment };
+    applyWaveFraming();
+    if (studio.renderer && studio.renderer.shadowMap) studio.renderer.shadowMap.needsUpdate = true;
+    if (state.booting) curtainProgress(0.82, 'Building wave', entries.length + ' / ' + WAVE.count);
+    studio.renderNow();
+    await studio.whenStable();
+    studio.renderNow();
+  } catch (error) {
+    for (const entry of state.wave.entries) disposeWaveCoin(entry);
+    if (studio && studio.scene && state.wave.previousEnvironment !== undefined) {
+      studio.scene.environment = state.wave.previousEnvironment || null;
+    }
+    if (state.wave.scene) {
+      try {
+        state.wave.scene.dispose();
+      } catch (disposeError) {
+        /* best effort */
+      }
+    }
+    if (state.wave.group && state.wave.group.parent) state.wave.group.parent.remove(state.wave.group);
+    state.wave = { group: null, scene: null, entries: [], camera: null, frameHook: null };
+    pushError('wave build failed: ' + errorMessage(error));
+    showErrorBanner('Could not render the coin wave: ' + errorMessage(error));
+    if (studio) {
+      if (studio.heroRig) studio.heroRig.visible = true;
+      if (studio.shadow) studio.shadow.visible = true;
+      if (studio.glow) studio.glow.visible = true;
+      if (typeof studio.setStatic === 'function') studio.setStatic(false);
+      if (typeof studio._computeFit === 'function') studio._computeFit();
+    }
+    throw error;
+  } finally {
+    setBusy(false);
+  }
+  updateDiag();
+}
+
+function disposeWaveView() {
+  const studio = state.studio;
+  const wave = state.wave;
+  if (typeof wave.frameHook === 'function') {
+    try {
+      wave.frameHook();
+    } catch (error) {
+      /* hook teardown is best effort */
+    }
+    wave.frameHook = null;
+  }
+  if (wave.group) {
+    if (wave.group.parent) wave.group.parent.remove(wave.group);
+    for (const entry of wave.entries) disposeWaveCoin(entry);
+  }
+  // Restore the silver-studio environment before the wave PMREM target is
+  // disposed, so no other mode/coin material samples a freed texture.
+  if (studio && studio.scene && wave.previousEnvironment !== undefined) {
+    studio.scene.environment = wave.previousEnvironment || null;
+  }
+  if (wave.scene) {
+    try {
+      wave.scene.dispose();
+    } catch (error) {
+      /* best effort */
+    }
+  }
+  state.wave = { group: null, scene: null, entries: [], camera: null, frameHook: null };
+  if (studio) {
+    if (studio.heroRig) studio.heroRig.visible = true;
+    if (studio.shadow) studio.shadow.visible = true;
+    if (studio.glow) studio.glow.visible = true;
+    if (typeof studio.setStatic === 'function') studio.setStatic(false);
+    if (studio.renderer && studio.renderer.shadowMap) studio.renderer.shadowMap.enabled = false;
+    if (typeof studio._computeFit === 'function') studio._computeFit();
+    studio.renderNow();
+  }
+}
+
+function waveScreenBounds() {
+  return groupScreenBounds(state.wave.group);
+}
+
+/** Dispose a wave coin plus the mode-local material clones backing it. */
+function disposeWaveCoin(entry) {
+  disposeCoin(entry.coin);
+  for (const material of entry.clonedMaterials || []) {
+    try {
+      material.dispose();
+    } catch (error) {
+      /* best effort */
+    }
+  }
+}
+
+function buildWaveDebug() {
+  if (state.mode !== 'wave' || !state.wave.group) return null;
+  let sceneDebug = null;
+  try {
+    sceneDebug = state.wave.scene && state.wave.scene.debug ? state.wave.scene.debug() : null;
+  } catch (error) {
+    sceneDebug = null;
+  }
+  return {
+    count: state.wave.entries.length,
+    ids: state.wave.entries.map((entry) => entry.id),
+    static: true,
+    animated: false,
+    layout: WAVE.layout,
+    ribbon: WAVE.ribbon.metrics,
+    metrics: WAVE.metrics,
+    camera: WAVE.camera,
+    accent: { gold: WAVE_GOLD_HEX, white: WAVE_WHITE_HEX, role: WAVE_ACCENT.role },
+    materials: sceneDebug ? sceneDebug.band.materials : [],
+    lights: sceneDebug ? sceneDebug.lights : null,
+    band: sceneDebug ? sceneDebug.band : null,
+    environment: sceneDebug ? sceneDebug.environment : null,
+    decals: sceneDebug ? sceneDebug.decals : 0,
+    screen: waveScreenBounds(),
+    framing: state.wave.camera
+      ? {
+          cameraDistance: state.wave.camera.distance,
+          cameraY: state.wave.camera.camY,
+          elevationDeg: state.wave.camera.elevationDeg,
+          fitMargin: state.wave.camera.fitMargin,
+        }
+      : null,
+  };
+}
+
+/* --------------------------------------------------------------- parade mode */
+
+const PARADE_FACE_SIZE = PARADE.faceSize || 512;
+
+/** Module-level playback switch shared by the API, stage button and Space key. */
+function setParadePlaying(enabled) {
+  if (state.mode !== 'parade' || !state.parade.group || state.shot) return false;
+  state.parade.playing = Boolean(enabled);
+  syncParadeUi();
+  updateDiag();
+  return state.parade.playing;
+}
+
+/** Deterministic Parade camera fit (telephoto fov + long-lens framing). */
+function applyParadeFraming() {
+  const studio = state.studio;
+  const parade = state.parade;
+  if (!studio || !parade.group) return;
+  const pose = paradeCameraPose(studioAspect(studio));
+  studio.camera.fov = pose.fovDeg;
+  studio.camera.updateProjectionMatrix();
+  studio._camTarget = pose.distance;
+  studio._camDist = pose.distance;
+  studio._camY = pose.position[1];
+  studio.camera.position.fromArray(pose.position);
+  studio.camera.lookAt(pose.target[0], pose.target[1], pose.target[2]);
+  studio.camera.updateMatrixWorld(true);
+  parade.camera = {
+    fov: round3(pose.fovDeg),
+    fovDeg: round3(pose.fovDeg),
+    distance: round3(pose.distance),
+    cameraY: round3(pose.position[1]),
+    elevationDeg: pose.elevationDeg,
+    fitMargin: pose.fitMargin,
+  };
+}
+
+/**
+ * Neutral silver studio reflection map for the coin FACES only (texture-review
+ * note: the studio's blue rim strip must never tint a whole satin face). The
+ * reeded band/frame keep the Parade studio environment, so the cool accent
+ * stays a thin rim/glass reflection; faces reflect soft white panels only.
+ */
+function buildParadeFaceEnvironment(renderer) {
+  if (!renderer) return null;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.background = new THREE.Color(0x23262a);
+  const panelGeometry = new THREE.PlaneGeometry(12, 8);
+  const panels = [
+    { position: [0, 8, 0], intensity: 1.2 },
+    { position: [-7, 2, 2], intensity: 1.6 },
+    { position: [7, 2, 2], intensity: 1.6 },
+    { position: [0, 1, 9], intensity: 2.15 },
+    { position: [0, 2, -9], intensity: 0.8 },
+  ];
+  for (const panel of panels) {
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0xffffff).multiplyScalar(panel.intensity),
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(panelGeometry, material);
+    mesh.position.fromArray(panel.position);
+    mesh.lookAt(0, 0, 0);
+    envScene.add(mesh);
+  }
+  let renderTarget = null;
+  try {
+    renderTarget = pmrem.fromScene(envScene, 0.05);
+  } catch (error) {
+    renderTarget = null;
+  }
+  pmrem.dispose();
+  panelGeometry.dispose();
+  envScene.traverse((object) => {
+    if (object.isMesh && object.material) object.material.dispose();
+  });
+  envScene.clear();
+  return renderTarget;
+}
+
+/**
+ * Render density (Lead texture review): the reference carousel keeps 4-5 coins
+ * overlapping across the frame. The modeler contract fixes seven currencies on a
+ * 7-position ring (pose(0) mix), so the page renders eight ring positions with
+ * one currency repeated (GBP, like Ring mode) using the same motion law — the
+ * front arc then always has enough coins. Every term is periodic over 12 s, so
+ * pose(t + 12 s) === pose(t) exactly. The debug contract still reports the
+ * seven-currency contract (count/ids) plus renderedCount/ringPositions/repeated.
+ */
+const PARADE_RENDER_COUNT = 8;
+const PARADE_RENDER_IDS = PARADE.ids.concat([PARADE.ids[0]]);
+const PARADE_TAU = Math.PI * 2;
+const paradeAxisY = new THREE.Vector3(0, 1, 0);
+const paradeBasis = new THREE.Matrix4();
+const paradeQuatYaw = new THREE.Quaternion();
+const paradeQuatFace = new THREE.Quaternion();
+
+const paradeNormalA = new THREE.Vector3();
+const paradeRollPi = new THREE.Quaternion().setFromAxisAngle(paradeAxisY, Math.PI);
+
+function paradeFacingQuaternion(angle, spin) {
+  const sin = Math.sin(angle);
+  const cos = Math.cos(angle);
+  // local +Y (face normal) -> radial direction, local -Z (face up) -> world +Y
+  paradeBasis.makeBasis(
+    new THREE.Vector3(sin, 0, -cos),
+    new THREE.Vector3(cos, 0, sin),
+    new THREE.Vector3(0, -1, 0)
+  );
+  paradeQuatFace.setFromRotationMatrix(paradeBasis);
+  paradeQuatYaw.setFromAxisAngle(paradeAxisY, spin);
+  const quaternion = paradeQuatYaw.clone().multiply(paradeQuatFace);
+  // Revision 14 fix (modeler task-23): back-facing symbols need a hidden
+  // half-turn in-plane roll; the flip happens exactly at edge-on, and it is the
+  // same rule as paradePose() (quaternion * Ry(pi) while face b is toward +Z).
+  paradeNormalA.set(0, 1, 0).applyQuaternion(quaternion);
+  const facing = paradeNormalA.z < 0 ? 'b' : 'a';
+  const roll = facing === 'b' ? Math.PI : 0;
+  if (roll !== 0) quaternion.multiply(paradeRollPi);
+  return { quaternion, facing, roll };
+}
+
+/** Page render pose: 8 evenly spaced positions, one currency repeated. */
+function paradeRenderPose(seconds) {
+  const loopTime = paradeLoopTime(seconds);
+  const ringAngle = PARADE.ring.direction * PARADE_TAU * (loopTime / PARADE.durationSeconds);
+  const spinAngle = PARADE.spin.direction * PARADE_TAU * (loopTime / PARADE.spin.periodSeconds);
+  const coins = [];
+  for (let index = 0; index < PARADE_RENDER_COUNT; index += 1) {
+    const angle = PARADE.ring.startAngle + (index * PARADE_TAU) / PARADE_RENDER_COUNT + ringAngle;
+    const spin = spinAngle + PARADE.spin.phaseOffset - (index * PARADE_TAU) / PARADE_RENDER_COUNT;
+    const oriented = paradeFacingQuaternion(angle, spin);
+    const quaternion = oriented.quaternion;
+    coins.push({
+      id: PARADE_RENDER_IDS[index],
+      index,
+      angle,
+      spin,
+      facing: oriented.facing,
+      roll: oriented.roll,
+      position: [PARADE.ring.radius * Math.cos(angle), 0, PARADE.ring.radius * Math.sin(angle)],
+      quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
+    });
+  }
+  return { time: loopTime, loopTime, ringAngle, spinAngle, coins };
+}
+
+/** Apply one deterministic paradeRenderPose(t) to the eight coin holders. */
+function applyParadePose(seconds) {
+  const parade = state.parade;
+  if (!parade.group) return null;
+  const pose = paradeRenderPose(seconds);
+  for (let index = 0; index < parade.entries.length; index += 1) {
+    const entry = parade.entries[index];
+    const placement = pose.coins[index];
+    if (!placement) continue;
+    entry.holder.position.fromArray(placement.position);
+    entry.holder.quaternion.fromArray(placement.quaternion);
+  }
+  parade.time = pose.loopTime;
+  return pose;
+}
+
+/**
+ * Build Parade mode: seven coins on a vertical carousel (deterministic 12 s
+ * timeline) inside the purpose-built black strip-light PMREM studio. The coins
+ * are real coin-model instances with mode-local material clones; the shared
+ * bank materials are untouched, so Hero/Gallery keep their exact finish.
+ */
+async function buildParade() {
+  if (!state.bank || !state.studio) return;
+  setBusy(true, 'Building parade');
+  disposeParadeView();
+  const studio = state.studio;
+  let paradeStudio = null;
+  try {
+    studio.setMode('hero');
+    studio.heroRig.visible = false;
+    studio.galleryGroup.visible = false;
+    studio.shadow.visible = false;
+    if (studio.glow) studio.glow.visible = false;
+    studio.setSpin(false);
+    if (typeof studio.setStatic === 'function') studio.setStatic(true);
+    resetStudioView(studio);
+    studio._coinGroups = [];
+
+    paradeStudio = createParadeStudio({ renderer: studio.renderer });
+    // The Parade studio lights live in world space next to the coin stage; the
+    // coin studio's own warm/cool lights and point bounces are hidden for the
+    // duration so the black strip-lit look matches the reference exactly.
+    if (studio.scene) studio.scene.add(paradeStudio.group);
+    const previousLights = [];
+    if (studio.scene) {
+      for (const child of studio.scene.children) {
+        if (child.isLight) {
+          previousLights.push({ light: child, visible: child.visible });
+          child.visible = false;
+        }
+      }
+    }
+    const previousEnvironment = studio.scene ? studio.scene.environment : undefined;
+    const previousBackground = studio.scene ? studio.scene.background : undefined;
+    const previousFog = studio.scene ? studio.scene.fog : undefined;
+    const previousExposure = studio.renderer ? studio.renderer.toneMappingExposure : null;
+    const previousToneMapping = studio.renderer ? studio.renderer.toneMapping : null;
+    const previousFov = studio.camera ? studio.camera.fov : 30;
+
+    if (studio.scene) {
+      studio.scene.environment = paradeStudio.environment.texture;
+      studio.scene.background = new THREE.Color(PARADE.look.background);
+      studio.scene.fog = paradeStudio.fog;
+    }
+    if (studio.renderer) {
+      studio.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      studio.renderer.toneMappingExposure = PARADE.look.toneMappingExposure;
+      studio.renderer.setClearColor(0x000000, 1);
+    }
+
+    const cameraPose = paradeCameraPose(studioAspect(studio));
+    if (studio.camera) {
+      studio.camera.fov = cameraPose.fovDeg;
+      studio.camera.updateProjectionMatrix();
+      studio.camera.position.fromArray(cameraPose.position);
+      studio.camera.lookAt(cameraPose.target[0], cameraPose.target[1], cameraPose.target[2]);
+      studio.camera.updateMatrixWorld(true);
+    }
+    const fogRange = paradeStudio.applySceneSettings(studio.scene, {
+      cameraDistance: cameraPose.distance,
+      exposure: PARADE.look.toneMappingExposure,
+    });
+    // Depth cueing: the studio default (0.82/1.34 x distance) crushes the far
+    // arc to black; the composition contract's fadeNear/fadeFar (1.0/1.9) keeps
+    // back coins dim but readable, like the reference.
+    if (paradeStudio.fog) {
+      paradeStudio.fog.near = cameraPose.distance * 0.95;
+      paradeStudio.fog.far = cameraPose.distance * 1.7;
+      if (studio.scene) studio.scene.fog = paradeStudio.fog;
+      void fogRange;
+    }
+
+    const group = new THREE.Group();
+    group.name = 'coin-parade';
+    const faceEnvironment = buildParadeFaceEnvironment(studio.renderer);
+    const entries = [];
+    const shotPose = paradeRenderPose(PARADE.shotTime);
+    for (let index = 0; index < PARADE_RENDER_IDS.length; index += 1) {
+      const id = PARADE_RENDER_IDS[index];
+      const spec = specById(id);
+      if (!spec) continue;
+      const coin = makeCoin(spec, PARADE_FACE_SIZE);
+      const prepared = prepareParadeCoin(coin);
+      const holder = new THREE.Group();
+      holder.name = 'parade-coin:' + index + ':' + id;
+      const placement = shotPose.coins[index];
+      if (placement) {
+        holder.position.fromArray(placement.position);
+        holder.quaternion.fromArray(placement.quaternion);
+      }
+      holder.add(coin.group);
+      group.add(holder);
+      entries.push({ id, index, coin, holder, prepared });
+    }
+    if (!entries.length) throw new Error('no coin specs available for the parade');
+    // Look polish (texture-review notes): keep the satin faces neutral silver —
+    // the modeler's studio blue rim strip must only accent the reeded band/rim,
+    // not tint whole faces — and keep the far arc dim but readable.
+    for (const entry of entries) {
+      for (const mesh of entry.prepared.meshes) {
+        const material = mesh.material;
+        if (!material) continue;
+        const role =
+          mesh.name === 'band' ? 'band' : mesh.name === 'frame' ? 'frame' : mesh.name === 'wall' ? 'wall' : 'face';
+        if (role !== 'face') continue;
+        if (faceEnvironment && faceEnvironment.texture) material.envMap = faceEnvironment.texture;
+        material.envMapIntensity = 0.68;
+        if (Number.isFinite(material.metalness)) material.metalness = Math.min(material.metalness, 0.72);
+        if (Number.isFinite(material.roughness)) material.roughness = Math.max(material.roughness, 0.46);
+        if (material.color && material.color.isColor) material.color.set('#b0b3b6');
+        material.needsUpdate = true;
+      }
+    }
+    studio.orbit.add(group);
+
+    state.parade = {
+      group,
+      studio: paradeStudio,
+      entries,
+      previousEnvironment,
+      previousBackground,
+      previousFog,
+      previousExposure,
+      previousToneMapping,
+      previousFov,
+      playing: false,
+      time: PARADE.shotTime,
+      frameHook: null,
+      camera: null,
+      previousLights,
+      faceEnvironment,
+      spacing: paradeRingSpacing ? paradeRingSpacing() : null,
+    };
+    applyParadePose(PARADE.shotTime);
+    applyParadeFraming();
+
+    const autoplay = !state.shot && !state.reducedMotion && !state.capture;
+    state.parade.playing = autoplay;
+    state.parade.frameHook = installFrameHook(studio, (dt) => {
+      const parade = state.parade;
+      if (!parade.group || !parade.playing) return;
+      const step = Math.max(0, Math.min(0.1, dt));
+      applyParadePose(parade.time + step);
+    });
+    if (state.booting) curtainProgress(0.8, 'Building parade', entries.length + ' / ' + PARADE.count);
+    studio.renderNow();
+    await studio.whenStable();
+    studio.renderNow();
+  } catch (error) {
+    if (paradeStudio) {
+      try {
+        paradeStudio.dispose();
+      } catch (disposeError) {
+        /* best effort */
+      }
+    }
+    pushError('parade build failed: ' + errorMessage(error));
+    showErrorBanner('Could not render the coin parade: ' + errorMessage(error));
+    if (studio) {
+      if (studio.heroRig) studio.heroRig.visible = true;
+      if (studio.shadow) studio.shadow.visible = true;
+      if (studio.glow) studio.glow.visible = true;
+      if (typeof studio.setStatic === 'function') studio.setStatic(false);
+      if (typeof studio._computeFit === 'function') studio._computeFit();
+    }
+    throw error;
+  } finally {
+    setBusy(false);
+    syncParadeUi();
+  }
+  updateDiag();
+}
+
+/** Tear down Parade and restore the silver studio (env, fog, fov, visibility). */
+function disposeParadeView() {
+  const studio = state.studio;
+  const parade = state.parade;
+  if (parade.frameHook) {
+    try {
+      parade.frameHook();
+    } catch (error) {
+      /* hook teardown is best effort */
+    }
+    parade.frameHook = null;
+  }
+  if (parade.group && parade.group.parent) parade.group.parent.remove(parade.group);
+  for (const entry of parade.entries) {
+    disposeCoin(entry.coin);
+    if (entry.prepared) {
+      try {
+        entry.prepared.dispose();
+      } catch (error) {
+        /* best effort */
+      }
+    }
+  }
+  if (studio && studio.scene) {
+    if (parade.previousEnvironment !== undefined) studio.scene.environment = parade.previousEnvironment || null;
+    studio.scene.background = parade.previousBackground === undefined ? null : parade.previousBackground;
+    studio.scene.fog = parade.previousFog === undefined ? null : parade.previousFog;
+  }
+  if (studio && studio.renderer) {
+    studio.renderer.setClearColor(0x000000, 0);
+    if (parade.previousExposure !== null) studio.renderer.toneMappingExposure = parade.previousExposure;
+    if (parade.previousToneMapping !== null) studio.renderer.toneMapping = parade.previousToneMapping;
+  }
+  if (studio && studio.camera && Number.isFinite(parade.previousFov)) {
+    studio.camera.fov = parade.previousFov;
+    studio.camera.updateProjectionMatrix();
+  }
+  if (parade.studio) {
+    try {
+      parade.studio.dispose();
+    } catch (error) {
+      /* best effort */
+    }
+  }
+  for (const entry of parade.previousLights || []) {
+    if (entry && entry.light) entry.light.visible = entry.visible !== false;
+  }
+  if (parade.faceEnvironment) {
+    try {
+      parade.faceEnvironment.dispose();
+    } catch (error) {
+      /* best effort */
+    }
+  }
+  state.parade = {
+    group: null,
+    studio: null,
+    entries: [],
+    previousEnvironment: undefined,
+    previousBackground: undefined,
+    previousFog: undefined,
+    previousExposure: null,
+    previousToneMapping: null,
+    previousFov: 30,
+    playing: false,
+    time: PARADE.shotTime,
+    frameHook: null,
+    camera: null,
+    previousLights: [],
+    faceEnvironment: null,
+    spacing: null,
+  };
+  if (studio) {
+    if (studio.heroRig) studio.heroRig.visible = true;
+    if (studio.galleryGroup) studio.galleryGroup.visible = studio.mode === 'gallery';
+    if (studio.shadow) studio.shadow.visible = true;
+    if (studio.glow) studio.glow.visible = true;
+    if (typeof studio.setStatic === 'function') studio.setStatic(false);
+    if (typeof studio._computeFit === 'function') studio._computeFit();
+    studio.renderNow();
+  }
+}
+
+/** QA/debug snapshot of the Parade mode (SPEC R14-1 QA/API contract). */
+function buildParadeDebug() {
+  if (state.mode !== 'parade' || !state.parade.group) return null;
+  const time = paradeLoopTime(state.parade.time);
+  const pose = paradeRenderPose(time);
+  let studioDebug = null;
+  try {
+    studioDebug = state.parade.studio && state.parade.studio.debug ? state.parade.studio.debug() : null;
+    if (studioDebug && state.parade.studio && state.parade.studio.fog) {
+      studioDebug.fog = {
+        color: PARADE.depth.fogColor,
+        near: round3(state.parade.studio.fog.near),
+        far: round3(state.parade.studio.fog.far),
+      };
+    }
+  } catch (error) {
+    studioDebug = null;
+  }
+  let loopSeamOk = true;
+  try {
+    const a = JSON.stringify(paradePose(PARADE.shotTime));
+    const b = JSON.stringify(paradePose(PARADE.shotTime + PARADE.durationSeconds));
+    const renderA = JSON.stringify(paradeRenderPose(PARADE.shotTime));
+    const renderB = JSON.stringify(paradeRenderPose(PARADE.shotTime + PARADE.durationSeconds));
+    loopSeamOk = a === b && renderA === renderB;
+  } catch (error) {
+    loopSeamOk = false;
+  }
+  return {
+    count: PARADE.count,
+    ids: PARADE.ids.slice(),
+    renderedCount: state.parade.entries.length,
+    ringPositions: PARADE_RENDER_COUNT,
+    repeated: PARADE_RENDER_IDS[PARADE_RENDER_COUNT - 1],
+    playing: Boolean(state.parade.playing),
+    time: round3(time),
+    duration: PARADE.durationSeconds,
+    loopTime: round3(time),
+    ringAngle: round3(pose.ringAngle),
+    spinPeriod: PARADE.spin.periodSeconds,
+    spinAngle: round3(pose.spinAngle),
+    camera: state.parade.camera,
+    studio: studioDebug,
+    // Upright-symbol invariant data (modeler task-23): each rendered coin's
+    // authored face toward the camera and the in-plane half-turn roll.
+    coins: pose.coins.map((coin) => ({
+      id: coin.id,
+      facing: coin.facing,
+      roll: round3(coin.roll),
+      angle: round3(coin.angle),
+      spin: round3(coin.spin),
+    })),
+    static: Boolean(state.shot || state.still || state.reducedMotion || !state.parade.playing),
+    loopSeamOk,
+    spacing: state.parade.spacing
+      ? {
+          chord: state.parade.spacing.chord,
+          clearance: state.parade.spacing.clearance,
+          minRadius: state.parade.spacing.minRadius,
+          radius: state.parade.spacing.radius,
+        }
+      : null,
+    frontScreen: paradeFrontScreen(),
+    groupScreen: groupScreenBounds(state.parade.group),
+  };
+}
+
+/** Projected bounds of the nearest (front) coin only — the far arc may crop. */
+function paradeFrontScreen() {
+  if (!state.parade.group) return null;
+  let front = null;
+  const position = new THREE.Vector3();
+  for (const entry of state.parade.entries) {
+    entry.holder.updateWorldMatrix(true, false);
+    entry.holder.getWorldPosition(position);
+    if (!front || position.z > front.z) front = { z: position.z, holder: entry.holder };
+  }
+  return front ? groupScreenBounds(front.holder) : null;
+}
+
 /* ------------------------------------------------------------- fallbacks */
 
 function probeWebGL() {
@@ -1571,11 +2504,15 @@ async function boot() {
   try {
     if (state.mode === 'ring') await buildRing();
     else if (state.mode === 'stack') await buildStack();
+    else if (state.mode === 'wave') await buildWave();
+    else if (state.mode === 'parade') await buildParade();
     else if (state.mode === 'gallery') await buildGalleryCoins();
     else await buildHeroCoin();
     if (state.studio) {
       // Composition modes already configured their own rig/camera/visibility.
-      if (state.mode !== 'ring' && state.mode !== 'stack') state.studio.setMode(state.mode);
+      if (state.mode !== 'ring' && state.mode !== 'stack' && state.mode !== 'wave' && state.mode !== 'parade') {
+        state.studio.setMode(state.mode);
+      }
       state.studio.setFace(state.face, { immediate: true });
       state.studio.setSpin(state.spin);
       state.studio.setSelection(state.coin);
@@ -1597,7 +2534,17 @@ async function boot() {
     state.booting = false;
     state.ready = true;
     dom.footerStatus.textContent =
-      state.mode === 'stack' ? 'Stack' : state.mode === 'ring' ? 'Ring' : state.mode === 'gallery' ? 'Gallery' : 'Ready';
+      state.mode === 'parade'
+        ? 'Parade'
+        : state.mode === 'wave'
+          ? 'Wave'
+          : state.mode === 'stack'
+            ? 'Stack'
+            : state.mode === 'ring'
+              ? 'Ring'
+              : state.mode === 'gallery'
+                ? 'Gallery'
+                : 'Ready';
     syncModeUi();
     syncFaceUi();
     syncSpinUi();
@@ -1621,6 +2568,25 @@ function wireUi() {
   if (dom.btnStack) {
     dom.btnStack.addEventListener('click', () => {
       runExclusive(() => applyMode(state.mode === 'stack' ? 'hero' : 'stack')).then(refreshScene, () => undefined);
+    });
+  }
+  if (dom.btnWave) {
+    dom.btnWave.addEventListener('click', () => {
+      runExclusive(() => applyMode(state.mode === 'wave' ? 'hero' : 'wave')).then(refreshScene, () => undefined);
+    });
+  }
+  if (dom.btnParade) {
+    dom.btnParade.addEventListener('click', () => {
+      runExclusive(() => applyMode(state.mode === 'parade' ? 'hero' : 'parade')).then(refreshScene, () => undefined);
+    });
+  }
+  if (dom.btnParadePlay) {
+    dom.btnParadePlay.addEventListener('click', () => {
+      if (state.mode !== 'parade') return;
+      runExclusive(async () => {
+        setParadePlaying(!state.parade.playing);
+        refreshScene();
+      }).then(refreshScene, () => undefined);
     });
   }
   if (dom.btnReplay) {
@@ -1677,9 +2643,17 @@ function wireUi() {
       case 'T':
         runExclusive(() => applyMode(state.mode === 'stack' ? 'hero' : 'stack')).then(refreshScene, () => undefined);
         break;
+      case 'w':
+      case 'W':
+        runExclusive(() => applyMode(state.mode === 'wave' ? 'hero' : 'wave')).then(refreshScene, () => undefined);
+        break;
+      case 'p':
+      case 'P':
+        runExclusive(() => applyMode(state.mode === 'parade' ? 'hero' : 'parade')).then(refreshScene, () => undefined);
+        break;
       case 's':
       case 'S':
-        if (state.reducedMotion || state.mode === 'ring' || state.mode === 'stack') break;
+        if (state.reducedMotion || state.mode === 'ring' || state.mode === 'stack' || state.mode === 'wave' || state.mode === 'parade') break;
         state.spin = !state.spin;
         if (state.studio) state.studio.setSpin(state.spin);
         syncSpinUi();
@@ -1689,6 +2663,15 @@ function wireUi() {
       case 'R':
         runExclusive(async () => {
           if (state.studio) await state.studio.resetView();
+          refreshScene();
+        }).then(refreshScene, () => undefined);
+        break;
+      case ' ':
+      case 'Spacebar':
+        if (state.mode !== 'parade') break;
+        event.preventDefault();
+        runExclusive(async () => {
+          setParadePlaying(!state.parade.playing);
           refreshScene();
         }).then(refreshScene, () => undefined);
         break;
