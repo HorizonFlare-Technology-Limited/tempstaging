@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta name="description" content="TEKO Stacked Panels — six silver-white terraces rise from a flat plate, our real metal card settles low in the frame, and six amount tags expand outward in three waves. Deterministic three.js composition, local assets only.">
+<title>TEKO — Stacked Panels</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='8' width='26' height='17' rx='4' fill='%23eef1f5' stroke='%239aa3ae' stroke-width='1.3'/%3E%3Cpath d='M3.4 13.8h25.2' stroke='%239aa3ae' stroke-width='1.2'/%3E%3Cpath d='M8 19.6h6.2' stroke='%23ffd60a' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="./src/stacked-panel-styles.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body data-page="stacked-panel" data-variant="a" data-ready="0" data-errors="0" data-phase="start" data-time="0" data-playing="0" data-shot="0" data-reduced-motion="0" data-fallback="0">
+
+  <div class="page">
+
+    <header class="site-header">
+      <a class="brand" href="./stacked-panel.html" aria-label="TEKO — Stacked Panels">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2.6" y="8.2" width="18.8" height="11.4" rx="2.6"></rect>
+            <path d="M2.8 12.4h18.4"></path>
+            <path d="M6.2 16.2h5.4"></path>
+            <path d="M7.4 5.4h13.2" opacity="0.5"></path>
+          </svg>
+        </span>
+        <span class="brand-name">TEKO</span>
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Stacked Panels</span>
+      </a>
+      <div class="header-side">
+        <p class="header-note">Silver-white studio <span class="header-dot" aria-hidden="true"></span> real card model <span class="header-dot" aria-hidden="true"></span> six terraces</p>
+        <a class="header-link" href="./card.html">
+          <span>Metal Card</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 8h10"></path><path d="M9 4l4 4-4 4"></path>
+          </svg>
+        </a>
+      </div>
+    </header>
+
+    <main class="studio" id="studio">
+
+      <section class="copy-slot" aria-labelledby="page-title">
+        <p class="copy-kicker"><span class="copy-rule" aria-hidden="true"></span> TEKO · Stacked panels</p>
+        <h1 class="copy-title" id="page-title">Every layer<br><span>adds up.</span></h1>
+        <p class="copy-body">Six silver terraces rise out of a flat plate, one layer at a time. The card settles low, then six amounts fan out in three waves — +100 to +2k.</p>
+        <p class="copy-meta"><span id="variant-name">Silver-white panels + black card</span><span class="copy-meta-dot" aria-hidden="true"></span><span>6.5 s deterministic</span></p>
+      </section>
+
+      <section class="stage-column" aria-label="Stacked panel animation">
+        <div class="stage" id="stage">
+          <div class="stage-aura" aria-hidden="true"></div>
+          <canvas id="stage-canvas" aria-label="Six silver-white rounded-hexagon terraces rising from a flat plate with the TEKO metal card resting low on the top terrace and six amount tags expanding in three waves."></canvas>
+          <div class="stage-overlay" aria-hidden="true">
+            <div class="stage-eyebrow"><span class="stage-dot"></span><span id="stage-eyebrow-text">Silver-white studio</span></div>
+            <div class="stage-index"><span id="stage-variant-code">A</span><span class="stage-index-slash">/</span><span>02</span></div>
+          </div>
+          <div class="amount-layer" id="amount-layer" aria-live="off"></div>
+          <div class="stage-caption" id="stage-caption">
+            <span class="stage-caption-code" id="stage-code">PANELS</span>
+            <span class="stage-caption-rule" aria-hidden="true"></span>
+            <span class="stage-caption-name" id="stage-name">Rising</span>
+          </div>
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Variant V · Replay R · Space play/pause</p>
+          <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Building studio</span></div>
+        </div>
+
+        <div class="control-bar" role="group" aria-label="Stacked panel controls">
+          <div class="variant-switch" role="group" aria-label="Panel variant">
+            <span class="control-label">Variant</span>
+            <button class="btn btn-variant" id="btn-variant-a" type="button" aria-pressed="true" aria-keyshortcuts="V">
+              <span class="variant-swatch variant-swatch--a" aria-hidden="true"></span>
+              <span>Silver / black</span>
+            </button>
+            <button class="btn btn-variant" id="btn-variant-b" type="button" aria-pressed="false">
+              <span class="variant-swatch variant-swatch--b" aria-hidden="true"></span>
+              <span>Deep grey / white</span>
+            </button>
+          </div>
+
+          <div class="control-spacer" aria-hidden="true"></div>
+
+          <button class="btn btn-primary" id="btn-replay" type="button" aria-keyshortcuts="R">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
+              <path d="M4 3.4v4.4h4.4"></path>
+            </svg>
+            <span>Replay</span>
+            <kbd>R</kbd>
+          </button>
+
+          <button class="btn btn-ghost" id="btn-play" type="button" aria-pressed="false" aria-keyshortcuts="Space">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7.2 5.2v9.6l7.4-4.8z"></path>
+            </svg>
+            <span id="btn-play-label">Pause</span>
+            <kbd>Space</kbd>
+          </button>
+
+          <div class="timeline" aria-label="Animation timeline">
+            <div class="timeline-track" aria-hidden="true"><div class="timeline-fill" id="timeline-fill"></div></div>
+            <span class="timeline-readout" id="timeline-readout">0.0 s <span aria-hidden="true">/</span> 6.5 s</span>
+            <span class="timeline-phase" id="timeline-phase" aria-live="polite">START</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <p class="footer-note">Local assets only <span aria-hidden="true">·</span> three.js r151 <span aria-hidden="true">·</span> deterministic composition <span aria-hidden="true">·</span> no network requests</p>
+      <p class="footer-note footer-note-dim" id="footer-status">Loading studio</p>
+    </footer>
+  </div>
+
+  <section class="fallback" id="fallback" hidden aria-labelledby="fallback-title">
+    <div class="fallback-inner">
+      <p class="copy-kicker">Static preview</p>
+      <h2 class="fallback-title" id="fallback-title">3D animation unavailable</h2>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL studio. The stacked-panel composition needs WebGL; the text and control layout below stay available.</p>
+      <p class="fallback-message"><span class="mono">stacked-panel.html</span> uses only local assets: <span class="mono">src/card-model.js</span>, <span class="mono">src/stacked-panel-model.js</span> and <span class="mono">vendor/three.module.js</span>.</p>
+    </div>
+  </section>
+
+  <div class="error-banner" id="error-banner" role="alert" hidden>
+    <span id="error-text">The studio failed to start.</span>
+  </div>
+
+  <div id="qa-diag" hidden aria-hidden="true"></div>
+
+  <script>
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var body = document.body;
+        if (params.get('shot') === '1' || params.get('still') === '1') body.dataset.shot = '1';
+        if (params.get('variant') === 'b') body.dataset.variant = 'b';
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) body.dataset.reducedMotion = '1';
+        window.__stackedPanelBoot = { params: Object.fromEntries(params.entries()) };
+      } catch (error) { /* boot hints are best effort */ }
+    })();
+  </script>
+  <script type="module" src="./src/stacked-panel-preview.js"></script>
+</body>
+</html>

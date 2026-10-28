@@ -1344,6 +1344,15 @@ body[data-fallback='1'] .fallback {
   .site-header {
     height: clamp(68px, 9vh, 80px);
   }
+  /* The 9-item pill plus the long header note do not fit side by side at this
+     width (the nav used to shrink and spill its links over the note): hide the
+     decorative note and keep the pill at its natural width. */
+  .header-note {
+    display: none;
+  }
+  .collection-nav {
+    flex: 0 0 auto;
+  }
   .studio {
     grid-template-columns: minmax(0, 1fr) 296px;
     gap: 24px;

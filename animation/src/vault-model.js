@@ -1,13 +1,17 @@
 /**
  * tekoanimation — Vault object model (reference: user figure 5).
  *
- * Standalone procedural model for `vault.html` (docs/vault-contract.md):
+ * Standalone procedural model for `vault.html` (docs/vault.md, revision 17):
  * a metallic safe/vault with a dense ribbed/finned left side, a chamfered front
  * door hinged on the right with a circular ring of small dots/perforations and
  * a recessed grip slot, a satin steel body, a dark recessed interior revealed
- * when the door swings open, and a striped bar background (26 thin vertical
- * rounded bars, steel-blue gradient) that animates from a condensed lower-left
- * cluster to an expanded upper-right field.
+ * when the door swings open, and a striped bar field of 24 thin vertical
+ * capsules that frames the safe in depth: 12 bars stand IN FRONT of the safe on
+ * its right, starting at the right edge and stepping downward; 12 bars stand
+ * BEHIND the safe on its left, starting at the left edge and stepping upward.
+ * The reveal is ordered bottom-most bar first, each next bar sliding forward
+ * (+z) while fading in, and runs at the same time as the door opening from
+ * closed to open.
  *
  * Everything is generated from constants — no randomness, no network, no DOM.
  * The module is safe to import in Node for offline geometry/determinism checks;
@@ -16,17 +20,23 @@
  */
 import * as THREE from 'three';
 
-export const MODEL_VERSION = '1.1.0';
+export const MODEL_VERSION = '2.0.0';
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (from, to, t) => from + (to - from) * t;
 
-/** Cubic ease-in-out used for the door close + bar expansion. */
+/** Cubic ease-in-out used for the door opening. */
 export function easeInOutCubic(t) {
   const x = clamp(t, 0, 1);
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+/** Cubic ease-out used for each bar's fade-in and forward slide. */
+export function easeOutCubic(t) {
+  const x = clamp(t, 0, 1);
+  return 1 - Math.pow(1 - x, 3);
 }
 
 /* ------------------------------------------------------------------ spec */
@@ -69,14 +79,35 @@ export const VAULT_SPEC = Object.freeze({
 });
 
 export const BAR_SPEC = Object.freeze({
-  count: 34,
+  count: 24,
   radius: 0.05,
-  // 8 short left flank + 18 tall right field + 8 taller back cluster; every bar
-  // stands on the floor in the expanded state so the reflective floor echoes
-  // the whole striped field (as in the reference).
-  leftCount: 8,
-  rightCount: 18,
-  backCount: 8,
+  // RIGHT flank: 12 bars IN FRONT of the safe (final z beyond the safe front
+  // plane, +z), starting at the safe's right edge and stepping DOWNWARD away
+  // from it. Each bar stands on the floor; its top height descends with index.
+  rightCount: 12,
+  right: Object.freeze({
+    startX: 1.62,
+    stepX: 0.18,
+    startZ: 1.7,
+    depthStep: 0.14,
+    topStart: 2.92,
+    topStep: 0.17,
+  }),
+  // LEFT flank: 12 bars BEHIND the safe (final z behind the safe back plane,
+  // -z), starting at the safe's left edge and stepping UPWARD away from it.
+  leftCount: 12,
+  left: Object.freeze({
+    startX: -1.62,
+    stepX: 0.18,
+    startZ: -1.58,
+    depthStep: 0.14,
+    topStart: 1.12,
+    topStep: 0.17,
+  }),
+  baseY: 0.04,
+  // Every bar slides forward (+z) by this distance while it fades in, so the
+  // reveal reads as an advancing curtain of steel-blue colour.
+  advance: 1.1,
   toneCount: 5,
 });
 
@@ -92,13 +123,19 @@ export const CAMERA_SPEC = Object.freeze({
   narrowStageWidth: 760,
 });
 
-/** Door close + staggered bar expansion. Bars finish last: 1.0 + 33*0.028 = 1.92 s. */
+/**
+ * The door OPENS over 1.6 s while the 24 bars reveal bottom-most first: each
+ * bar takes 0.75 s to slide forward + fade in, staggered by 37 ms. The last bar
+ * starts at 23 * 37 = 851 ms and lands at 1601 ms, i.e. one millisecond after
+ * the door finishes - both motions share the same window and the final frame
+ * holds the open door with every bar visible.
+ */
 export const ANIMATION_SPEC = Object.freeze({
-  doorDurationMs: 1500,
-  barDurationMs: 1000,
-  barStaggerMs: 28,
-  barTotalMs: 1000 + (BAR_SPEC.count - 1) * 28,
-  totalMs: Math.max(1500, 1000 + (BAR_SPEC.count - 1) * 28),
+  doorDurationMs: 1600,
+  barDurationMs: 750,
+  barStaggerMs: 37,
+  barTotalMs: 750 + (BAR_SPEC.count - 1) * 37,
+  totalMs: Math.max(1600, 750 + (BAR_SPEC.count - 1) * 37),
 });
 
 /** Bar gradient: pale steel at the bottom -> saturated cobalt at the top. */
@@ -119,72 +156,83 @@ export const BAR_TONES = Object.freeze([
 ]);
 
 /**
- * Deterministic per-bar pose pair: a condensed pile at the lower left ->
- * expanded field spreading behind/around the safe (short left flank, tall
- * right cascade, taller back cluster). Every bar stands on the floor (y base
- * 0.04) in the expanded state so the floor reflects the striped field.
+ * Deterministic bar layout + start/final pose pair.
+ *
+ * index 0..rightCount-1 -> right flank, IN FRONT of the safe: x starts at the
+ * safe's right edge and steps outward, the top height steps DOWN with the
+ * sequence, and the final z stays beyond the safe front plane (+z).
+ * index rightCount..count-1 -> left flank, BEHIND the safe: x starts at the
+ * safe's left edge and steps outward, the top height steps UP with the
+ * sequence, and the final z stays behind the safe back plane (-z).
+ *
+ * `order` is the reveal rank: every bar sorted bottom-most top first (ties by
+ * x), so the lowest bar appears first and the sequence climbs to the tallest
+ * outer bar on the left. `start` is the same vertical bar pushed back by
+ * BAR_SPEC.advance; the reveal slides it forward into `final`.
  */
-export function barPoses(index) {
+function barLayout(index) {
   const i = Math.max(0, Math.floor(index));
-  let group = 'left';
-  let col = 0;
-  let row = 0;
-  let length = 1.0;
-  if (i < BAR_SPEC.leftCount) {
-    group = 'left';
-    col = i % 4;
-    row = Math.floor(i / 4);
-    length = 1.3 + ((i * 3 + 1) % 4) * 0.46;
-  } else if (i < BAR_SPEC.leftCount + BAR_SPEC.rightCount) {
-    group = 'right';
-    const local = i - BAR_SPEC.leftCount;
-    col = local % 6;
-    row = Math.floor(local / 6); // 0..2 depth rows
-    length = 2.4 + ((local * 7 + 3) % 6) * 0.4;
-  } else {
-    group = 'back';
-    const local = i - BAR_SPEC.leftCount - BAR_SPEC.rightCount;
-    col = local % 4;
-    row = Math.floor(local / 4); // 0..1
-    length = 3.2 + (local % 3) * 0.35;
+  const right = i < BAR_SPEC.rightCount;
+  const side = right ? 'right' : 'left';
+  const spec = right ? BAR_SPEC.right : BAR_SPEC.left;
+  const local = right ? i : i - BAR_SPEC.rightCount;
+  const direction = right ? 1 : -1;
+  const top = right
+    ? spec.topStart - local * spec.topStep
+    : spec.topStart + local * spec.topStep;
+  const length = top - BAR_SPEC.baseY;
+  const x = spec.startX + direction * local * spec.stepX;
+  const z = spec.startZ + direction * (local % 2) * spec.depthStep;
+  const tone = (i * 2 + (right ? 1 : 3)) % BAR_TONES.length;
+  return { index: i, side, local, top, length, x, z, tone };
+}
+
+/** Reveal rank per bar index: sorted by top height (bottom-most first), then x. */
+function computeRevealOrder() {
+  const entries = [];
+  for (let index = 0; index < BAR_SPEC.count; index += 1) {
+    const layout = barLayout(index);
+    entries.push({ index, top: layout.top, x: layout.x });
   }
-  // Expanded layout fills the background left-to-right behind the safe:
-  let expandedX = 0;
-  let expandedZ = 0;
-  if (group === 'left') {
-    // mid-height bars just left of the safe, standing on the floor
-    expandedX = -3.0 + col * 0.2;
-    expandedZ = 0.3 - row * 0.6;
-  } else if (group === 'right') {
-    // Right field hugged close behind the safe: with the tighter union the fitted
-    // camera zooms in, so these bars land in the right 40% of the stage while the
-    // safe stays the hero (the reference composition).
-    expandedX = 2.8 + col * 0.3 + row * 0.04;
-    expandedZ = 1.4 + row * 0.55;
-  } else {
-    // taller cluster directly behind the safe, peeking above its top
-    expandedX = -0.8 + col * 0.5;
-    expandedZ = -2.6 - row * 0.35;
-  }
-  const tone = group === 'left' ? (i * 2) % BAR_TONES.length : (i * 3 + col) % BAR_TONES.length;
-  const expanded = {
-    position: { x: expandedX, y: 0.04 + length / 2, z: expandedZ },
-    rotation: {
-      x: 0,
-      y: group === 'left' ? col * 0.18 - 0.2 : 0,
-      z: ((i % 3) - 1) * (group === 'left' ? 0.05 : 0.012),
-    },
+  entries.sort((a, b) => (a.top === b.top ? a.x - b.x : a.top - b.top));
+  return entries.map((entry) => entry.index);
+}
+
+export const BAR_REVEAL_ORDER = Object.freeze(computeRevealOrder());
+
+export function barRevealRank(index) {
+  return BAR_REVEAL_ORDER.indexOf(Math.max(0, Math.floor(index)));
+}
+
+export function barPoses(index) {
+  const layout = barLayout(index);
+  const order = barRevealRank(layout.index);
+  const y = BAR_SPEC.baseY + layout.length / 2;
+  const final = { position: { x: layout.x, y, z: layout.z }, rotation: { x: 0, y: 0, z: 0 } };
+  const start = {
+    position: { x: layout.x, y, z: layout.z - BAR_SPEC.advance },
+    rotation: { x: 0, y: 0, z: 0 },
   };
-  const condensed = {
-    // Tight pile at the lower left, in front of the safe and on the floor.
-    position: {
-      x: -2.35 + (i % 7) * 0.115 + Math.floor(i / 7) * 0.03,
-      y: 0.04 + length / 2 + Math.floor(i / 7) * 0.02,
-      z: 1.35 + (i % 4) * 0.12,
-    },
-    rotation: { x: 0, y: i * 0.2, z: 0.06 - (i % 3) * 0.04 },
+  return {
+    index: layout.index,
+    side: layout.side,
+    local: layout.local,
+    top: layout.top,
+    length: layout.length,
+    tone: layout.tone,
+    toneName: BAR_TONES[layout.tone].name,
+    order,
+    final,
+    start,
   };
-  return { index: i, group, col, row, length, tone, expanded, condensed };
+}
+
+/** Per-bar reveal window in ms: bar k (reveal order) starts at k*stagger. */
+export function barRevealTiming(order) {
+  return {
+    startMs: order * ANIMATION_SPEC.barStaggerMs,
+    endMs: order * ANIMATION_SPEC.barStaggerMs + ANIMATION_SPEC.barDurationMs,
+  };
 }
 
 /* ------------------------------------------------------------------ utils */
@@ -370,7 +418,8 @@ export function createVaultModel({ quality = 'hero' } = {}) {
     }),
   };
   const barGradient = buildBarGradientTexture();
-  const barMaterials = BAR_TONES.map((tone) => {
+  const barMaterials = [];
+  function createBarMaterial(tone) {
     const material = new THREE.MeshStandardMaterial({
       name: 'vault-bar-' + tone.name,
       map: barGradient,
@@ -380,10 +429,15 @@ export function createVaultModel({ quality = 'hero' } = {}) {
       metalness: 0.65,
       roughness: 0.28,
       envMapIntensity: 1.0,
-      transparent: false,
+      // Every bar owns its material so the staged reveal can fade it in on its
+      // own schedule; depth writing keeps the front/behind layering exact.
+      transparent: true,
+      opacity: 0,
+      depthWrite: true,
     });
+    barMaterials.push(material);
     return material;
-  });
+  }
 
   const geometries = [];
   const track = (geometry) => {
@@ -589,64 +643,84 @@ export function createVaultModel({ quality = 'hero' } = {}) {
       geometries.push(geometry);
       barGeometryCache.set(key, geometry);
     }
-    const bar = new THREE.Mesh(barGeometryCache.get(key), barMaterials[pose.tone]);
+    const material = createBarMaterial(BAR_TONES[pose.tone]);
+    const bar = new THREE.Mesh(barGeometryCache.get(key), material);
     bar.name = 'vault-bar-' + index;
-    bar.userData = { barIndex: index, tone: BAR_TONES[pose.tone].name };
+    bar.userData = {
+      barIndex: index,
+      side: pose.side,
+      tone: pose.toneName,
+      revealOrder: pose.order,
+    };
     barsGroup.add(bar);
     bars.push({
       index,
-      group: pose.group,
-      tone: BAR_TONES[pose.tone].name,
+      side: pose.side,
+      tone: pose.toneName,
       length: pose.length,
+      top: pose.top,
+      order: pose.order,
       mesh: bar,
-      condensed: pose.condensed,
-      expanded: pose.expanded,
+      material,
+      final: pose.final,
+      start: pose.start,
     });
   }
 
   /* ---------------- poses / bounds --------------------------------------- */
   const openAngle = doorSpec.openAngleDeg * DEG;
 
+  /** Door opening progress: 0 = seated/closed, 1 = fully open. */
   function applyDoor(progress) {
-    // progress 0 = fully open, 1 = seated/closed
     const eased = easeInOutCubic(clamp(progress, 0, 1));
-    doorGroup.rotation.y = lerp(openAngle, 0, eased);
+    doorGroup.rotation.y = lerp(0, openAngle, eased);
   }
 
+  /**
+   * Staged bar reveal: bar `order` starts at order*stagger, then slides forward
+   * from its start z (final z - advance) into place over barDurationMs while its
+   * opacity fades 0 -> 1. At elapsed 0 no bar is visible; at barTotalMs every
+   * bar sits exactly in its final pose at opacity 1.
+   */
   function applyBars(elapsedMs) {
     for (let index = 0; index < bars.length; index += 1) {
       const bar = bars[index];
-      const raw = clamp((elapsedMs - index * ANIMATION_SPEC.barStaggerMs) / ANIMATION_SPEC.barDurationMs, 0, 1);
-      const eased = easeInOutCubic(raw);
+      const startMs = bar.order * ANIMATION_SPEC.barStaggerMs;
+      const raw = clamp((elapsedMs - startMs) / ANIMATION_SPEC.barDurationMs, 0, 1);
+      const eased = easeOutCubic(raw);
       bar.mesh.position.set(
-        lerp(bar.condensed.position.x, bar.expanded.position.x, eased),
-        lerp(bar.condensed.position.y, bar.expanded.position.y, eased),
-        lerp(bar.condensed.position.z, bar.expanded.position.z, eased),
+        lerp(bar.start.position.x, bar.final.position.x, eased),
+        lerp(bar.start.position.y, bar.final.position.y, eased),
+        lerp(bar.start.position.z, bar.final.position.z, eased),
       );
-      bar.mesh.rotation.set(
-        lerp(bar.condensed.rotation.x, bar.expanded.rotation.x, eased),
-        lerp(bar.condensed.rotation.y, bar.expanded.rotation.y, eased),
-        lerp(bar.condensed.rotation.z, bar.expanded.rotation.z, eased),
-      );
+      bar.mesh.rotation.set(bar.final.rotation.x, bar.final.rotation.y, bar.final.rotation.z);
+      // Fade slightly ahead of the slide so a bar is already readable while it
+      // advances forward into its slot; both settle at exactly 1/1.0.
+      const opacity = raw <= 0 ? 0 : easeOutCubic(clamp(raw / 0.68, 0, 1));
+      bar.material.opacity = raw >= 1 ? 1 : opacity;
+      bar.mesh.visible = raw > 0;
     }
   }
 
+  /** Static poses: 'final' = open door + all bars visible, 'initial' = closed. */
   function setStaticPose(mode) {
-    const open = mode === 'open' || mode === 'condensed' || mode === 'initial';
-    applyDoor(open ? 0 : 1);
-    applyBars(open ? 0 : ANIMATION_SPEC.barTotalMs);
+    const final = mode === 'final' || mode === 'closed';
+    applyDoor(final ? 1 : 0);
+    applyBars(final ? ANIMATION_SPEC.totalMs : 0);
+    return final;
   }
 
   // deterministic bounds (computed from the pose constants, not from the scene
   // graph, so they are identical in Node and the browser)
-  function barBounds(expanded) {
-    // The bars are vertical capsules: the x/z extents are only the radius (plus
-    // a tiny allowance for their small lean), the y extent is length/2 + radius.
+  function barBounds(stage) {
+    // The bars are vertical capsules: the x/z extents are only the radius, the
+    // y extent is length/2 + radius. `stage` is 'final' (revealed pose) or
+    // 'start' (pushed back by the reveal advance) - the camera frames both.
     let minX = Infinity; let minY = Infinity; let minZ = Infinity;
     let maxX = -Infinity; let maxY = -Infinity; let maxZ = -Infinity;
     const radial = BAR_SPEC.radius + 0.03;
     for (const bar of bars) {
-      const source = expanded ? bar.expanded : bar.condensed;
+      const source = stage === 'start' ? bar.start : bar.final;
       const half = bar.length / 2 + BAR_SPEC.radius;
       minX = Math.min(minX, source.position.x - radial);
       maxX = Math.max(maxX, source.position.x + radial);
@@ -694,11 +768,21 @@ export function createVaultModel({ quality = 'hero' } = {}) {
   };
   const bounds = {
     safe: safeBounds,
-    condensed: barBounds(false),
-    expanded: barBounds(true),
+    barsFinal: barBounds('final'),
+    barsStart: barBounds('start'),
+    doorClosed: doorBounds(0),
     doorOpen: doorBounds(openAngle),
   };
-  const allSources = [safeBounds, bounds.condensed, bounds.expanded, bounds.doorOpen];
+  // The fitted camera frames the union of every pose the page can show: the
+  // closed safe, the opening door, the fully open door and the revealed bars
+  // (plus their pushed-back start pose so a revealing bar never clips).
+  const allSources = [
+    safeBounds,
+    bounds.barsFinal,
+    bounds.barsStart,
+    bounds.doorClosed,
+    bounds.doorOpen,
+  ];
   bounds.all = {
     min: {
       x: Math.min(...allSources.map((box) => box.min.x)),
@@ -730,6 +814,7 @@ export function createVaultModel({ quality = 'hero' } = {}) {
     materials,
     barMaterials,
     barGradient,
+    revealOrder: BAR_REVEAL_ORDER.slice(),
     bounds,
     spec,
     barSpec: BAR_SPEC,
@@ -747,19 +832,19 @@ export function createVaultModel({ quality = 'hero' } = {}) {
     },
   };
 
-  setStaticPose('expanded');
+  setStaticPose('final');
   return model;
 }
 
 /* ------------------------------------------------------------------ helpers */
 
-/** Apply a whole animation frame: doorProgress 0=open..1=closed, barsElapsedMs. */
+/** Apply a whole animation frame: doorProgress 0=closed..1=open, barsElapsedMs. */
 export function applyAnimationFrame(model, { doorProgress = 0, barsElapsedMs = 0 } = {}) {
   if (model && typeof model.applyDoor === 'function') model.applyDoor(doorProgress);
   if (model && typeof model.applyBars === 'function') model.applyBars(barsElapsedMs);
 }
 
-/** Static pose helper: 'closed'/'expanded', 'open'/'condensed'. */
+/** Static pose helper: 'final' (open door + all bars) or 'initial' (closed). */
 export function applyStaticPose(model, mode) {
   if (model && typeof model.setStaticPose === 'function') model.setStaticPose(mode);
 }

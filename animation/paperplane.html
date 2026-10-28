@@ -1,16 +1,16 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<meta name="description" content="TEKO ??Paper Plane. Three closed silver-fibre metal solids: two faceted wing volumes over a V-cut fuselage column, with seeded blue speckles, a light studio and a gentle idle float.">
+<meta name="description" content="TEKO Paper Plane. A classic folded paper dart: two swept delta wings meeting at a centre ridge, a folded keel and sharp creases. Silver paper with theme-gold transmitted light in a light editorial studio.">
 <title>Paper Plane ??TEKO</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M28 5 4 15l9 3 3 9 4-8 8-14Z' fill='%23dfe4e8' stroke='%23586670' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M13 18l15-13' stroke='%23586670' stroke-width='1'/%3E%3Ccircle cx='21' cy='12' r='1' fill='%235b8cc9'/%3E%3Ccircle cx='18' cy='15' r='.8' fill='%235b8cc9'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./src/paperplane-styles.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
-<body data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-still="0" data-qa-shot="0" data-qa-reduced-motion="0" data-qa-float="0" data-qa-camera="" data-qa-roll="" data-qa-distance="" data-qa-object-rect="" data-qa-vertices="0" data-qa-triangles="0" data-qa-speckles="0" data-qa-metalness="0.75" data-qa-roughness="0.34" data-qa-model="" data-still="0" data-shot="0" data-mode="studio">
+<body data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-still="0" data-qa-shot="0" data-qa-reduced-motion="0" data-qa-float="0" data-qa-camera="" data-qa-roll="" data-qa-distance="" data-qa-object-rect="" data-qa-vertices="0" data-qa-triangles="0" data-qa-speckles="0" data-qa-metalness="0.22" data-qa-roughness="0.30" data-qa-model="" data-still="0" data-shot="0" data-mode="studio">
 
   <header class="site-header">
     <a class="brand" href="./" aria-label="TEKO ??Coin home">
@@ -43,39 +43,39 @@
   <main class="studio">
 
     <section class="intro" aria-labelledby="plane-title">
-      <p class="eyebrow">Studio / faceted metal</p>
+      <p class="eyebrow">Studio / folded paper</p>
       <h1 id="plane-title">Paper Plane<span>Folded light.</span></h1>
-      <p class="description">Three closed solids: two wings, a V-cut body.<br>Silver paper-fibre metal, flecked with blue pigment.</p>
+      <p class="description">One folded sheet: two swept wings, a centre ridge, a tucked keel.<br>Silver paper lit by theme-gold transmission.</p>
       <div class="dimensions" aria-label="Nominal model dimensions">
-        <span>2.22 <small>SPAN</small></span>
-        <span>1.96 <small>LENGTH</small></span>
-        <span>0.55 <small>BODY DEPTH</small></span>
+        <span>1.96 <small>SPAN</small></span>
+        <span>1.73 <small>LENGTH</small></span>
+        <span>0.42 <small>KEEL DEPTH</small></span>
       </div>
       <p class="intro-note">Object 010 / 010 <span aria-hidden="true">&middot;</span> TEKO props</p>
     </section>
 
-    <section class="stage" id="stage" aria-label="Interactive faceted paper plane viewer">
-      <canvas id="stage-canvas" aria-label="A speckled silver paper plane: two faceted wing volumes over a V-cut fuselage column, floating in a light studio. Drag to orbit, scroll to zoom."></canvas>
+    <section class="stage" id="stage" aria-label="Interactive folded paper plane viewer">
+      <canvas id="stage-canvas" aria-label="A folded silver paper plane with theme-gold transmitted light: two swept wings meeting at a centre ridge, a folded keel and sharp creases, floating in a light studio. Drag to orbit, scroll to zoom."></canvas>
 
       <div class="stage-meta stage-meta--top">
         <span class="stage-dot" aria-hidden="true"></span>
         <span>Live 3D</span>
-        <span class="stage-tag">V-cut fuselage</span>
+        <span class="stage-tag">Folded dart</span>
       </div>
       <div class="stage-index" aria-hidden="true"><span>010</span><span class="stage-index-rule"></span><span class="stage-index-total">010</span></div>
       <div class="stage-hint" aria-hidden="true">Drag to orbit <span>&middot;</span> scroll to zoom</div>
 
       <div class="veil" id="stage-veil">
         <span class="veil-mark" aria-hidden="true"></span>
-        <span id="veil-text">Preparing the solids</span>
+        <span id="veil-text">Preparing the fold</span>
       </div>
 
       <div class="stage-fallback" id="fallback" hidden>
         <div class="fallback-inner">
           <p class="fallback-kicker">Static preview</p>
           <h2 class="fallback-title">3D preview unavailable</h2>
-          <p class="fallback-message" id="fallback-message">The interactive paper plane needs WebGL. Here is a static poster of the three-metal-solid plane: two faceted wings over a V-cut fuselage, with its blue speckles.</p>
-          <svg class="fallback-poster" viewBox="0 0 340 260" role="img" aria-label="Static illustration of the paper plane: two faceted silver wings over a V-cut fuselage column">
+          <p class="fallback-message" id="fallback-message">The interactive paper plane needs WebGL. Here is a static poster of the classic folded dart: two swept wings, centre ridge and folded keel.</p>
+          <svg class="fallback-poster" viewBox="0 0 340 260" role="img" aria-label="Static illustration of the classic folded paper dart: two swept wings, a centre ridge and a folded keel">
             <defs>
               <linearGradient id="wingFarRoot" x1="0" y1="0" x2="0.85" y2="1">
                 <stop offset="0" stop-color="#f6f8f8"></stop>
@@ -174,7 +174,7 @@
             <path d="M176 150 254 182" fill="none" stroke="#b9c3cb" stroke-width="1.1" stroke-linecap="round" opacity="0.8"></path>
             <path d="M162 179 242 214" fill="none" stroke="#8b97a1" stroke-width="1.1" stroke-linecap="round" opacity="0.7"></path>
           </svg>
-          <p class="fallback-explain">The interactive model needs WebGL. The procedural silver-fibre maps, the blue speckles and the idle float are skipped in this static view. Everything on this page is local.</p>
+          <p class="fallback-explain">The interactive model needs WebGL. The folded paper panels, the theme-gold transmitted light and the idle float are skipped in this static view. Everything on this page is local.</p>
         </div>
       </div>
     </section>
@@ -185,13 +185,13 @@
         <span class="panel-count">01 / 03</span>
       </div>
       <div class="swatch" aria-hidden="true"></div>
-      <p class="swatch-name">Speckled silver</p>
-      <p class="swatch-note">Paper-fibre metal &middot; seeded blue flecks</p>
+      <p class="swatch-name">Silver · gold transmission</p>
+      <p class="swatch-note">Folded paper &middot; theme-gold light through the edges</p>
 
       <dl class="specs">
         <div class="spec-row"><dt>Metalness</dt><dd id="spec-metalness">&mdash;</dd></div>
         <div class="spec-row"><dt>Roughness</dt><dd id="spec-roughness">&mdash;</dd></div>
-        <div class="spec-row"><dt>Speckles</dt><dd id="spec-speckles">&mdash;</dd></div>
+        <div class="spec-row"><dt>Folds</dt><dd id="spec-speckles">&mdash;</dd></div>
         <div class="spec-row"><dt>Geometry</dt><dd id="spec-geometry">&mdash;</dd></div>
         <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">&mdash;</dd></div>
         <div class="spec-row"><dt>Motion</dt><dd id="spec-motion">&mdash;</dd></div>
@@ -207,15 +207,15 @@
         </button>
         <button type="button" class="quiet" id="reset" aria-keyshortcuts="R">Reset view <span aria-hidden="true">&#8599;</span></button>
       </div>
-      <p class="hint" id="studio-status">Preparing the solids</p>
+      <p class="hint" id="studio-status">Preparing the fold</p>
 
       <div class="panel-head panel-head--second">
         <h2 class="panel-title">Notes</h2>
         <span class="panel-count">03 / 03</span>
       </div>
       <ul class="notes">
-        <li><span class="note-key">Wing + Body</span> Two mirrored faceted wing volumes over one V-section fuselage column; the centre ridge slopes front to rear and dives into the body, and every rim closes as a rounded bead.</li>
-        <li><span class="note-key">Pigment</span> 324 blue flecks from one seeded PRNG, painted into a 2 048 px albedo with matching roughness, metalness and fibre bump maps.</li>
+        <li><span class="note-key">Fold</span> One sheet, seven paper panels: two swept delta wings split by a crease, a raised centre ridge and a tucked keel beneath the body.</li>
+        <li><span class="note-key">Light</span> Silver translucent paper (transmission 0.30) with theme-gold <code>#ffd60a</code> attenuation, additive gold fold-edge lines and a warm back light; no image textures.</li>
         <li><span class="note-key">Motion</span> A slow float and rock (0.2&nbsp;Hz) written as a closed-form pose; frozen under <code>?still=1</code>, <code>?shot=1</code> and reduced motion.</li>
       </ul>
     </aside>
@@ -223,7 +223,7 @@
   </main>
 
   <footer class="site-footer">
-    <p class="footer-note">Three silver-fibre solids <span aria-hidden="true">&middot;</span> procedural speckle <span aria-hidden="true">&middot;</span> three.js r151</p>
+    <p class="footer-note">Folded paper dart <span aria-hidden="true">&middot;</span> gold transmitted light <span aria-hidden="true">&middot;</span> three.js r151</p>
     <p class="footer-note footer-note--dim">Local assets only <span aria-hidden="true">&middot;</span> no network requests</p>
     <p class="footer-note footer-note--dim" id="footer-state">Object 010 / 010</p>
   </footer>
@@ -232,9 +232,9 @@
     <div class="curtain-inner">
       <span class="curtain-mark" aria-hidden="true"></span>
       <span class="curtain-wordmark">TEKO</span>
-      <p class="curtain-title" id="loading-title">Forming the solids</p>
+      <p class="curtain-title" id="loading-title">Folding the paper</p>
       <span class="curtain-line" aria-hidden="true"><i></i></span>
-      <p class="curtain-note">Paper-fibre maps &middot; blue speckles &middot; light studio</p>
+      <p class="curtain-note">Folded panels &middot; silver &amp; gold light &middot; light studio</p>
     </div>
   </div>
 
@@ -258,7 +258,7 @@
       <div class="fallback-inner">
         <p class="fallback-kicker">Static preview</p>
         <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
-        <p class="fallback-message">This page builds the paper plane with JavaScript and WebGL: two faceted wing volumes over a V-cut fuselage column, cut from procedural silver-fibre maps with seeded blue speckles. Everything is local; enable JavaScript to see the animated three.js studio.</p>
+        <p class="fallback-message">This page builds the folded paper plane with JavaScript and WebGL: two swept paper wings, a centre ridge and a tucked keel, with theme-gold light transmitted through the thin silver paper. Everything is local; enable JavaScript to see the animated three.js studio.</p>
       </div>
     </section>
   </noscript>

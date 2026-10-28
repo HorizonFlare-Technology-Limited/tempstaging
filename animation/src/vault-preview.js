@@ -1,29 +1,35 @@
 /**
  * tekoanimation — Vault preview controller.
  *
- * Standalone collection page controller for `vault.html` (docs/vault-contract.md):
- * a dark product studio showing a ribbed steel safe/vault whose chamfered door
- * swings from OPEN to CLOSED while a striped background of 26 thin steel-blue
- * bars expands from a condensed lower-left pile to an upper-right field. The
- * reflective dark floor shows a soft mirrored echo of the vault + bars.
+ * Standalone collection page controller for `vault.html` (docs/vault.md,
+ * revision 17): a dark product studio showing a ribbed steel safe/vault whose
+ * chamfered door swings from CLOSED to OPEN while 24 thin steel-blue bars
+ * reveal themselves: 12 bars stand in front of the safe on the right (stepping
+ * downward from its right edge, +z) and 12 stand behind it on the left
+ * (stepping upward from its left edge, -z). The reveal is ordered bottom-most
+ * bar first; each next bar slides forward (+z) and fades in, finishing as the
+ * door reaches fully open. The reflective dark floor shows a soft mirrored echo
+ * of the vault + bars.
  *
- * Camera: fixed three-quarter view (azimuth -42°, elevation 14°), numerically
- * fitted to the union of the animated poses at every stage aspect
- * (1440x900 / 1200x900 / 390x844) so nothing clips.
+ * Camera: fixed three-quarter view, numerically fitted to the union of the
+ * initial and final poses (closed safe, opening/full door, revealed bars) at
+ * every stage aspect (1440x900 / 1200x900 / 390x844) so nothing clips.
  *
  * Animation: plays ONCE when the stage enters the viewport (IO threshold 0.35).
- * Replay button / Space / window.__tekoVault.play() / replay(). Reduced motion,
- * ?still=1 and ?shot=1 show the final closed/expanded frame deterministically;
- * ?play=0 shows the initial open/condensed state.
+ * Replay button / Space / window.__tekoVault.play() / replay() re-run it.
+ * Reduced motion, ?still=1 and ?shot=1 show the final OPEN-DOOR + ALL-BARS-
+ * VISIBLE frame deterministically; ?play=0 shows the initial closed/no-bars
+ * state; ?t=<ms> freezes an exact deterministic animation time.
  *
  * QA hook: window.__tekoVault = { ready, errors, warnings, play(), replay(),
- * debug() } plus body[data-qa-*] attributes and the hidden #qa-diag JSON mirror.
+ * seek(ms), debug(), meshes(), waitForIdle(), readyPromise() } plus
+ * body[data-qa-*] attributes and the hidden #qa-diag JSON mirror.
  */
 import * as THREE from 'three';
 import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
 import * as VaultModel from './vault-model.js';
 
-const VERSION = '1.0.0';
+const VERSION = '2.0.0';
 
 const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -143,6 +149,7 @@ const state = {
   shot: urlParams.get('shot') === '1',
   qaMode: urlParams.get('qa') === '1',
   playParam: urlParams.get('play'),
+  timeParam: urlParams.get('t'),
   reducedMotion: Boolean(reducedMotionQuery && reducedMotionQuery.matches),
   autoplay: false,
   viewObserver: null,
@@ -151,6 +158,14 @@ const state = {
 
 function isStaticMode() {
   return state.still || state.shot || state.reducedMotion;
+}
+
+/** ?t=<ms> freezes the exact animation time (deterministic QA sampling). */
+function fixedTimeMs() {
+  if (state.timeParam === null || state.timeParam === '') return null;
+  const value = Number(state.timeParam);
+  if (!Number.isFinite(value)) return null;
+  return clamp(value, 0, MODEL.ANIMATION_SPEC.totalMs);
 }
 
 function curtainProgress(ratio, label, count, title) {
@@ -214,20 +229,27 @@ function syncUi() {
   const studio = state.studio;
   const final = studio ? studio.final : false;
   const playing = Boolean(studio && studio.animation.playing);
+  const phase = studio ? studio.animation.phase : 'intro';
+  const opening = !state.failed && (playing || phase === 'opening' || phase === 'revealing');
+  const label = final ? 'Open' : opening ? 'Opening' : 'Closed';
   if (dom.replayState) {
-    dom.replayState.textContent = state.failed ? 'Static preview' : playing ? 'Closing' : final ? 'Closed' : 'Open';
+    dom.replayState.textContent = state.failed ? 'Static preview' : label;
   }
   if (dom.infoFootState) {
-    dom.infoFootState.textContent = state.failed ? 'Static fallback' : state.ready ? (playing ? 'Closing' : final ? 'Closed' : 'Open') : 'Loading';
+    dom.infoFootState.textContent = state.failed ? 'Static fallback' : state.ready ? label : 'Loading';
   }
   if (dom.footerStatus) {
     dom.footerStatus.textContent = state.failed ? 'Static fallback' : state.ready ? 'Ready' : 'Loading';
   }
   if (dom.btnReplay) dom.btnReplay.disabled = !state.ready || state.failed;
   if (dom.stageHint) {
+    const visible = studio && typeof studio.getBarDebug === 'function' ? studio.getBarDebug().visibleCount : 0;
     dom.stageHint.textContent = state.failed
       ? 'Static preview'
-      : playing ? 'Door closing · bars expanding' : final ? 'Replay to close again' : 'Open — waiting to close';
+      : playing ? 'Door opening · bars revealing'
+        : final ? 'All bars visible · replay to open again'
+          : opening ? 'Opening · ' + visible + ' of ' + BAR_COUNT + ' bars'
+            : 'Door closed · waiting to open';
   }
 }
 
@@ -258,12 +280,16 @@ function publishState() {
   dom.body.dataset.fallback = state.failed ? '1' : '0';
   dom.body.dataset.qaAnimation = state.failed ? 'fallback'
     : animation && animation.playing ? 'playing'
-      : final ? 'closed' : 'condensed';
-  dom.body.dataset.qaSafeState = safety ? safety.state : (state.failed ? 'fallback' : 'open');
+      : final ? 'open'
+        : animation && (animation.phase === 'opening' || animation.phase === 'revealing') ? 'opening' : 'closed';
+  dom.body.dataset.qaSafeState = safety ? safety.state : (state.failed ? 'fallback' : 'closed');
   dom.body.dataset.qaDoorProgress = safety ? String(safety.progress) : '0';
   dom.body.dataset.qaDoorAngle = safety ? String(safety.angleDeg) : '0';
+  dom.body.dataset.qaDoorTarget = safety ? String(safety.openAngleDeg) : '0';
   dom.body.dataset.qaBarsProgress = bars ? String(bars.expandedProgress) : '0';
-  dom.body.dataset.qaBarsCondensed = bars ? String(bars.condensedProgress) : '1';
+  dom.body.dataset.qaBarsCondensed = bars ? String(round(1 - bars.expandedProgress, 4)) : '1';
+  dom.body.dataset.qaBarsVisible = bars ? String(bars.visibleCount) : '0';
+  dom.body.dataset.qaTime = String(round(animation ? animation.elapsedMs : 0, 1));
   dom.body.dataset.qaBarsCount = String(BAR_COUNT);
   dom.body.dataset.qaMeshCount = String(objectsDebugCount(studio));
   dom.body.dataset.qaPlaying = animation && animation.playing ? '1' : '0';
@@ -393,7 +419,7 @@ class VaultStudio {
     this.buildMirrorReflection();
 
     scene.add(this.model.root);
-    this.applyPose('open');
+    this.applyPose('initial');
 
     this.resizeObserver = null;
     if (typeof ResizeObserver === 'function') {
@@ -565,7 +591,7 @@ class VaultStudio {
     this.syncMirror();
   }
 
-  /** Copy the animated pose of every source mesh onto its mirrored twin. */
+  /** Copy the animated pose (and bar fade) of every mesh onto its mirrored twin. */
   syncMirror() {
     const count = Math.min(this.mirrorSources.length, this.mirrorTargets.length);
     for (let index = 0; index < count; index += 1) {
@@ -574,6 +600,16 @@ class VaultStudio {
       target.position.copy(source.position);
       target.quaternion.copy(source.quaternion);
       target.scale.copy(source.scale);
+      target.visible = source.visible !== false;
+      const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
+      const targetMaterials = Array.isArray(target.material) ? target.material : [target.material];
+      for (let slot = 0; slot < Math.min(sourceMaterials.length, targetMaterials.length); slot += 1) {
+        const from = sourceMaterials[slot];
+        const to = targetMaterials[slot];
+        if (from && to && typeof from.opacity === 'number' && typeof to.opacity === 'number') {
+          to.opacity = from.opacity;
+        }
+      }
     }
   }
 
@@ -672,14 +708,16 @@ class VaultStudio {
 
   /* ------------------------------------------------------------ animation */
 
+  /** Static pose: 'final' = open door + all bars visible, 'initial' = closed. */
   applyPose(mode) {
-    const closed = mode === 'closed';
-    MODEL.applyStaticPose(this.model, closed ? 'closed' : 'open');
+    const final = mode === 'final' || mode === 'closed';
+    MODEL.applyStaticPose(this.model, final ? 'final' : 'initial');
     this.syncMirror();
-    this.final = closed;
+    this.final = final;
     this.requestRender();
   }
 
+  /** Apply the exact pose for animation.elapsed (door opening + bar reveal). */
   applyCurrentFrame() {
     const elapsed = this.animation.elapsed;
     const doorProgress = MODEL.getDoorProgress(elapsed);
@@ -690,24 +728,38 @@ class VaultStudio {
     this.requestRender();
   }
 
-  startAnimation({ fromFinal = null } = {}) {
-    const wasFinal = fromFinal === null ? this.final : Boolean(fromFinal);
+  /** Deterministic time sample (used by ?t=<ms> and the QA seek() hook). */
+  seek(elapsedMs) {
+    const total = MODEL.ANIMATION_SPEC.totalMs;
+    const elapsed = clamp(Number(elapsedMs) || 0, 0, total);
+    this.animation.playing = false;
+    this.animation.elapsed = elapsed;
+    this.animation.progress = clamp(elapsed / total, 0, 1);
+    this.animation.phase = elapsed >= total ? 'open' : elapsed <= 0 ? 'closed' : 'opening';
+    this.animation.playedOnce = elapsed >= total;
+    this.applyCurrentFrame();
+    this.final = elapsed >= total;
+    this.emitChange();
+    return elapsed;
+  }
+
+  startAnimation() {
     if (!this.motionAllowed()) {
-      this.applyPose('closed');
+      this.applyPose('final');
       this.animation.playing = false;
       this.animation.playedOnce = true;
       this.animation.progress = 1;
-      this.animation.phase = 'closed';
+      this.animation.phase = 'open';
       this.animation.elapsed = MODEL.ANIMATION_SPEC.totalMs;
       this.emitChange();
       return { durationMs: 0 };
     }
-    // Replay always restarts from the initial open/condensed pose.
-    if (wasFinal || this.final) this.applyPose('open');
+    // Play/replay always restarts from the initial closed / no-bars pose.
+    this.applyPose('initial');
     this.animation.playing = true;
     this.animation.playedOnce = true;
     this.animation.progress = 0;
-    this.animation.phase = 'closing';
+    this.animation.phase = 'opening';
     this.animation.elapsed = 0;
     this.animation.total = MODEL.ANIMATION_SPEC.totalMs;
     this.final = false;
@@ -728,12 +780,13 @@ class VaultStudio {
     });
     this.syncMirror();
     animation.progress = clamp(elapsed / (animation.total || 1), 0, 1);
-    animation.phase = doorProgress < 1 ? 'closing' : 'expanding';
+    animation.phase = doorProgress < 1 ? 'opening' : 'revealing';
     if (elapsed >= MODEL.ANIMATION_SPEC.totalMs) {
       animation.playing = false;
       animation.progress = 1;
-      animation.phase = 'closed';
-      this.applyPose('closed');
+      animation.phase = 'open';
+      animation.elapsed = MODEL.ANIMATION_SPEC.totalMs;
+      this.applyPose('final');
       this.final = true;
       this.emitChange();
     }
@@ -781,6 +834,8 @@ class VaultStudio {
 
   getAnimationDebug() {
     const animation = this.animation;
+    const doorProgress = MODEL.getDoorProgress(animation.elapsed);
+    const barProgress = clamp(animation.elapsed / MODEL.ANIMATION_SPEC.barTotalMs, 0, 1);
     return {
       playing: animation.playing,
       progress: round(animation.progress, 4),
@@ -791,18 +846,25 @@ class VaultStudio {
       doorDurationMs: MODEL.ANIMATION_SPEC.doorDurationMs,
       barDurationMs: MODEL.ANIMATION_SPEC.barDurationMs,
       barStaggerMs: MODEL.ANIMATION_SPEC.barStaggerMs,
+      barTotalMs: MODEL.ANIMATION_SPEC.barTotalMs,
+      doorProgress: round(doorProgress, 4),
+      barProgress: round(barProgress, 4),
+      doorDirection: 'closed -> open',
       mode: this.motionAllowed() ? 'animated' : 'static',
+      final: Boolean(this.final),
     };
   }
 
   getSafetyDebug() {
     const angle = this.model.safe.door.group.rotation.y;
-    const progress = clamp(1 - angle / (this.model.openAngleRad || 1), 0, 1);
+    const openAngleRad = this.model.openAngleRad || 1;
+    const progress = clamp(angle / openAngleRad, 0, 1);
     return {
-      state: progress >= 0.999 ? 'closed' : progress <= 0.001 ? 'open' : 'closing',
+      state: progress >= 0.999 ? 'open' : progress <= 0.001 ? 'closed' : 'opening',
       progress: round(progress, 4),
       angleDeg: round(radToDeg(angle), 2),
-      openAngleDeg: round(radToDeg(this.model.openAngleRad), 2),
+      openAngleDeg: round(radToDeg(openAngleRad), 2),
+      direction: 'closed -> open',
       dotCount: this.model.spec.door.dotCount,
       ribCount: this.model.spec.finCount,
       handle: 'recessed grip slot + hinge pins',
@@ -811,13 +873,94 @@ class VaultStudio {
 
   getBarDebug() {
     const total = MODEL.ANIMATION_SPEC.barTotalMs;
-    const expanded = clamp(this.animation.elapsed / total, 0, 1);
+    const elapsed = this.animation.elapsed;
+    const expanded = clamp(elapsed / total, 0, 1);
+    const safeFrontZ = this.model.spec.depth / 2;
+    const safeBackZ = -this.model.spec.depth / 2;
+    const positions = this.model.bars.map((bar) => ({
+      index: bar.index,
+      side: bar.side,
+      order: bar.order,
+      top: round(bar.top, 3),
+      length: round(bar.length, 3),
+      final: {
+        x: round(bar.final.position.x, 3),
+        y: round(bar.final.position.y, 3),
+        z: round(bar.final.position.z, 3),
+      },
+      startZ: round(bar.start.position.z, 3),
+      position: {
+        x: round(bar.mesh.position.x, 3),
+        y: round(bar.mesh.position.y, 3),
+        z: round(bar.mesh.position.z, 3),
+      },
+      opacity: round(bar.material.opacity, 3),
+      visible: bar.mesh.visible !== false,
+    }));
+    const right = positions.filter((bar) => bar.side === 'right');
+    const left = positions.filter((bar) => bar.side === 'left');
+    const order = this.model.revealOrder.slice();
+    const topsByOrder = order.map((index) => this.model.bars[index].top);
+    const rightMinZ = Math.min(...right.map((bar) => bar.final.z));
+    const leftMaxZ = Math.max(...left.map((bar) => bar.final.z));
     return {
       count: BAR_COUNT,
+      rightCount: right.length,
+      leftCount: left.length,
       expandedProgress: round(expanded, 4),
       condensedProgress: round(1 - expanded, 4),
+      visibleCount: positions.filter((bar) => bar.visible).length,
+      order,
+      bars: positions,
+      sides: {
+        right: {
+          flank: 'front',
+          count: right.length,
+          startX: round(right[0] ? right[0].final.x : 0, 3),
+          endX: round(right[right.length - 1] ? right[right.length - 1].final.x : 0, 3),
+          zRange: [
+            round(Math.min(...right.map((bar) => bar.final.z)), 3),
+            round(Math.max(...right.map((bar) => bar.final.z)), 3),
+          ],
+          topStart: round(right[0] ? right[0].top : 0, 3),
+          topEnd: round(right[right.length - 1] ? right[right.length - 1].top : 0, 3),
+        },
+        left: {
+          flank: 'back',
+          count: left.length,
+          startX: round(left[0] ? left[0].final.x : 0, 3),
+          endX: round(left[left.length - 1] ? left[left.length - 1].final.x : 0, 3),
+          zRange: [round(Math.min(...left.map((bar) => bar.final.z)), 3), round(leftMaxZ, 3)],
+          topStart: round(left[0] ? left[0].top : 0, 3),
+          topEnd: round(left[left.length - 1] ? left[left.length - 1].top : 0, 3),
+        },
+      },
+      layering: {
+        safeFrontZ: round(safeFrontZ, 3),
+        safeBackZ: round(safeBackZ, 3),
+        rightMinZ: round(rightMinZ, 3),
+        leftMaxZ: round(leftMaxZ, 3),
+        rightInFront: right.every((bar) => bar.final.z > safeFrontZ),
+        leftBehind: left.every((bar) => bar.final.z < safeBackZ),
+        frontGap: round(rightMinZ - safeFrontZ, 3),
+        backGap: round(safeBackZ - leftMaxZ, 3),
+      },
+      reveal: {
+        doorDurationMs: MODEL.ANIMATION_SPEC.doorDurationMs,
+        barDurationMs: MODEL.ANIMATION_SPEC.barDurationMs,
+        barStaggerMs: MODEL.ANIMATION_SPEC.barStaggerMs,
+        barTotalMs: MODEL.ANIMATION_SPEC.barTotalMs,
+        totalMs: MODEL.ANIMATION_SPEC.totalMs,
+        firstBar: order[0],
+        lastBar: order[order.length - 1],
+        firstBarTop: round(topsByOrder[0], 3),
+        lastBarTop: round(topsByOrder[topsByOrder.length - 1], 3),
+        bottomMostFirst: topsByOrder.every((top, index) => index === 0 || top >= topsByOrder[index - 1]),
+        simultaneousWithDoor: true,
+      },
       tones: MODEL.BAR_TONES.map((tone) => tone.name),
       gradient: 'steel -> cobalt (procedural DataTexture, no baked reflection)',
+      advance: MODEL.BAR_SPEC.advance,
     };
   }
 
@@ -896,6 +1039,8 @@ class VaultStudio {
           roughness: typeof material.roughness === 'number' ? round(material.roughness, 3) : null,
           envMapIntensity: typeof material.envMapIntensity === 'number'
             ? round(material.envMapIntensity, 3) : null,
+          opacity: typeof material.opacity === 'number' ? round(material.opacity, 3) : null,
+          transparent: Boolean(material.transparent),
           hasMap: Boolean(material.map),
         })),
       });
@@ -969,10 +1114,10 @@ function resolveReady(value) {
 function doPlay() {
   const studio = state.studio;
   if (!studio || state.failed) return Promise.resolve(false);
-  studio.startAnimation({ fromFinal: false });
+  studio.startAnimation();
   syncUi();
   publishState();
-  announce('Vault closing');
+  announce('Vault opening');
   return studio.waitForIdle().then(() => {
     syncUi();
     publishState();
@@ -983,10 +1128,10 @@ function doPlay() {
 function doReplay() {
   const studio = state.studio;
   if (!studio || state.failed) return Promise.resolve(false);
-  studio.startAnimation({ fromFinal: true });
+  studio.startAnimation();
   syncUi();
   publishState();
-  announce('Replaying the vault close');
+  announce('Replaying the vault opening');
   return studio.waitForIdle().then(() => {
     syncUi();
     publishState();
@@ -1007,7 +1152,16 @@ function buildDebug() {
       version: state.webgl || '',
     },
     safe: studio ? studio.getSafetyDebug() : null,
-    bars: studio ? studio.getBarDebug() : { count: BAR_COUNT, expandedProgress: 0, condensedProgress: 1 },
+    bars: studio
+      ? studio.getBarDebug()
+      : {
+          count: BAR_COUNT,
+          rightCount: MODEL.BAR_SPEC.rightCount,
+          leftCount: MODEL.BAR_SPEC.leftCount,
+          expandedProgress: 0,
+          condensedProgress: 1,
+          visibleCount: 0,
+        },
     animation: studio
       ? studio.getAnimationDebug()
       : { playing: false, progress: 0, playedOnce: false, phase: 'intro' },
@@ -1022,6 +1176,8 @@ function buildDebug() {
           ribs: MODEL.VAULT_SPEC.finCount,
           doorDots: MODEL.VAULT_SPEC.door.dotCount,
           bars: BAR_COUNT,
+          barRight: MODEL.BAR_SPEC.rightCount,
+          barLeft: MODEL.BAR_SPEC.leftCount,
           lights: { directional: 3, ambient: 1 },
           render: studio.getRenderDebug(),
         }
@@ -1039,7 +1195,9 @@ function buildDebug() {
           },
           bars: {
             count: BAR_COUNT,
-            material: 'MeshStandardMaterial, procedural DataTexture gradient, no baked reflection',
+            rightCount: MODEL.BAR_SPEC.rightCount,
+            leftCount: MODEL.BAR_SPEC.leftCount,
+            material: 'MeshStandardMaterial per bar, procedural DataTexture gradient, animated opacity, no baked reflection',
           },
         }
       : null,
@@ -1049,8 +1207,10 @@ function buildDebug() {
       barSpec: MODEL.BAR_SPEC,
       cameraSpec: CAMERA,
       animationSpec: MODEL.ANIMATION_SPEC,
+      revealOrder: state.model ? state.model.revealOrder.slice() : null,
       bounds: state.model ? state.model.bounds : null,
     },
+    timeMs: studio ? round(studio.animation.elapsed, 1) : 0,
     stageRect: null,
     flags: {
       still: Boolean(state.still),
@@ -1060,6 +1220,7 @@ function buildDebug() {
       autoplay: Boolean(state.autoplay),
       fallback: Boolean(state.failed),
       play: state.playParam !== null ? state.playParam : 'auto',
+      time: state.timeParam !== null ? fixedTimeMs() : null,
       final: Boolean(studio && studio.final),
     },
     urls: {
@@ -1098,6 +1259,13 @@ const api = {
   },
   replay() {
     return doReplay();
+  },
+  seek(elapsedMs) {
+    if (!state.studio || state.failed) return false;
+    const elapsed = state.studio.seek(Number(elapsedMs));
+    syncUi();
+    publishState();
+    return elapsed;
   },
   debug: buildDebug,
   meshes() {
@@ -1170,10 +1338,10 @@ function triggerAnimation(source) {
   if (studio.animation.playing) return;
   state.autoplay = false;
   publishState();
-  studio.startAnimation({ fromFinal: false });
+  studio.startAnimation();
   syncUi();
   publishState();
-  announce(source === 'viewport' ? 'Vault closing' : 'Vault closed');
+  announce(source === 'viewport' ? 'Vault opening' : 'Vault opening again');
 }
 
 function setupViewportTrigger() {
@@ -1233,10 +1401,10 @@ function wireUi() {
             state.viewObserver.disconnect();
             state.viewObserver = null;
           }
-          state.studio.applyPose('closed');
+          state.studio.applyPose('final');
           state.studio.animation.playing = false;
           state.studio.animation.progress = 1;
-          state.studio.animation.phase = 'closed';
+          state.studio.animation.phase = 'open';
           state.studio.animation.playedOnce = true;
           state.studio.animation.elapsed = MODEL.ANIMATION_SPEC.totalMs;
           state.autoplay = false;
@@ -1258,8 +1426,14 @@ async function boot() {
 
   dom.body.dataset.fallback = '0';
   dom.body.dataset.qaReady = '0';
-  dom.body.dataset.qaAnimation = state.playParam === '0' ? 'condensed' : 'intro';
-  dom.body.dataset.qaSafeState = 'open';
+  const bootTime = fixedTimeMs();
+  dom.body.dataset.qaAnimation = bootTime !== null ? 'sample' : state.playParam === '0' ? 'initial' : 'intro';
+  dom.body.dataset.qaSafeState = 'closed';
+  dom.body.dataset.qaDoorProgress = '0';
+  dom.body.dataset.qaDoorAngle = '0';
+  dom.body.dataset.qaBarsProgress = '0';
+  dom.body.dataset.qaBarsVisible = '0';
+  dom.body.dataset.qaTime = bootTime !== null ? String(bootTime) : '0';
   dom.body.dataset.qaBarsCount = String(BAR_COUNT);
   dom.body.dataset.qaMeshCount = '0';
   if (state.still) dom.body.dataset.still = '1';
@@ -1320,30 +1494,36 @@ async function boot() {
 
   const studio = state.studio;
   // Deterministic / initial states:
-  //   still | shot | reduced-motion -> final closed/expanded frame
-  //   ?play=0                      -> initial open/condensed state, no autoplay
-  //   default                      -> initial open/condensed, animate on viewport entry
-  if (isStaticMode()) {
-    studio.applyPose('closed');
+  //   ?t=<ms>                      -> exact frozen animation sample, no autoplay
+  //   still | shot | reduced-motion -> final OPEN door + ALL bars visible
+  //   ?play=0                      -> initial closed door / no bars, no autoplay
+  //   default                      -> initial closed / no bars, animate on viewport entry
+  const bootTimeMs = fixedTimeMs();
+  if (bootTimeMs !== null) {
+    studio.seek(bootTimeMs);
+    studio.final = bootTimeMs >= MODEL.ANIMATION_SPEC.totalMs;
+    state.autoplay = false;
+  } else if (isStaticMode()) {
+    studio.applyPose('final');
     studio.animation.playing = false;
     studio.animation.progress = 1;
-    studio.animation.phase = 'closed';
+    studio.animation.phase = 'open';
     studio.animation.playedOnce = true;
     studio.animation.elapsed = MODEL.ANIMATION_SPEC.totalMs;
     state.autoplay = false;
   } else if (state.playParam === '0') {
-    studio.applyPose('open');
+    studio.applyPose('initial');
     studio.animation.playing = false;
     studio.animation.progress = 0;
-    studio.animation.phase = 'condensed';
+    studio.animation.phase = 'closed';
     studio.animation.playedOnce = false;
     studio.animation.elapsed = 0;
     state.autoplay = false;
   } else {
-    studio.applyPose('open');
+    studio.applyPose('initial');
     studio.animation.playing = false;
     studio.animation.progress = 0;
-    studio.animation.phase = 'condensed';
+    studio.animation.phase = 'closed';
     studio.animation.playedOnce = false;
     studio.animation.elapsed = 0;
     state.autoplay = true;

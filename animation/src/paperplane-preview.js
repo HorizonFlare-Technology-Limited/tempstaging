@@ -45,7 +45,7 @@ const CAMERA = CAMERA_SPEC;
 
 /* ------------------------------------------------------------ render tuning */
 
-const RENDERER = Object.freeze({ exposure: 0.92, dprMax: 2 });
+const RENDERER = Object.freeze({ exposure: 0.6, dprMax: 2 });
 
 // A hand-built high-contrast studio box instead of a bright RoomEnvironment:
 // the silver sheet needs dark walls and hot softboxes in its reflections, or it
@@ -53,29 +53,29 @@ const RENDERER = Object.freeze({ exposure: 0.92, dprMax: 2 });
 const ENVIRONMENT = Object.freeze({ sigma: 0.022 });
 const ENV_ROOM = Object.freeze({
   size: [36, 24, 36],
-  wall: [0.2, 0.225, 0.255],
-  floor: [0.035, 0.04, 0.05],
-  ceiling: [0.82, 0.85, 0.9],
+  wall: [0.1, 0.115, 0.135],
+  floor: [0.018, 0.021, 0.026],
+  ceiling: [0.44, 0.48, 0.54],
 });
 const ENV_PANELS = Object.freeze([
   // Warm key softbox, upper front-left.
-  Object.freeze({ position: [-11, 8.5, 9.5], size: [8, 5], color: [1.0, 0.94, 0.86], intensity: 6.4 }),
+  Object.freeze({ position: [-11, 8.5, 9.5], size: [8, 5], color: [1.0, 0.94, 0.86], intensity: 3.1 }),
   // Cool fill, front-right.
-  Object.freeze({ position: [9.5, 6.5, 8.5], size: [5.2, 5.6], color: [0.78, 0.88, 1.0], intensity: 2.7 }),
+  Object.freeze({ position: [9.5, 6.5, 8.5], size: [5.2, 5.6], color: [0.78, 0.88, 1.0], intensity: 1.4 }),
   // Long bright rim strip behind and above.
-  Object.freeze({ position: [0, 9.6, -12.5], size: [13, 2.4], color: [1.0, 1.0, 1.0], intensity: 7.5 }),
+  Object.freeze({ position: [0, 9.6, -12.5], size: [13, 2.4], color: [1.0, 1.0, 1.0], intensity: 3.4 }),
   // Cool low bounce, rear-right.
-  Object.freeze({ position: [8.5, 2.2, -8.5], size: [4.5, 3.4], color: [0.55, 0.68, 0.85], intensity: 1.2 }),
+  Object.freeze({ position: [8.5, 2.2, -8.5], size: [4.5, 3.4], color: [0.55, 0.68, 0.85], intensity: 0.65 }),
   // Dark card, rear-left, gives the V groove a dark reflection to fall into.
   Object.freeze({ position: [-8.5, 3.6, -9.5], size: [6.5, 6], color: [0.02, 0.025, 0.03], intensity: 1.0 }),
 ]);
 
 const LIGHTS = Object.freeze({
-  key: { color: 0xfff3e4, intensity: 1.65, position: [-5.5, 6.5, 6] },
-  fill: { color: 0xcfe0ff, intensity: 0.48, position: [6.5, 3.5, 4.5] },
-  rim: { color: 0xeaf3ff, intensity: 1.3, position: [2.5, 5, -7] },
-  hemi: { sky: 0xe8eef6, ground: 0x59636d, intensity: 0.14 },
-  ambient: { color: 0xdfe7f0, intensity: 0.08 },
+  key: { color: 0xfff3e4, intensity: 0.7, position: [-5.5, 6.5, 6] },
+  fill: { color: 0xcfe0ff, intensity: 0.3, position: [6.5, 3.5, 4.5] },
+  rim: { color: 0xeaf3ff, intensity: 0.55, position: [2.5, 5, -7] },
+  hemi: { sky: 0xe8eef6, ground: 0x59636d, intensity: 0.1 },
+  ambient: { color: 0xdfe7f0, intensity: 0.06 },
 });
 
 const SHADOW = Object.freeze({ width: 3.3, depth: 2.5, opacity: 0.27, y: -0.44 });
@@ -197,7 +197,7 @@ function syncUi() {
     dom.status.textContent = state.failed
       ? 'Static preview'
       : !state.ready
-        ? 'Preparing the solids'
+        ? 'Preparing the fold'
         : animated
           ? 'Float on · drag to orbit'
           : 'Float paused · drag to orbit';
@@ -210,7 +210,7 @@ function syncModelFacts() {
   const effective = effectiveSurface();
   if (dom.specMetalness) dom.specMetalness.textContent = effective.metalness.toFixed(2);
   if (dom.specRoughness) dom.specRoughness.textContent = effective.roughness.toFixed(2);
-  if (dom.specSpeckles) dom.specSpeckles.textContent = model.maps.speckles + ' / ' + model.maps.colorSize + '²';
+  if (dom.specSpeckles) dom.specSpeckles.textContent = model.stats.panels + ' panels / ' + model.stats.creases + ' creases';
   if (dom.specGeometry) {
     dom.specGeometry.textContent = model.stats.triangles.toLocaleString('en-US') + ' tris · ' + model.stats.vertices.toLocaleString('en-US') + ' verts';
   }
@@ -705,6 +705,15 @@ class PaperPlaneStudio {
           bumpMap: Boolean(material.bumpMap),
         },
       },
+      transmission: {
+        transmission: round(material.transmission, 3),
+        thickness: round(material.thickness, 3),
+        ior: round(material.ior, 3),
+        attenuationColor: '#' + material.attenuationColor.getHexString(),
+        attenuationDistance: round(material.attenuationDistance, 3),
+        emissive: '#' + material.emissive.getHexString(),
+        emissiveIntensity: round(material.emissiveIntensity, 3),
+      },
       effective: {
         metalness: round(surface.metalness, 4),
         roughness: round(surface.roughness, 4),
@@ -716,17 +725,27 @@ class PaperPlaneStudio {
         metalness: fuselageMaterial.metalness,
         roughness: fuselageMaterial.roughness,
         envMapIntensity: fuselageMaterial.envMapIntensity,
+        transmission: round(fuselageMaterial.transmission, 3),
       },
-      textures: textures
-        ? {
-            color: { size: textures.color.image.width, srgb: true, procedural: true },
-            roughness: { size: textures.roughness.image.width, srgb: false, procedural: true },
-            metalness: { size: textures.metalness.image.width, srgb: false, procedural: true },
-            bump: { size: textures.bump.image.width, srgb: false, procedural: true },
-          }
-        : null,
-      speckles: this.model.maps.speckles,
+      edgeGlow: {
+        material: 'LineBasicMaterial additive gold',
+        color: this.model.edgeMaterial ? '#' + this.model.edgeMaterial.color.getHexString() : null,
+        opacity: this.model.edgeMaterial ? round(this.model.edgeMaterial.opacity, 3) : 0,
+        additive: this.model.edgeMaterial ? this.model.edgeMaterial.blending === THREE.AdditiveBlending : false,
+      },
+      backlight: this.model.backlight ? {
+        color: '#' + this.model.backlight.color.getHexString(),
+        intensity: round(this.model.backlight.intensity, 3),
+        distance: round(this.model.backlight.distance, 3),
+      } : null,
+      textures: null,
+      speckles: 0,
       seed: this.model.maps.seed,
+      folded: {
+        panels: this.model.stats.panels,
+        creases: this.model.stats.creases,
+        style: 'classic-dart',
+      },
       surface: SURFACE_SPEC,
     };
   }
@@ -925,6 +944,28 @@ function buildDebug() {
     model: state.model
       ? {
           version: MODEL_VERSION,
+          folded: Boolean(state.model.folded),
+          panels: state.model.panels,
+          creases: state.model.creases,
+          material: {
+            type: 'MeshPhysicalMaterial',
+            color: '#' + state.model.material.color.getHexString(),
+            metalness: state.model.material.metalness,
+            roughness: state.model.material.roughness,
+            transmission: state.model.material.transmission,
+            thickness: state.model.material.thickness,
+            ior: state.model.material.ior,
+            attenuationColor: '#' + state.model.material.attenuationColor.getHexString(),
+            attenuationDistance: state.model.material.attenuationDistance,
+            emissive: '#' + state.model.material.emissive.getHexString(),
+            emissiveIntensity: state.model.material.emissiveIntensity,
+            maps: {
+              map: Boolean(state.model.material.map),
+              roughnessMap: Boolean(state.model.material.roughnessMap),
+              metalnessMap: Boolean(state.model.material.metalnessMap),
+              bumpMap: Boolean(state.model.material.bumpMap),
+            },
+          },
           spec: {
             noseZ: PLANE_SPEC.noseZ,
             tailZ: PLANE_SPEC.tailZ,
@@ -992,11 +1033,11 @@ async function boot() {
   state.webgl = glVersion;
   qa.webgl = glVersion;
   if (!glVersion) {
-    showFallback('WebGL is unavailable in this browser, so the interactive paper plane cannot be rendered. A static poster of the speckled silver plane is shown.');
+    showFallback('WebGL is unavailable in this browser, so the interactive folded paper plane cannot be rendered. A static poster of the classic folded dart is shown.');
     resolveReady(false);
     return;
   }
-  if (dom.veilText) dom.veilText.textContent = 'Rendering the solids';
+  if (dom.veilText) dom.veilText.textContent = 'Rendering the folded paper plane';
 
   renderer = createRenderer();
   if (!renderer) {
@@ -1017,7 +1058,7 @@ async function boot() {
     if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(() => window.setTimeout(resolve, 0));
     else resolve();
   });
-  if (dom.veilText) dom.veilText.textContent = 'Forming 2 048² of paper fibre';
+  if (dom.veilText) dom.veilText.textContent = 'Folding the paper panels';
 
   let model = null;
   try {
