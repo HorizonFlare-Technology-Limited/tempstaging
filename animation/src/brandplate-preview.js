@@ -619,8 +619,8 @@ function boot() {
       presented += 1;
       if (presented === 3) {
         document.title = state.reducedMotion
-          ? 'OK brandplate reduced'
-          : 'OK brandplate shot ' + state.time.toFixed(2);
+          ? 'TEKO - Silver brand square plate (provisional, reduced motion)'
+          : 'TEKO - Silver brand square plate (provisional, shot ' + state.time.toFixed(2) + ' s)';
         document.body.dataset.ready = '2';
       }
       requestAnimationFrame(present);
@@ -628,7 +628,7 @@ function boot() {
     requestAnimationFrame(present);
     return;
   }
-  document.title = 'OK brandplate ready';
+  document.title = 'TEKO - Silver brand square plate (provisional)';
   requestAnimationFrame(animate);
 }
 
