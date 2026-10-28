@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="TEKO Sleek Metal Card — an interactive three.js payment-card duo. Two sleek-steel cards, dark and light, each with a reconstructed engraved back design and a thin mirror-chrome middle frame flush with the card edge, composed like a card stack and viewed from a 45-degree three-quarter angle, lit by a single key light set to the right of the camera so the highlight reads across the right of each card and the soft shadow falls to the left; drag to rotate.">
+<meta name="description" content="TEKO Sleek Metal Card — an interactive three.js payment-card duo. Two sleek-steel cards with reconstructed engraved backs: the dark card has a black metal mirror middle frame, the light card keeps its chrome frame, both flush with the card edge. Composed like a card stack, viewed from a 45-degree three-quarter angle, lit by one switchable key light set to the right of the camera; drag to rotate.">
 <title>TEKO — Sleek Metal Card</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='8' width='26' height='17' rx='3.4' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.6'/%3E%3Cpath d='M3.4 13.6h25.2' stroke='%23c9d6e6' stroke-width='1.2'/%3E%3Cpath d='M8 19.2h6.4' stroke='%23c9d6e6' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="./src/card-styles.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
-<body data-card="" data-variant="duo" data-mode="hero" data-qa-ready="0" data-qa-errors="0" data-qa-cards="" data-qa-pose="0,0" data-qa-composition="duo" data-qa-reflection="1" data-fallback="0">
+<body data-card="" data-variant="duo" data-mode="hero" data-qa-ready="0" data-qa-errors="0" data-qa-cards="" data-qa-pose="0,0" data-qa-composition="duo" data-qa-reflection="1" data-qa-light="1" data-light="on" data-fallback="0">
 
   <div class="page" id="page">
 
@@ -29,7 +29,7 @@
         <span class="brand-product">Metal Card</span>
       </a>
       <div class="header-side">
-        <p class="header-note">Mirror-bezel duo <span class="header-dot" aria-hidden="true"></span> 45° key light right <span class="header-dot" aria-hidden="true"></span> <a href="./columns.html">Columns</a> <span class="header-dot" aria-hidden="true"></span> <a href="./billing.html">Billing</a> <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a></p>
+        <p class="header-note">Black-mirror + chrome duo <span class="header-dot" aria-hidden="true"></span> 45° key light right <span class="header-dot" aria-hidden="true"></span> <a href="./columns.html">Columns</a> <span class="header-dot" aria-hidden="true"></span> <a href="./billing.html">Billing</a> <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a></p>
         <a class="header-link" href="./index.html">
           <span>Currency Coin</span>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -44,7 +44,7 @@
 
         <div class="stage" id="stage">
           <div class="stage-aura" aria-hidden="true"></div>
-          <canvas id="stage-canvas" aria-label="Interactive 3D metal payment cards — a light sleek-steel card in front and a dark sleek-steel card behind, each with a per-card reconstructed engraved back design and a thin mirror-chrome bezel flush with the card edge. The pair is viewed from a 45-degree three-quarter angle and lit by a single key light from the camera's right. Drag to rotate the pair; press R to reset the view, F to swap the cards, S to toggle auto-rotate and E to toggle the glass-table reflection. Double-click the canvas to reset."></canvas>
+          <canvas id="stage-canvas" aria-label="Interactive 3D metal payment cards — a light sleek-steel card in front and a dark sleek-steel card behind, each with a per-card reconstructed engraved back design. The dark card's thin middle frame is a black metal mirror, the light card's frame is chrome, both flush with the card edge. The pair is viewed from a 45-degree three-quarter angle and lit by a single key PointLight from the camera's right. Drag to rotate the pair; press R to reset the view, F to swap the cards, S to toggle auto-rotate, E to toggle the glass-table reflection and L to toggle the key light. Double-click the canvas to reset."></canvas>
 
           <div class="stage-overlay" aria-hidden="true">
             <div class="stage-eyebrow">
@@ -60,7 +60,7 @@
             <span class="stage-caption-name" id="stage-name">Dark + Light</span>
           </div>
 
-          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to rotate</p>
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to rotate · L light</p>
 
           <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
         </div>
@@ -103,6 +103,15 @@
             <span>Reflection</span>
             <kbd>E</kbd>
           </button>
+
+          <button class="btn btn-ghost" id="btn-light" type="button" aria-pressed="true" aria-keyshortcuts="L">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="10" cy="10" r="3.4"></circle>
+              <path d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2M4.5 4.5l1.4 1.4M14.1 14.1l1.4 1.4M15.5 4.5l-1.4 1.4M5.9 14.1l-1.4 1.4"></path>
+            </svg>
+            <span id="btn-light-label">Light ON</span>
+            <kbd>L</kbd>
+          </button>
         </div>
 
       </section>
@@ -135,8 +144,8 @@
             <div class="spec-row"><dt>Dark face</dt><dd id="spec-dark">novocard-default-dark.png</dd></div>
             <div class="spec-row"><dt>Light face</dt><dd id="spec-light">novocard-default-light.png</dd></div>
             <div class="spec-row"><dt>Backs</dt><dd id="spec-backs">per-card &middot; 2048&times;1402</dd></div>
-            <div class="spec-row"><dt>Material</dt><dd>Sleek steel + chrome</dd></div>
-            <div class="spec-row"><dt>Finish</dt><dd>Mirror bezel</dd></div>
+            <div class="spec-row"><dt>Material</dt><dd>Sleek steel + black mirror</dd></div>
+            <div class="spec-row"><dt>Finish</dt><dd>Black mirror + chrome</dd></div>
             <div class="spec-row"><dt>Bezel metalness</dt><dd id="spec-metalness">1.00</dd></div>
             <div class="spec-row"><dt>Bezel clearcoat</dt><dd id="spec-clearcoat">0.42</dd></div>
           </dl>
@@ -164,11 +173,11 @@
           <div class="info-notes">
             <div class="note">
               <span class="note-kicker">Lighting</span>
-              <p class="note-body">One key light set to the right of the default 45° camera: the metal highlight reads across the right of each card and the soft shadow falls to the left. The rig is dimmed so the print, mirror bezel and engraved backs stay legible.</p>
+              <p class="note-body">One key light set to the right of the default 45° camera: the metal highlight reads across the right of each card and the soft shadow falls to the left. The dark card's middle frame is a black metal mirror; the light card keeps its chrome frame. The rig is dimmed so the print, mirror edges and engraved backs stay legible.</p>
             </div>
             <div class="note">
               <span class="note-kicker">Interaction</span>
-              <p class="note-body">Drag to rotate; double-click or <kbd>R</kbd> resets, <kbd>F</kbd> swaps, <kbd>S</kbd> toggles the showcase rotation, <kbd>E</kbd> toggles the glass-table reflection.</p>
+              <p class="note-body">Drag to rotate; double-click or <kbd>R</kbd> resets, <kbd>F</kbd> swaps, <kbd>S</kbd> toggles the showcase rotation, <kbd>E</kbd> toggles the glass-table reflection, <kbd>L</kbd> toggles the direct key light.</p>
             </div>
             <div class="note">
               <span class="note-kicker">Provenance</span>
@@ -182,6 +191,7 @@
             <li><kbd class="legend-key">F</kbd><span>Swap cards</span></li>
             <li><kbd class="legend-key">S</kbd><span>Auto-rotate</span></li>
             <li><kbd class="legend-key">E</kbd><span>Reflection</span></li>
+            <li><kbd class="legend-key">L</kbd><span>Key light</span></li>
           </ul>
         </div>
       </aside>

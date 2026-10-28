@@ -24,7 +24,7 @@
  */
 import * as THREE from 'three';
 import { RING, STACK, COIN_GEOMETRY, stackPose } from './coin-compositions.js';
-import { WAVE } from './coin-wave.js';
+import { WAVE, waveSurfaceHeight } from './coin-wave.js';
 import { createWaveComposition, WAVE_ACCENT } from './coin-wave-scene.js';
 import { PARADE, paradePose, paradeCameraPose, paradeLoopTime, paradeRingSpacing } from './coin-parade.js';
 import { createParadeStudio, prepareParadeCoin } from './coin-parade-scene.js';
@@ -170,9 +170,12 @@ const state = {
     duration: STACK.timing.duration,
   },
   /**
-   * Wave composition (round 6): a static broad twisted ribbon with four coins
-   * standing on it. No animation — the scene is frozen (studio.setStatic) while
-   * the 360° trackball view stays live. See src/coin-wave.js.
+   * Wave composition (Revision 15): two broad flat-topped sine ribbons (brushed
+   * steel front, TEKO gold satin behind at half a phase) with three coins in the
+   * steel trough, 100 CSS px apart at the 1440/1200 default view and touching the
+   * surface. Static scene; the 360° orbit stays live on empty space, and each
+   * coin can be left-drag rotated (3 axes) or right-drag moved. See
+   * src/coin-wave.js + coin-wave-scene.js.
    */
   wave: {
     group: null,
@@ -180,6 +183,13 @@ const state = {
     entries: [],
     camera: null,
     frameHook: null,
+    previousEnvironment: undefined,
+    previousLights: [],
+    coinEnvironment: null,
+    selected: null,
+    drag: null,
+    spacingCss: null,
+    contact: null,
   },
   /**
    * Parade composition (Revision 14): seven coins on a rotating vertical
@@ -349,7 +359,7 @@ function applyCompositionCaption() {
     dom.stageIndex.textContent = total;
     if (dom.stageIndexTotal) dom.stageIndexTotal.textContent = total;
     dom.stageCode.textContent = 'WAVE';
-    dom.stageName.textContent = WAVE.count === 4 ? 'Four coins' : WAVE.count + ' coins';
+    dom.stageName.textContent = WAVE.count === 3 ? 'Three coins' : WAVE.count + ' coins';
   } else if (state.mode === 'parade') {
     const total = String(PARADE.count).padStart(2, '0');
     dom.stageIndex.textContent = total;
@@ -447,7 +457,7 @@ function syncModeUi() {
     if (parade) {
       dom.stageHint.textContent = 'Drag to rotate 360° · Space play/pause';
     } else if (wave) {
-      dom.stageHint.textContent = 'Drag to rotate 360° · Shift-drag to roll';
+      dom.stageHint.textContent = WAVE_HINT;
     } else if (stack) {
       const unfolded = state.stack.state === 'unfolded';
       dom.stageHint.textContent =
@@ -634,11 +644,17 @@ function updateDiag() {
     dom.body.dataset.waveCount = String(debug.wave.count);
     dom.body.dataset.waveIds = (debug.wave.ids || []).join(',');
     dom.body.dataset.waveStatic = debug.wave.static ? '1' : '0';
+    dom.body.dataset.waveSelected = debug.wave.selected || '';
+    dom.body.dataset.waveSpacing = debug.wave.spacingCss ? String(debug.wave.spacingCss.mean) : '';
+    dom.body.dataset.waveContact = debug.wave.contact ? String(debug.wave.contact.maxGap) : '';
   } else {
     delete dom.body.dataset.wave;
     delete dom.body.dataset.waveCount;
     delete dom.body.dataset.waveIds;
     delete dom.body.dataset.waveStatic;
+    delete dom.body.dataset.waveSelected;
+    delete dom.body.dataset.waveSpacing;
+    delete dom.body.dataset.waveContact;
   }
   if (debug.mode === 'parade' && debug.parade) {
     dom.body.dataset.parade = '1';
@@ -698,9 +714,49 @@ const api = {
   },
   async resetView() {
     if (!state.studio) return false;
-    await state.studio.resetView();
+    if (state.mode === 'wave') await resetWaveView();
+    else await state.studio.resetView();
     refreshScene();
     return true;
+  },
+  /** Revision 15: set one wave coin transform (local position array / quaternion). */
+  setWaveCoinTransform(id, transform) {
+    if (state.mode !== 'wave' || !state.wave.group) return false;
+    const entry = state.wave.entries.find((candidate) => candidate.id === id);
+    if (!entry) return false;
+    const input = transform || {};
+    let changed = false;
+    if (Array.isArray(input.position) && input.position.length >= 3) {
+      entry.holder.position.set(Number(input.position[0]), Number(input.position[1]), Number(input.position[2]));
+      changed = true;
+    }
+    if (Array.isArray(input.quaternion) && input.quaternion.length >= 4) {
+      entry.holder.quaternion.set(
+        Number(input.quaternion[0]),
+        Number(input.quaternion[1]),
+        Number(input.quaternion[2]),
+        Number(input.quaternion[3]),
+      );
+      if (entry.holder.quaternion.lengthSq() > 0) entry.holder.quaternion.normalize();
+      changed = true;
+    }
+    if (!changed) return false;
+    entry.holder.updateMatrixWorld(true);
+    state.wave.group.updateMatrixWorld(true);
+    state.wave.spacingCss = measureWaveSpacingCss();
+    state.wave.contact = measureWaveContact();
+    if (state.studio) {
+      state.studio.renderNow();
+    }
+    updateDiag();
+    return true;
+  },
+  /** Revision 15: restore the three default wave placements (camera untouched). */
+  async resetWaveCoins() {
+    if (state.mode !== 'wave' || !state.wave.group) return false;
+    const ok = await resetWaveCoinTransforms();
+    refreshScene();
+    return ok;
   },
   /** Replays the Stack unfold (no-op unless Stack mode is active). */
   async replayStack() {
@@ -1609,68 +1665,280 @@ function ringScreenBounds() {
 
 /* ---------------------------------------------------------------- wave mode */
 
-const WAVE_ELEVATION = THREE.MathUtils.degToRad(
-  WAVE.camera && Number.isFinite(WAVE.camera.elevationDeg) ? WAVE.camera.elevationDeg : 12
-);
-const WAVE_FIT_MARGIN = WAVE.camera && WAVE.camera.fitMargin ? WAVE.camera.fitMargin : 1.06;
 const WAVE_FACE_SIZE = WAVE.faceSize || 512;
+const WAVE_COIN_RADIUS = WAVE.coinScale || 0.18;
+const WAVE_DESIGN_SPACING_PX = 100;
+const WAVE_DESIGN_STAGE_HEIGHT = (WAVE.camera && WAVE.camera.stage && WAVE.camera.stage.height) || 900;
 const WAVE_GOLD_HEX = '#' + WAVE_ACCENT.gold.toString(16).padStart(6, '0');
 const WAVE_WHITE_HEX = '#' + WAVE_ACCENT.white.toString(16).padStart(6, '0');
+const WAVE_HINT = 'Left-drag coin to rotate · Right-drag coin to move · Drag empty space to orbit';
+const WAVE_ROTATE_SENSITIVITY = 0.0075;
+const WAVE_FIT_MARGIN = 1.06;
 
-/** World bounding box of the wave composition (band + coins + shadow decals). */
-function waveBox() {
+let wavePointerBound = false;
+const waveRaycaster = new THREE.Raycaster();
+const waveNdc = new THREE.Vector2();
+const waveScratch = {
+  world: new THREE.Vector3(),
+  right: new THREE.Vector3(),
+  up: new THREE.Vector3(),
+  forward: new THREE.Vector3(),
+  hit: new THREE.Vector3(),
+  point: new THREE.Vector3(),
+  local: new THREE.Vector3(),
+  quat: new THREE.Quaternion(),
+  quatX: new THREE.Quaternion(),
+  quatY: new THREE.Quaternion(),
+  plane: new THREE.Plane(),
+  offset: new THREE.Vector3(),
+  target: new THREE.Vector3(),
+  direction: new THREE.Vector3(),
+};
+const waveRound = (value) => Math.round(value * 1000) / 1000;
+const waveRound6 = (value) => Math.round(value * 1e6) / 1e6;
+
+function waveTarget() {
+  const camera = WAVE.camera || {};
+  const target = Array.isArray(camera.target) ? camera.target : [0, Number(camera.targetY) || 0, 0];
+  return [Number(target[0]) || 0, Number(target[1]) || 0, Number(target[2]) || 0];
+}
+
+function waveCameraDirection() {
+  const camera = WAVE.camera || {};
+  const target = waveTarget();
+  const pos = Array.isArray(camera.position) ? camera.position : [0, target[1], 7];
+  const dir = waveScratch.direction
+    .set(Number(pos[0]) - target[0], Number(pos[1]) - target[1], Number(pos[2]) - target[2]);
+  if (dir.lengthSq() === 0) dir.set(0, 0.34, 0.94);
+  return dir.normalize();
+}
+
+/** Project a wave entry's world position into CSS px (canvas rect coords). */
+function waveEntryScreen(entry, rect, out) {
+  const studio = state.studio;
+  if (!studio || !studio.camera) return null;
+  const world = entry.holder.getWorldPosition(waveScratch.world);
+  const ndc = world.project(studio.camera);
+  out.x = (ndc.x * 0.5 + 0.5) * rect.width;
+  out.y = (0.5 - ndc.y * 0.5) * rect.height;
+  return out;
+}
+
+/** Screen-pixel distance between the coin centres (100 px at 1440/1200). */
+function measureWaveSpacingCss() {
+  const studio = state.studio;
+  const wave = state.wave;
+  if (!studio || !wave.group || wave.entries.length < 2) return null;
+  const rect = studio.canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  const pairs = [];
+  for (let i = 0; i < wave.entries.length - 1; i += 1) {
+    const first = waveEntryScreen(wave.entries[i], rect, { x: 0, y: 0 });
+    const second = waveEntryScreen(wave.entries[i + 1], rect, { x: 0, y: 0 });
+    if (!first || !second) continue;
+    pairs.push(Math.hypot(second.x - first.x, second.y - first.y));
+  }
+  if (!pairs.length) return null;
+  const mean = pairs.reduce((sum, value) => sum + value, 0) / pairs.length;
+  return { pairs: pairs.map(waveRound), mean: waveRound(mean), target: WAVE_DESIGN_SPACING_PX };
+}
+
+/** Bottom-rim contact of each coin against the steel wave (world units). */
+function measureWaveContact() {
   const group = state.wave.group;
   if (!group) return null;
-  group.updateWorldMatrix(true, true);
-  const box = new THREE.Box3().setFromObject(group);
-  return box.isEmpty() ? null : box;
+  const coins = [];
+  let maxGap = -Infinity;
+  let maxPenetration = 0;
+  for (const entry of state.wave.entries) {
+    entry.holder.updateWorldMatrix(true, false);
+    const world = entry.holder.getWorldPosition(waveScratch.world);
+    const local = group.worldToLocal(world.clone());
+    const surface = waveSurfaceHeight('steel', local.x, local.z);
+    const bottom = local.y - WAVE_COIN_RADIUS;
+    const gap = bottom - surface;
+    maxGap = Math.max(maxGap, gap);
+    maxPenetration = Math.max(maxPenetration, -gap);
+    coins.push({
+      id: entry.id,
+      gap: waveRound6(gap),
+      penetration: waveRound6(Math.max(0, -gap)),
+      contact: [waveRound6(local.x), waveRound6(surface), waveRound6(local.z)],
+    });
+  }
+  return {
+    maxGap: waveRound6(maxGap),
+    maxPenetration: waveRound6(maxPenetration),
+    design: WAVE.metrics ? WAVE.metrics.contact : null,
+    coins,
+  };
 }
 
-function computeWaveDistance(studio) {
-  const box = waveBox();
-  if (!studio || !box) return null;
-  return fitCameraDistance(boxCorners(box), studioAspect(studio), {
-    fitMargin: WAVE_FIT_MARGIN,
-    camYFor: (distance) => distance * Math.tan(WAVE_ELEVATION),
-    fov: studioFov(studio),
-  });
+/** Screen coverage of the three coin discs (for row placement and clipping). */
+function measureWaveCoinScreen(rect) {
+  const studio = state.studio;
+  if (!studio || !studio.camera) return null;
+  const camera = studio.camera;
+  const right = new THREE.Vector3();
+  const up = new THREE.Vector3();
+  const forward = new THREE.Vector3();
+  camera.matrixWorld.extractBasis(right, up, forward);
+  right.normalize();
+  up.normalize();
+  let minTopY = Infinity;
+  let maxBottomY = -Infinity;
+  let minLeftX = Infinity;
+  let maxRightX = -Infinity;
+  let sumCenterY = 0;
+  let count = 0;
+  for (const entry of state.wave.entries) {
+    const centreWorld = entry.holder.getWorldPosition(new THREE.Vector3());
+    const centre = centreWorld.clone().project(camera);
+    sumCenterY += (0.5 - centre.y * 0.5) * rect.height;
+    count += 1;
+    for (const offset of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const point = centreWorld
+        .clone()
+        .addScaledVector(right, offset[0] * WAVE_COIN_RADIUS)
+        .addScaledVector(up, offset[1] * WAVE_COIN_RADIUS)
+        .project(camera);
+      const x = (point.x * 0.5 + 0.5) * rect.width;
+      const y = (0.5 - point.y * 0.5) * rect.height;
+      if (y < minTopY) minTopY = y;
+      if (y > maxBottomY) maxBottomY = y;
+      if (x < minLeftX) minLeftX = x;
+      if (x > maxRightX) maxRightX = x;
+    }
+  }
+  if (!count) return null;
+  return { minTopY, maxBottomY, minLeftX, maxRightX, meanCenterY: sumCenterY / count };
 }
 
-/** Push the deterministic wave camera fit into the studio camera rig. */
+/** Deterministic Wave camera. Desktop keeps the module's 100 CSS px coin spacing;
+ *  short stages fall back to a coin-row fit so the row never clips. */
 function applyWaveFraming() {
   const studio = state.studio;
-  if (!studio || !state.wave.group) return;
-  const distance = computeWaveDistance(studio);
-  if (!distance) return;
-  const camY = distance * Math.tan(WAVE_ELEVATION);
-  studio._camTarget = distance;
-  studio._camDist = distance;
-  studio._camY = camY;
-  state.wave.camera = {
-    distance: round3(distance),
-    camY: round3(camY),
-    elevationDeg: round3(THREE.MathUtils.radToDeg(WAVE_ELEVATION)),
-    fitMargin: WAVE_FIT_MARGIN,
+  const wave = state.wave;
+  if (!studio || !studio.camera || !wave.group) return;
+  const rect = studio.canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const cameraSpec = WAVE.camera || {};
+  const fov = Number.isFinite(cameraSpec.fovDeg) ? cameraSpec.fovDeg : 30;
+  const tanHalf = Math.tan((fov * Math.PI) / 360);
+  const aspect = rect.width / rect.height;
+  const target = waveTarget();
+  const dir = waveCameraDirection();
+  const spacingWorld = (WAVE.metrics && WAVE.metrics.spacing && WAVE.metrics.spacing.world) || 0.37;
+  // Centre coin position relative to the authored camera target, projected onto
+  // the view direction: this is the depth offset that makes screen spacing exact.
+  const centre = wave.entries.length ? wave.entries[Math.floor(wave.entries.length / 2)].holder.position : new THREE.Vector3();
+  const along = (centre.y - target[1]) * dir.y + (centre.z - target[2]) * dir.z;
+  let distance;
+  if (rect.width >= 700) {
+    // solved so the projected centre spacing is exactly 100 CSS px
+    const depth = (spacingWorld * rect.height) / (2 * tanHalf * WAVE_DESIGN_SPACING_PX);
+    distance = depth + along;
+  } else {
+    // Fit the whole composition (coin row + gold crest) on short stages.
+    const halfRow = spacingWorld + WAVE_COIN_RADIUS;
+    const halfHeight = 0.98;
+    const needWidth = (halfRow * WAVE_FIT_MARGIN) / (tanHalf * aspect);
+    const needHeight = (halfHeight * WAVE_FIT_MARGIN) / tanHalf;
+    distance = Math.max(needWidth, needHeight) + along;
+  }
+  distance = Math.max(1.6, distance);
+  // Shift the composition so the orbit pivot is the authored camera target.
+  wave.group.position.set(-target[0], -target[1], -target[2]);
+  studio.camera.fov = fov;
+  studio.camera.near = 0.05;
+  studio.camera.far = 160;
+  studio.camera.updateProjectionMatrix();
+  const applyCamera = (value) => {
+    const next = dir.clone().multiplyScalar(value);
+    studio.camera.position.copy(next);
+    studio.camera.lookAt(0, 0, 0);
+    studio.camera.updateMatrixWorld(true);
+    // The internal studio re-derives the hero camera from these each frame; the
+    // wave target is shifted to the origin, so the hero camera path is valid.
+    studio._camTarget = value;
+    studio._camDist = value;
+    studio._camY = next.y;
+    return next;
   };
-  studio.camera.position.set(0, camY, distance);
-  studio.camera.lookAt(0, 0, 0);
-  studio.camera.updateMatrixWorld(true);
-  if (studio.glow) studio.glow.scale.setScalar(1.4);
+  let position = applyCamera(distance);
+  // Keep the whole composition in frame: at very short mobile stages the
+  // 100-px-spacing camera would clip the coin row / gold crest, so the fit
+  // pulls back just enough (spacing then scales below 100 px only on mobile).
+  for (let iteration = 0; iteration < 5; iteration += 1) {
+    if (rect.width >= 700) {
+      const spacing = measureWaveSpacingCss();
+      if (spacing && Math.abs(spacing.mean - WAVE_DESIGN_SPACING_PX) > 0.05) {
+        distance = Math.max(1.6, distance * (spacing.mean / WAVE_DESIGN_SPACING_PX));
+        position = applyCamera(distance);
+        continue;
+      }
+    }
+    const screen = measureWaveCoinScreen(rect);
+    if (!screen) break;
+    const clipsVertical = screen.maxBottomY > rect.height * 0.94 || screen.minTopY < rect.height * 0.05;
+    const clipsHorizontal = screen.minLeftX < rect.width * 0.03 || screen.maxRightX > rect.width * 0.97;
+    if (clipsVertical || clipsHorizontal) {
+      distance = Math.max(1.6, distance * 1.05);
+      position = applyCamera(distance);
+      continue;
+    }
+    break;
+  }
+  const lift = 0;
+  wave.camera = {
+    fov: waveRound(fov),
+    distance: waveRound(distance),
+    cameraY: waveRound(position.y),
+    cameraZ: waveRound(position.z),
+    target: target.map(waveRound),
+    effectiveTargetY: waveRound(target[1] - lift),
+    lift: waveRound(lift),
+    elevationDeg: waveRound(THREE.MathUtils.radToDeg(Math.asin(Math.min(1, Math.max(-1, dir.y))))),
+    fitMargin: WAVE_FIT_MARGIN,
+    fitMode: rect.width >= 700 ? 'spacing-100px' : 'coin-row-fit',
+    stage: { width: waveRound(rect.width), height: waveRound(rect.height), aspect: waveRound(aspect) },
+    designStageHeight: WAVE_DESIGN_STAGE_HEIGHT,
+    coinScale: WAVE.coinScale,
+    spread: waveRound(spacingWorld * wave.entries.length + WAVE_COIN_RADIUS * 2),
+  };
+  wave.spacingCss = measureWaveSpacingCss();
+  wave.contact = measureWaveContact();
 }
 
-/**
- * Build Wave mode: the static broad twisted ribbon band (silver top / blue
- * underside / polished rims) with four satin-silver coins standing on it, the
- * white shadow-casting key and the brand-gold accent light. No animation: the
- * studio is put in static mode so the only motion is the user's 360° orbit.
- */
+/** Bright neutral equirectangular environment for the Wave-mode coins only. */
+function makeWaveCoinEnvironment() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+  gradient.addColorStop(0, '#ffffff');
+  gradient.addColorStop(0.42, '#eef2f6');
+  gradient.addColorStop(0.62, '#c8d0d8');
+  gradient.addColorStop(0.8, '#8d949c');
+  gradient.addColorStop(1, '#4a4f55');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 512, 256);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  texture.encoding = THREE.sRGBEncoding;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 async function buildWave() {
   if (!state.bank || !state.studio) return;
   setBusy(true, 'Building wave');
   disposeWaveView();
   const studio = state.studio;
   try {
-    // Neutral internal studio mode — the wave rig/framing is page-owned.
+    // Neutral dark wave studio: the wave scene owns its environment and lights;
+    // hide the silver-studio rig and keep the page's 360-degree orbit live.
     studio.setMode('hero');
     studio.heroRig.visible = false;
     studio.galleryGroup.visible = false;
@@ -1680,21 +1948,25 @@ async function buildWave() {
     if (typeof studio.setStatic === 'function') studio.setStatic(true);
     resetStudioView(studio);
     studio._coinGroups = [];
-    // The wave is the only composition with a real shadow-casting key light.
-    if (studio.renderer) {
-      studio.renderer.shadowMap.enabled = true;
-      studio.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    }
+    if (studio.renderer && studio.renderer.shadowMap) studio.renderer.shadowMap.enabled = false;
 
     const scene = createWaveComposition({
-      castShadow: Boolean(studio.renderer),
       renderer: studio.renderer || null,
+      castShadow: false,
     });
     const group = scene.group;
-    // The wave owns a purpose-built PMREM studio; the page swaps
-    // scene.environment for it and restores the silver-studio env on exit.
     const previousEnvironment = studio.scene ? studio.scene.environment : null;
-    if (scene.environment && studio.scene) studio.scene.environment = scene.environment.texture;
+    const previousLights = [];
+    if (studio.scene) {
+      for (const child of studio.scene.children) {
+        if (child.isLight) {
+          previousLights.push({ light: child, intensity: child.intensity });
+          child.intensity = 0;
+        }
+      }
+      if (scene.environment) studio.scene.environment = scene.environment.texture;
+    }
+    const coinEnvironment = makeWaveCoinEnvironment();
     const entries = [];
     for (const placement of WAVE.coins) {
       const spec = specById(placement.id);
@@ -1704,65 +1976,64 @@ async function buildWave() {
       holder.name = 'wave-coin:' + placement.id;
       holder.position.fromArray(placement.position);
       holder.quaternion.fromArray(placement.quaternion);
-      // placement.radius already includes WAVE.coinScale * the per-coin scale
-      coin.group.scale.setScalar(placement.radius);
-      // The wave studio environment is much brighter than the silver studio;
-      // clone the coin materials for this mode so the satin silver stays a mid
-      // tone with readable relief (the shared bank materials are untouched, so
-      // Hero/Gallery keep their exact finish).
+      coin.group.scale.setScalar(placement.radius || WAVE_COIN_RADIUS);
+      // Mode-local material clones keep the shared coin bank untouched while the
+      // coins sit in the wave's neutral studio (satin silver, readable relief).
       const clonedMaterials = [];
       coin.group.traverse((object) => {
         if (!object.isMesh || !object.material) return;
         const clone = object.material.clone();
         const base = Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1;
-        clone.envMapIntensity = Math.max(0.08, base * 0.2);
-        // The wave band is the bright satin-silver subject; the coins read as a
-        // slightly deeper satin silver standing on it (reference contrast).
-        if (clone.color && clone.color.isColor) clone.color.multiplyScalar(0.7);
-        if (/face/i.test(object.name)) {
-          clone.roughness = 0.4;
-        } else {
-          clone.roughness = Math.min(0.5, (clone.roughness || 0.2) + 0.06);
-        }
+        // The wave studio PMREM is warm/dim (gold bounce); the coins use the
+        // page's neutral silver-studio environment explicitly so they read as
+        // bright satin silver with legible relief (the ribbons keep the wave env).
+        clone.envMap = coinEnvironment;
+        clone.envMapIntensity = Math.max(base, 1.0) * 1.1;
+        if (/face/i.test(object.name)) clone.roughness = Math.min(0.4, clone.roughness || 0.32);
         object.material = clone;
         clonedMaterials.push(clone);
       });
       holder.add(coin.group);
       group.add(holder);
-      entries.push({ id: spec.id, index: entries.length, coin, holder, layout: placement, clonedMaterials });
+      entries.push({
+        id: spec.id,
+        index: entries.length,
+        coin,
+        holder,
+        layout: placement,
+        clonedMaterials,
+        defaults: {
+          position: placement.position.slice(),
+          quaternion: placement.quaternion.slice(),
+        },
+      });
     }
     if (!entries.length) throw new Error('no coin specs available for the wave');
     studio.orbit.add(group);
-    state.wave = { group, scene, entries, camera: null, frameHook: null, previousEnvironment };
+    state.wave = {
+      group,
+      scene,
+      entries,
+      camera: null,
+      frameHook: null,
+      previousEnvironment,
+      previousLights,
+      coinEnvironment,
+      selected: null,
+      drag: null,
+      spacingCss: null,
+      contact: null,
+    };
+    bindWaveInteractions();
     applyWaveFraming();
-    if (studio.renderer && studio.renderer.shadowMap) studio.renderer.shadowMap.needsUpdate = true;
     if (state.booting) curtainProgress(0.82, 'Building wave', entries.length + ' / ' + WAVE.count);
     studio.renderNow();
     await studio.whenStable();
     studio.renderNow();
   } catch (error) {
-    for (const entry of state.wave.entries) disposeWaveCoin(entry);
-    if (studio && studio.scene && state.wave.previousEnvironment !== undefined) {
-      studio.scene.environment = state.wave.previousEnvironment || null;
-    }
-    if (state.wave.scene) {
-      try {
-        state.wave.scene.dispose();
-      } catch (disposeError) {
-        /* best effort */
-      }
-    }
-    if (state.wave.group && state.wave.group.parent) state.wave.group.parent.remove(state.wave.group);
-    state.wave = { group: null, scene: null, entries: [], camera: null, frameHook: null };
+    disposeWaveView();
     pushError('wave build failed: ' + errorMessage(error));
     showErrorBanner('Could not render the coin wave: ' + errorMessage(error));
-    if (studio) {
-      if (studio.heroRig) studio.heroRig.visible = true;
-      if (studio.shadow) studio.shadow.visible = true;
-      if (studio.glow) studio.glow.visible = true;
-      if (typeof studio.setStatic === 'function') studio.setStatic(false);
-      if (typeof studio._computeFit === 'function') studio._computeFit();
-    }
     throw error;
   } finally {
     setBusy(false);
@@ -1773,22 +2044,36 @@ async function buildWave() {
 function disposeWaveView() {
   const studio = state.studio;
   const wave = state.wave;
-  if (typeof wave.frameHook === 'function') {
-    try {
-      wave.frameHook();
-    } catch (error) {
-      /* hook teardown is best effort */
+  if (!wave.group && !wave.scene) {
+    if (wave.coinEnvironment) {
+      try {
+        wave.coinEnvironment.dispose();
+      } catch (error) {
+        /* best effort */
+      }
     }
-    wave.frameHook = null;
+    if (studio) {
+      if (studio.heroRig) studio.heroRig.visible = true;
+      if (studio.shadow) studio.shadow.visible = true;
+      if (studio.glow) studio.glow.visible = true;
+      if (typeof studio.setStatic === 'function') studio.setStatic(false);
+    }
+    return;
   }
-  if (wave.group) {
-    if (wave.group.parent) wave.group.parent.remove(wave.group);
-    for (const entry of wave.entries) disposeWaveCoin(entry);
-  }
-  // Restore the silver-studio environment before the wave PMREM target is
-  // disposed, so no other mode/coin material samples a freed texture.
+  for (const entry of wave.entries || []) disposeWaveCoin(entry);
+  if (wave.group && wave.group.parent) wave.group.parent.remove(wave.group);
   if (studio && studio.scene && wave.previousEnvironment !== undefined) {
     studio.scene.environment = wave.previousEnvironment || null;
+  }
+  for (const saved of wave.previousLights || []) {
+    if (saved && saved.light) saved.light.intensity = saved.intensity;
+  }
+  if (wave.coinEnvironment) {
+    try {
+      wave.coinEnvironment.dispose();
+    } catch (error) {
+      /* best effort */
+    }
   }
   if (wave.scene) {
     try {
@@ -1797,13 +2082,25 @@ function disposeWaveView() {
       /* best effort */
     }
   }
-  state.wave = { group: null, scene: null, entries: [], camera: null, frameHook: null };
+  state.wave = {
+    group: null,
+    scene: null,
+    entries: [],
+    camera: null,
+    frameHook: null,
+    previousEnvironment: undefined,
+    previousLights: [],
+    selected: null,
+    drag: null,
+    spacingCss: null,
+    contact: null,
+  };
   if (studio) {
     if (studio.heroRig) studio.heroRig.visible = true;
     if (studio.shadow) studio.shadow.visible = true;
     if (studio.glow) studio.glow.visible = true;
     if (typeof studio.setStatic === 'function') studio.setStatic(false);
-    if (studio.renderer && studio.renderer.shadowMap) studio.renderer.shadowMap.enabled = false;
+    studio.canvas.style.cursor = '';
     if (typeof studio._computeFit === 'function') studio._computeFit();
     studio.renderNow();
   }
@@ -1811,6 +2108,211 @@ function disposeWaveView() {
 
 function waveScreenBounds() {
   return groupScreenBounds(state.wave.group);
+}
+
+/**
+ * Revision 15: wave coin interaction.
+ *
+ *  - LEFT-drag on a coin rotates it on all three axes (camera-space trackball
+ *    quaternion, no Euler clamp).
+ *  - RIGHT-drag on a coin moves it in the camera screen plane (the coin follows
+ *    the pointer; its depth plane is preserved).
+ *  - Drags that start on empty space are left to the existing 360-degree orbit.
+ *  Hit-testing uses a raycast against the three coin groups; the pointerdown
+ *  capture listener stops the event before the orbit handlers see it.
+ */
+function waveEntryMeshes() {
+  const meshes = [];
+  const owners = new Map();
+  for (const entry of state.wave.entries) {
+    entry.coin.group.traverse((object) => {
+      if (!object.isMesh) return;
+      meshes.push(object);
+      owners.set(object, entry);
+    });
+  }
+  return { meshes, owners };
+}
+
+function wavePickCoin(clientX, clientY) {
+  const studio = state.studio;
+  if (!studio || !studio.camera || !state.wave.group) return null;
+  const rect = studio.canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  waveNdc.set(x, y);
+  waveRaycaster.setFromCamera(waveNdc, studio.camera);
+  const { meshes, owners } = waveEntryMeshes();
+  const hits = waveRaycaster.intersectObjects(meshes, false);
+  if (!hits.length) return null;
+  return owners.get(hits[0].object) || null;
+}
+
+function waveSetCursor(cursor) {
+  if (!state.studio || !state.studio.canvas) return;
+  state.studio.canvas.style.cursor = cursor;
+}
+
+function wavePointerDown(event) {
+  if (state.mode !== 'wave' || state.shot || !state.wave.group) return;
+  if (event.button !== 0 && event.button !== 2) return;
+  const entry = wavePickCoin(event.clientX, event.clientY);
+  if (!entry) return; // empty space: the studio orbit keeps handling it
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const studio = state.studio;
+  const holder = entry.holder;
+  holder.updateMatrixWorld(true);
+  const world = holder.getWorldPosition(new THREE.Vector3());
+  studio.camera.getWorldDirection(waveScratch.forward);
+  waveScratch.plane.setFromNormalAndCoplanarPoint(waveScratch.forward, world);
+  const rect = studio.canvas.getBoundingClientRect();
+  waveNdc.set(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1,
+  );
+  waveRaycaster.setFromCamera(waveNdc, studio.camera);
+  const grab = waveRaycaster.ray.intersectPlane(waveScratch.plane, waveScratch.hit)
+    ? waveScratch.hit.clone()
+    : world.clone();
+  state.wave.drag = {
+    type: event.button === 2 ? 'move' : 'rotate',
+    id: entry.id,
+    pointerId: event.pointerId,
+    lastX: event.clientX,
+    lastY: event.clientY,
+    plane: waveScratch.plane.clone(),
+    grabOffset: world.clone().sub(grab),
+  };
+  state.wave.selected = entry.id;
+  try {
+    studio.canvas.setPointerCapture(event.pointerId);
+  } catch (error) {
+    /* pointer capture is an enhancement */
+  }
+  waveSetCursor('grabbing');
+  updateDiag();
+}
+
+function wavePointerMove(event) {
+  if (state.mode !== 'wave' || state.shot) return;
+  const drag = state.wave.drag;
+  if (!drag) {
+    const entry = wavePickCoin(event.clientX, event.clientY);
+    waveSetCursor(entry ? 'grab' : '');
+    return;
+  }
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const studio = state.studio;
+  const entry = state.wave.entries.find((candidate) => candidate.id === drag.id);
+  if (!studio || !entry) return;
+  const holder = entry.holder;
+  if (drag.type === 'rotate') {
+    const dx = event.clientX - drag.lastX;
+    const dy = event.clientY - drag.lastY;
+    studio.camera.matrixWorld.extractBasis(waveScratch.right, waveScratch.up, waveScratch.forward);
+    waveScratch.right.normalize();
+    waveScratch.up.normalize();
+    waveScratch.quatX.setFromAxisAngle(waveScratch.right, dx * WAVE_ROTATE_SENSITIVITY);
+    waveScratch.quatY.setFromAxisAngle(waveScratch.up, -dy * WAVE_ROTATE_SENSITIVITY);
+    waveScratch.quat.copy(waveScratch.quatY).multiply(waveScratch.quatX);
+    holder.quaternion.premultiply(waveScratch.quat).normalize();
+  } else {
+    const rect = studio.canvas.getBoundingClientRect();
+    waveNdc.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    waveRaycaster.setFromCamera(waveNdc, studio.camera);
+    if (waveRaycaster.ray.intersectPlane(drag.plane, waveScratch.hit)) {
+      waveScratch.world.copy(waveScratch.hit).add(drag.grabOffset);
+      const local = state.wave.group.worldToLocal(waveScratch.world.clone());
+      holder.position.copy(local);
+    }
+  }
+  drag.lastX = event.clientX;
+  drag.lastY = event.clientY;
+  holder.updateMatrixWorld(true);
+  state.wave.group.updateMatrixWorld(true);
+  state.wave.spacingCss = measureWaveSpacingCss();
+  state.wave.contact = measureWaveContact();
+  studio.renderNow();
+}
+
+function wavePointerUp(event) {
+  const drag = state.wave.drag;
+  if (!drag) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  try {
+    state.studio.canvas.releasePointerCapture(drag.pointerId);
+  } catch (error) {
+    /* ignore */
+  }
+  state.wave.drag = null;
+  waveSetCursor('');
+  updateDiag();
+}
+
+function waveContextMenu(event) {
+  if (state.mode !== 'wave') return;
+  event.preventDefault();
+}
+
+async function resetWaveCoinTransforms() {
+  if (!state.wave.group) return false;
+  for (const entry of state.wave.entries) {
+    if (!entry.defaults) continue;
+    entry.holder.position.fromArray(entry.defaults.position);
+    entry.holder.quaternion.fromArray(entry.defaults.quaternion);
+    entry.holder.updateMatrixWorld(true);
+  }
+  state.wave.selected = null;
+  state.wave.drag = null;
+  state.wave.group.updateMatrixWorld(true);
+  state.wave.spacingCss = measureWaveSpacingCss();
+  state.wave.contact = measureWaveContact();
+  if (state.studio) {
+    state.studio.renderNow();
+  }
+  updateDiag();
+  return true;
+}
+
+async function resetWaveView() {
+  if (!state.wave.group) return false;
+  await resetWaveCoinTransforms();
+  const studio = state.studio;
+  if (studio) {
+    try {
+      await studio.resetView({ immediate: true });
+    } catch (error) {
+      /* the orbit reset is best effort */
+    }
+    applyWaveFraming();
+    studio.renderNow();
+  }
+  updateDiag();
+  return true;
+}
+
+function bindWaveInteractions() {
+  if (wavePointerBound || !state.studio) return;
+  const canvas = state.studio.canvas;
+  canvas.addEventListener('pointerdown', wavePointerDown, { capture: true, passive: false });
+  canvas.addEventListener('pointermove', wavePointerMove, { capture: true, passive: false });
+  canvas.addEventListener('pointerup', wavePointerUp, { capture: true, passive: false });
+  canvas.addEventListener('pointercancel', wavePointerUp, { capture: true, passive: false });
+  canvas.addEventListener('contextmenu', waveContextMenu);
+  canvas.addEventListener('dblclick', (event) => {
+    if (state.mode !== 'wave' || state.shot) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    resetWaveView().catch(() => undefined);
+  }, { capture: true });
+  wavePointerBound = true;
 }
 
 /** Dispose a wave coin plus the mode-local material clones backing it. */
@@ -1833,30 +2335,76 @@ function buildWaveDebug() {
   } catch (error) {
     sceneDebug = null;
   }
+  const stageRect = state.studio && state.studio.canvas ? state.studio.canvas.getBoundingClientRect() : null;
+  const coins = state.wave.entries.map((entry) => {
+    const contact = state.wave.contact && state.wave.contact.coins
+      ? state.wave.contact.coins.find((coin) => coin.id === entry.id)
+      : null;
+    let screen = null;
+    if (stageRect && stageRect.width > 0) {
+      const point = waveEntryScreen(entry, stageRect, { x: 0, y: 0 });
+      if (point) screen = [waveRound(point.x), waveRound(point.y)];
+    }
+    const materials = [];
+    entry.coin.group.traverse((object) => {
+      if (!object.isMesh || !object.material) return;
+      const material = object.material;
+      if (materials.some((item) => item.name === material.name)) return;
+      materials.push({
+        name: material.name || object.name,
+        metalness: waveRound(material.metalness),
+        roughness: waveRound(material.roughness),
+        envMapIntensity: waveRound(material.envMapIntensity),
+        envMap: Boolean(material.envMap),
+        color: material.color && material.color.isColor ? '#' + material.color.getHexString() : null,
+      });
+    });
+    return {
+      id: entry.id,
+      index: entry.index,
+      position: [waveRound6(entry.holder.position.x), waveRound6(entry.holder.position.y), waveRound6(entry.holder.position.z)],
+      quaternion: [
+        waveRound6(entry.holder.quaternion.x),
+        waveRound6(entry.holder.quaternion.y),
+        waveRound6(entry.holder.quaternion.z),
+        waveRound6(entry.holder.quaternion.w),
+      ],
+      defaultPosition: entry.defaults ? entry.defaults.position.slice() : null,
+      defaultQuaternion: entry.defaults ? entry.defaults.quaternion.slice() : null,
+      authoredContact: entry.layout ? entry.layout.contact.slice() : null,
+      contactGap: contact ? contact.gap : null,
+      penetration: contact ? contact.penetration : null,
+      screen,
+      materials,
+    };
+  });
   return {
     count: state.wave.entries.length,
     ids: state.wave.entries.map((entry) => entry.id),
     static: true,
     animated: false,
-    layout: WAVE.layout,
-    ribbon: WAVE.ribbon.metrics,
-    metrics: WAVE.metrics,
-    camera: WAVE.camera,
+    design: WAVE.layout ? WAVE.layout.design : 'two-ribbon-waves',
+    coins,
+    selected: state.wave.selected,
+    dragging: state.wave.drag ? state.wave.drag.type : null,
+    contact: state.wave.contact,
+    spacingCss: state.wave.spacingCss,
+    spacing: WAVE.metrics ? WAVE.metrics.spacing : null,
+    phase: WAVE.metrics ? WAVE.metrics.phase : null,
+    camera: state.wave.camera,
+    authoredCamera: WAVE.camera || null,
     accent: { gold: WAVE_GOLD_HEX, white: WAVE_WHITE_HEX, role: WAVE_ACCENT.role },
-    materials: sceneDebug ? sceneDebug.band.materials : [],
-    lights: sceneDebug ? sceneDebug.lights : null,
-    band: sceneDebug ? sceneDebug.band : null,
-    environment: sceneDebug ? sceneDebug.environment : null,
-    decals: sceneDebug ? sceneDebug.decals : 0,
-    screen: waveScreenBounds(),
-    framing: state.wave.camera
+    scene: sceneDebug
       ? {
-          cameraDistance: state.wave.camera.distance,
-          cameraY: state.wave.camera.camY,
-          elevationDeg: state.wave.camera.elevationDeg,
-          fitMargin: state.wave.camera.fitMargin,
+          design: sceneDebug.design,
+          waves: sceneDebug.waves,
+          materials: sceneDebug.materials,
+          lights: sceneDebug.lights,
+          environment: sceneDebug.environment,
+          contactDecals: sceneDebug.contactDecals,
         }
       : null,
+    screen: waveScreenBounds(),
   };
 }
 
@@ -1987,11 +2535,19 @@ function paradeFacingQuaternion(angle, spin) {
 function paradeRenderPose(seconds) {
   const loopTime = paradeLoopTime(seconds);
   const ringAngle = PARADE.ring.direction * PARADE_TAU * (loopTime / PARADE.durationSeconds);
-  const spinAngle = PARADE.spin.direction * PARADE_TAU * (loopTime / PARADE.spin.periodSeconds);
+  // Revision 15 (R15-2): coins no longer rotate about their own axes; only the
+  // ring turns. The hidden back-face upright roll still follows the ring angle.
+  const spinEnabled = Boolean(PARADE.spin && PARADE.spin.enabled);
+  const spinPeriod = spinEnabled && Number.isFinite(PARADE.spin.periodSeconds) ? PARADE.spin.periodSeconds : 0;
+  const spinAngle = spinEnabled && spinPeriod > 0
+    ? PARADE.spin.direction * PARADE_TAU * (loopTime / spinPeriod)
+    : 0;
   const coins = [];
   for (let index = 0; index < PARADE_RENDER_COUNT; index += 1) {
     const angle = PARADE.ring.startAngle + (index * PARADE_TAU) / PARADE_RENDER_COUNT + ringAngle;
-    const spin = spinAngle + PARADE.spin.phaseOffset - (index * PARADE_TAU) / PARADE_RENDER_COUNT;
+    const spin = spinEnabled
+      ? spinAngle + PARADE.spin.phaseOffset - (index * PARADE_TAU) / PARADE_RENDER_COUNT
+      : 0;
     const oriented = paradeFacingQuaternion(angle, spin);
     const quaternion = oriented.quaternion;
     coins.push({
@@ -2324,7 +2880,8 @@ function buildParadeDebug() {
     duration: PARADE.durationSeconds,
     loopTime: round3(time),
     ringAngle: round3(pose.ringAngle),
-    spinPeriod: PARADE.spin.periodSeconds,
+    spinEnabled: Boolean(PARADE.spin && PARADE.spin.enabled),
+    spinPeriod: PARADE.spin && PARADE.spin.enabled ? PARADE.spin.periodSeconds : 0,
     spinAngle: round3(pose.spinAngle),
     camera: state.parade.camera,
     studio: studioDebug,
@@ -2662,7 +3219,8 @@ function wireUi() {
       case 'r':
       case 'R':
         runExclusive(async () => {
-          if (state.studio) await state.studio.resetView();
+          if (state.mode === 'wave') await resetWaveView();
+          else if (state.studio) await state.studio.resetView();
           refreshScene();
         }).then(refreshScene, () => undefined);
         break;

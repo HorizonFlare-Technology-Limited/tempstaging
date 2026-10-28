@@ -176,7 +176,10 @@ const REFLECTION = Object.freeze({
   // applied to both live edge materials and clamped to a narrow band so
   // reflection ON cannot clip the chrome rim to flat white. The OFF/base values
   // are read live from the model (dark 1.35 / light 1.45 in v2.6.0).
-  envOn: Object.freeze({ front: 1.6, edge: 1.75, back: 0.8, backLight: 2.95 }),
+  // Revision 15: the dark frame is a near-black metal mirror (its F0 reflects
+  // much less than chrome), so reflection ON lifts the dark edge above the light
+  // chrome edge; both stay clamped so neither rim clips to flat white.
+  envOn: Object.freeze({ front: 1.6, edge: 1.75, edgeDark: 3.0, edgeLight: 1.75, back: 0.8, backLight: 2.95 }),
   // Revision 6: the backs are per-card reconstructed artwork with their own OFF
   // envMapIntensity (dark 0.70 / light 2.40). The shared R3 value 0.8 is still
   // the dark back's ON target; the light back needs its own slightly higher ON
@@ -220,6 +223,7 @@ const dom = {
   btnSwap: document.getElementById('btn-swap'),
   btnAuto: document.getElementById('btn-auto'),
   btnReflection: document.getElementById('btn-reflection'),
+  btnLight: document.getElementById('btn-light'),
   infoFootState: document.getElementById('info-foot-state'),
   specDark: document.getElementById('spec-dark'),
   specLight: document.getElementById('spec-light'),
@@ -282,6 +286,9 @@ const state = {
   frozen: false,
   autoRotate: false,
   reflection: urlParams.get('reflection') !== '0',
+  // Revision 15 (R15-1): the key PointLight can be switched off while the
+  // environment/reflection studio and the ambient fill stay on (?light=0|1).
+  lightOn: urlParams.get('light') !== '0',
   pose: { yawDeg: 0, pitchDeg: 0 },
   swapFront: 'light',
   bootStartedAt: 0,
@@ -356,7 +363,7 @@ function syncSwappedUi() {
   if (dom.stageName) dom.stageName.textContent = swapped ? 'Light + Dark' : 'Dark + Light';
   if (dom.stageCode) dom.stageCode.textContent = swapped ? 'SWAP' : 'DUO';
   if (dom.infoFootState) dom.infoFootState.textContent = swapped ? 'Swapped · dark in front' : 'Default view';
-  if (dom.stageHint) dom.stageHint.textContent = swapped ? 'Drag to rotate · F to swap back' : 'Drag to rotate';
+  if (dom.stageHint) dom.stageHint.textContent = swapped ? 'Drag to rotate · F to swap back · L light' : 'Drag to rotate · L light';
   if (state.ready && dom.footerStatus) dom.footerStatus.textContent = swapped ? 'Swapped' : 'Ready';
 }
 
@@ -383,6 +390,18 @@ function syncReflectionUi() {
     : 'Reflection off — click or press E to mirror the cards on the glass table.';
 }
 
+function syncLightUi() {
+  if (!dom.btnLight) return;
+  const on = Boolean(state.lightOn);
+  dom.btnLight.disabled = !state.ready || state.failed;
+  dom.btnLight.setAttribute('aria-pressed', String(on));
+  const label = document.getElementById('btn-light-label');
+  if (label) label.textContent = on ? 'Light ON' : 'Light OFF';
+  dom.btnLight.title = on
+    ? 'Key light on — click or press L to switch the direct key off (environment stays).'
+    : 'Key light off — click or press L to switch the direct key back on.';
+}
+
 function syncPoseUi() {
   const pose = state.studio ? state.studio.getPose() : state.pose;
   state.pose = { yawDeg: pose.yawDeg, pitchDeg: pose.pitchDeg };
@@ -404,6 +423,8 @@ function publishState() {
   body.dataset.autoRotate = state.autoRotate ? '1' : '0';
   body.dataset.reducedMotion = state.reducedMotion ? '1' : '0';
   body.dataset.qaReflection = state.reflection ? '1' : '0';
+  body.dataset.qaLight = state.lightOn ? '1' : '0';
+  body.dataset.light = state.lightOn ? 'on' : 'off';
   if (dom.diag) dom.diag.textContent = JSON.stringify(buildDebug());
 }
 
@@ -557,6 +578,16 @@ function buildDebug() {
       offsetDeg: { right: KEY_LIGHT.rightDeg, up: KEY_LIGHT.upDeg },
     },
     lights: { directional: 0, shadowCasters: 0, ambient: 0 },
+    // Revision 15: live light-source state. Ambient/environment are reflection /
+    // fill sources and stay on; only the key PointLight is switchable.
+    light: {
+      enabled: Boolean(state.lightOn),
+      keyType: 'PointLight',
+      keyIntensity: 0,
+      ambientIntensity: AMBIENT.intensity,
+      environment: 'pmrem',
+      mode: state.lightOn ? 'on' : 'off',
+    },
     materials: [],
     edgeMaterials: [],
     backMaterials: [],
@@ -566,6 +597,7 @@ function buildDebug() {
     flags: {
       frozen: Boolean(state.frozen || state.still || state.shot),
       autoRotate: Boolean(state.autoRotate),
+      light: Boolean(state.lightOn),
       reducedMotion: Boolean(state.reducedMotion),
       fallback: Boolean(state.failed),
       still: Boolean(state.still),
@@ -582,6 +614,14 @@ function buildDebug() {
     debug.camera = camera;
     debug.keyLight = studio.getKeyLightDebug();
     debug.lights = studio.getLightCounts();
+    debug.light = {
+      enabled: Boolean(studio.getKeyLightEnabled ? studio.getKeyLightEnabled() : state.lightOn),
+      keyType: 'PointLight',
+      keyIntensity: round(studio.keyLight ? studio.keyLight.intensity : 0, 4),
+      ambientIntensity: AMBIENT.intensity,
+      environment: 'pmrem',
+      mode: (studio.getKeyLightEnabled && studio.getKeyLightEnabled()) ? 'on' : 'off',
+    };
     debug.materials = ['dark', 'light'].map(materialDebug).filter(Boolean);
     debug.edgeMaterials = ['dark', 'light'].map(edgeMaterialDebug).filter(Boolean);
     debug.backMaterials = ['dark', 'light'].map(backMaterialDebug).filter(Boolean);
@@ -955,6 +995,8 @@ class CardStudio {
     // Round 3 reflection state (default ON unless the page passes ?reflection=0)
     this.reflectionEnabled = options.reflection === undefined ? true : Boolean(options.reflection);
     this.reflectionWeight = this.reflectionEnabled ? 1 : 0;
+    // Revision 15: key PointLight on/off (environment + ambient always stay on).
+    this.keyLightEnabled = options.light === undefined ? true : Boolean(options.light);
     this._reflectionFloor = null;
     this._reflectionRoot = null;
     this._reflectionClones = {};
@@ -1051,7 +1093,7 @@ class CardStudio {
     // Exactly one shadow-casting key light, offset toward the camera's right
     // (contract §4.2 Revision 6): _syncKeyLight() derives its position from the
     // live camera fit, and the authored shadow decals are offset to camera-left.
-    const key = new THREE.PointLight(KEY_LIGHT.color, KEY_LIGHT.intensity, KEY_LIGHT.distance, KEY_LIGHT.decay);
+    const key = new THREE.PointLight(KEY_LIGHT.color, this.keyLightEnabled === false ? 0 : KEY_LIGHT.intensity, KEY_LIGHT.distance, KEY_LIGHT.decay);
     key.name = 'key-light';
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -1154,9 +1196,14 @@ class CardStudio {
   // tied to the retired satin frame).
   _reflectionOnEnv(id, base) {
     const on = REFLECTION.envOn;
+    // Revision 15: per-card mirror edges — the black metal mirror needs a higher
+    // environment response than the chrome frame to read as a dark mirror band.
+    const edgeTarget = id === 'dark' ? (Number(on.edgeDark) || on.edge) : (Number(on.edgeLight) || on.edge);
+    const edgeMin = id === 'dark' ? 2.2 : REFLECTION.edgeOnMin;
+    const edgeMax = id === 'dark' ? 3.4 : REFLECTION.edgeOnMax;
     return {
       front: on.front,
-      edge: clamp(on.edge, REFLECTION.edgeOnMin, REFLECTION.edgeOnMax),
+      edge: clamp(edgeTarget, edgeMin, edgeMax),
       back: id === 'dark' ? on.back : (Number(on.backLight) || on.back),
     };
   }
@@ -1934,6 +1981,23 @@ class CardStudio {
     return this.autoRotate;
   }
 
+  /** Revision 15 (R15-1): toggle the key PointLight; environment/ambient stay. */
+  setKeyLightEnabled(enabled) {
+    this.keyLightEnabled = Boolean(enabled);
+    if (this.keyLight) {
+      this.keyLight.intensity = this.keyLightEnabled ? KEY_LIGHT.intensity : 0;
+      this.keyLight.updateMatrixWorld(true);
+    }
+    this._markShadowDirty();
+    this.requestRender();
+    this.renderNow();
+    return this.keyLightEnabled;
+  }
+
+  getKeyLightEnabled() {
+    return Boolean(this.keyLightEnabled);
+  }
+
   setFrozen(frozen) {
     this.frozen = Boolean(frozen) || this.still;
     if (this.frozen) {
@@ -2103,6 +2167,7 @@ class CardStudio {
     const key = this.keyLight;
     return {
       type: key.type,
+      enabled: Boolean(this.keyLightEnabled),
       position: [round(key.position.x, 4), round(key.position.y, 4), round(key.position.z, 4)],
       target: [0, 0, 0],
       intensity: round(key.intensity, 4),
@@ -2358,7 +2423,7 @@ function showFallback(message, { error = null, banner = false } = {}) {
   }
   dom.body.dataset.fallback = '1';
   dom.body.dataset.qaReady = '0';
-  for (const button of [dom.btnReset, dom.btnSwap, dom.btnAuto, dom.btnReflection]) {
+  for (const button of [dom.btnReset, dom.btnSwap, dom.btnAuto, dom.btnReflection, dom.btnLight]) {
     if (button) button.disabled = true;
   }
   hideCurtain();
@@ -2383,6 +2448,7 @@ function syncAllUi() {
   syncSwapUi();
   syncAutoUi();
   syncReflectionUi();
+  syncLightUi();
   syncSwappedUi();
   publishState();
 }
@@ -2394,6 +2460,9 @@ function setStudioStateFromStudio() {
   state.swapFront = state.studio.getOrder().front;
   state.autoRotate = state.studio.autoRotate;
   state.reflection = state.studio.reflectionEnabled;
+  if (typeof state.studio.getKeyLightEnabled === 'function') {
+    state.lightOn = state.studio.getKeyLightEnabled();
+  }
 }
 
 function afterInteraction(action) {
@@ -2453,6 +2522,17 @@ function doSetReflection(enabled) {
   return next;
 }
 
+function doSetLight(enabled) {
+  if (!state.studio) return false;
+  const next = state.studio.setKeyLightEnabled(Boolean(enabled));
+  state.lightOn = next;
+  syncLightUi();
+  syncAllUi();
+  announce(next ? 'Key light on · environment and ambient fill unchanged' : 'Key light off · environment and ambient fill unchanged');
+  publishState();
+  return next;
+}
+
 function doSetFrozen(frozen) {
   state.frozen = Boolean(frozen) || state.still;
   if (state.studio) state.studio.setFrozen(state.frozen);
@@ -2486,6 +2566,12 @@ function wireUi() {
       doSetReflection(!state.reflection);
     });
   }
+  if (dom.btnLight) {
+    dom.btnLight.addEventListener('click', () => {
+      if (!state.ready) return;
+      doSetLight(!state.lightOn);
+    });
+  }
 
   document.addEventListener('keydown', (event) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -2508,6 +2594,9 @@ function wireUi() {
     } else if (key === 'e') {
       event.preventDefault();
       if (state.ready) doSetReflection(!state.reflection);
+    } else if (key === 'l') {
+      event.preventDefault();
+      if (state.ready) doSetLight(!state.lightOn);
     }
   });
 
@@ -2572,6 +2661,13 @@ const api = {
   setAutoRotate(enabled) {
     if (!state.studio) return false;
     const next = doAutoRotate(Boolean(enabled));
+    publishState();
+    return next;
+  },
+  /** Revision 15: toggle the key PointLight (environment/ambient stay on). */
+  setLight(enabled) {
+    if (!state.studio) return false;
+    const next = doSetLight(Boolean(enabled));
     publishState();
     return next;
   },
@@ -2643,8 +2739,11 @@ async function boot() {
   if (state.qaMode) dom.body.dataset.qa = '1';
   if (state.reducedMotion) dom.body.dataset.reducedMotion = '1';
   dom.body.dataset.qaReflection = state.reflection ? '1' : '0';
+  dom.body.dataset.qaLight = state.lightOn ? '1' : '0';
+  dom.body.dataset.light = state.lightOn ? 'on' : 'off';
   syncAutoUi();
   syncReflectionUi();
+  syncLightUi();
   syncSwappedUi();
   syncResetUi();
   syncSwapUi();
@@ -2731,6 +2830,7 @@ async function boot() {
       still: state.still,
       frozen: state.frozen,
       reflection: state.reflection,
+      light: state.lightOn,
     });
     state.studio.onInteract = () => {
       setStudioStateFromStudio();
@@ -2751,6 +2851,7 @@ async function boot() {
     state.cards = cards;
     state.studio.setCards(cards);
     state.studio.setReflection(state.reflection, { immediate: true });
+    state.lightOn = state.studio.setKeyLightEnabled(state.lightOn);
 
     // URL-driven deterministic state (?pose / ?swap / ?reflection), applied before ready.
     const pose = parsePoseParam();

@@ -148,16 +148,41 @@ const FILLET_DEPTH = 0.007;
  * sit slightly brighter because it sits on a light face.
  */
 const EDGE_MIRROR = Object.freeze({
-  metalness: 1.0,
-  roughness: 0.04,
-  // A light clearcoat keeps the chrome lobe clean; 0.42 also stays at/above the
-  // QA edge-clearcoat floor inherited from the round-2 bezel contract.
-  clearcoat: 0.42,
-  clearcoatRoughness: 0.06,
-  normalScale: 0,
-  clearcoatNormalScale: 0,
-  color: '#eef2f6',
-  envMapIntensity: Object.freeze({ dark: 1.35, light: 1.45 }),
+  // Revision 15 (R15-1): the DARK card's middle frame is a black metal mirror,
+  // not chrome. Fully metallic near-black F0, very low roughness (mirror lobe),
+  // no albedo/normal grain and a deliberately low clearcoat (a heavy coat would
+  // add a white dielectric sheen on top of the black mirror). envMapIntensity is
+  // tuned against the delivered dark studio so the thin edge reads as a black
+  // mirror band (it must not collapse into the dark backdrop).
+  dark: Object.freeze({
+    finish: 'black-mirror-metal',
+    metalness: 1.0,
+    roughness: 0.045,
+    clearcoat: 0.08,
+    clearcoatRoughness: 0.12,
+    normalScale: 0,
+    clearcoatNormalScale: 0,
+    color: '#0e1114',
+    envMapIntensity: 2.6,
+    glossyMirror: true,
+    blackMirror: true,
+  }),
+  // The LIGHT card's frame stays the accepted Revision-8 mirror chrome.
+  light: Object.freeze({
+    finish: 'mirror-chrome',
+    metalness: 1.0,
+    roughness: 0.04,
+    // A light clearcoat keeps the chrome lobe clean; 0.42 also stays at/above the
+    // QA edge-clearcoat floor inherited from the round-2 bezel contract.
+    clearcoat: 0.42,
+    clearcoatRoughness: 0.06,
+    normalScale: 0,
+    clearcoatNormalScale: 0,
+    color: '#eef2f6',
+    envMapIntensity: 1.45,
+    glossyMirror: true,
+    blackMirror: false,
+  }),
 });
 
 /**
@@ -775,27 +800,33 @@ function buildMaterials(spec, textures, meta) {
   // micro variation would smear the chrome lobe).  Clearcoat is deliberately
   // light: a heavy coat would add a white dielectric layer that reads as a
   // painted frame instead of chrome and can clip under the reflection boost.
-  const edgeEnv = EDGE_MIRROR.envMapIntensity[spec.id] || EDGE_MIRROR.envMapIntensity.light;
+  // Revision 15: per-card middle-frame finish. Dark card = black metal mirror
+  // (near-black fully-metallic F0, mirror roughness, low clearcoat); light card =
+  // the accepted Revision-8 mirror chrome. Both are map-free: a mirror must not be
+  // bent/smeared by albedo or normal grain.
+  const edgeSpec = EDGE_MIRROR[spec.id] || EDGE_MIRROR.light;
   const edge = new THREE.MeshPhysicalMaterial({
     name: 'card-' + spec.id + '-edge',
-    color: new THREE.Color(EDGE_MIRROR.color).convertSRGBToLinear(),
-    normalScale: new THREE.Vector2(EDGE_MIRROR.normalScale, EDGE_MIRROR.normalScale),
-    roughness: EDGE_MIRROR.roughness,
-    metalness: EDGE_MIRROR.metalness,
-    clearcoat: EDGE_MIRROR.clearcoat,
-    clearcoatRoughness: EDGE_MIRROR.clearcoatRoughness,
+    color: new THREE.Color(edgeSpec.color).convertSRGBToLinear(),
+    normalScale: new THREE.Vector2(edgeSpec.normalScale, edgeSpec.normalScale),
+    roughness: edgeSpec.roughness,
+    metalness: edgeSpec.metalness,
+    clearcoat: edgeSpec.clearcoat,
+    clearcoatRoughness: edgeSpec.clearcoatRoughness,
     clearcoatNormalScale: new THREE.Vector2(
-      EDGE_MIRROR.clearcoatNormalScale,
-      EDGE_MIRROR.clearcoatNormalScale,
+      edgeSpec.clearcoatNormalScale,
+      edgeSpec.clearcoatNormalScale,
     ),
-    envMapIntensity: edgeEnv,
+    envMapIntensity: edgeSpec.envMapIntensity,
   });
   edge.userData = {
     role: 'edge',
     cardId: spec.id,
-    finish: 'mirror-chrome',
-    color: EDGE_MIRROR.color,
-    glossyMirror: true,
+    finish: edgeSpec.finish,
+    color: edgeSpec.color,
+    glossyMirror: edgeSpec.glossyMirror,
+    blackMirror: edgeSpec.blackMirror,
+    envMapIntensity: edgeSpec.envMapIntensity,
   };
 
   return { front, back, edge };

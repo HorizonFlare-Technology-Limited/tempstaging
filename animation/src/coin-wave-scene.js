@@ -1,35 +1,39 @@
 /**
- * tekoanimation — Wave composition scene build (three.js side).
+ * coin-wave-scene.js — three.js scene build for the Rev15 coin Wave.
  *
- * Consumes the pure-math `WAVE` composition (`./coin-wave.js`) and builds:
- *  - the broad twisted ribbon/wave band: a watertight stadium-section sweep with
- *    four material groups (brushed-silver top face, blue/violet underside,
- *    polished silver long-edge rims, polished end caps);
- *  - deterministic procedural brushed-metal maps (seeded, no `Math.random`);
- *  - the wave lighting rig: a neutral WHITE key (shadow-casting, unchanged in
- *    colour) plus the reference's orange accent translated to the TEKO brand
- *    gold (`#ffd60a`) — nothing else is tinted;
- *  - soft authored contact-shadow decals under each coin and the coin cluster,
- *    aligned to the band surface.
+ * Consumes the pure composition module (./coin-wave.js) and builds:
+ *  - two broad, wide-top ribbon waves running left-right: the front one in
+ *    brushed stainless steel, the back one in TEKO gold with a satin finish,
+ *    half a phase along X (gold crest over the steel trough); both surfaces come
+ *    straight from WAVE's exact profile functions (flat-topped sine along X,
+ *    broad flat top across the ribbon width), with polished long-edge bevels;
+ *  - a neutral dark studio environment (PMREM): a large soft overhead panel,
+ *    broad neutral side panels and a faint warm bounce for the gold, no floor;
+ *  - soft authored contact-shadow decals under the three coin placements;
+ *  - a small neutral light rig (white key + cool-neutral fill + back light).
  *
- * The four coins themselves stay owned by the page (they come from the coin
- * model bank); `preview.js` adds their holders to `group` using `WAVE.coins`.
+ * The three coins themselves are page-owned (they come from the coin model
+ * bank); the page adds them to the returned group using WAVE.coins.
  *
- * Determinism: textures are generated from a fixed LCG seed, all placements
- * come from `WAVE`, and nothing here reads the clock or `Math.random`.
+ * Determinism: all procedural maps come from a fixed LCG seed, placements and
+ * surfaces come from WAVE, nothing reads the clock or Math.random.
  */
 import * as THREE from 'three';
-import { WAVE, waveSurfaceAt } from './coin-wave.js';
+import { WAVE, waveSurfaceHeight, waveSurfaceNormal } from './coin-wave.js';
 
-/** TEKO brand gold (shield emblem bright tone) replaces the reference's orange. */
+/** TEKO theme gold (satin wave) plus the neutral studio accents. */
 export const WAVE_ACCENT = Object.freeze({
   gold: 0xffd60a,
   goldDeep: 0x7d5a00,
+  steel: 0xcfd4da,
   white: 0xffffff,
-  role: 'brand-gold accent (reference orange)',
+  role: 'TEKO brand gold satin ribbon (back wave)',
 });
 
-/** Deterministic linear congruential generator (no Math.random anywhere). */
+/* ------------------------------------------------------------------------- */
+/* Deterministic procedural maps                                             */
+/* ------------------------------------------------------------------------- */
+
 function lcg(seed) {
   let state = seed >>> 0;
   return () => {
@@ -56,140 +60,146 @@ function canvasTexture(canvas, { srgb = false, repeatU = true } = {}) {
 }
 
 /**
- * Brushed-silver maps: fine lines run ALONG the band (u), so the texture varies
- * across v (one random streak value per row, slightly jittered along u).
+ * Brushed stainless steel: fine streaks run ALONG the ribbon (u), neutral cool
+ * silver, low-contrast albedo + roughness + bump variation.
  */
 function buildBrushedMaps(size = 512) {
-  const random = lcg(0x5eed6a7);
+  const random = lcg(0x575e7a1);
   const albedo = makeCanvas(size, size);
   const roughness = makeCanvas(size, size);
   const bump = makeCanvas(size, size);
   const albedoCtx = albedo.getContext('2d');
   const roughnessCtx = roughness.getContext('2d');
   const bumpCtx = bump.getContext('2d');
-
-  // smooth-ish row luminance: random walk so the brush lines group naturally
-  const rows = [];
-  let value = 0;
+  const albedoData = albedoCtx.createImageData(size, size);
+  const roughnessData = roughnessCtx.createImageData(size, size);
+  const bumpData = bumpCtx.createImageData(size, size);
   for (let y = 0; y < size; y += 1) {
-    value = value * 0.86 + (random() - 0.5) * 14;
-    rows.push(value);
-  }
-  // a handful of brighter/darker long streaks for the satin sheen
-  for (let streak = 0; streak < 46; streak += 1) {
-    const y = Math.floor(random() * size);
-    rows[y] += (random() - 0.5) * 18;
-  }
-
-  for (let y = 0; y < size; y += 1) {
-    const row = rows[y];
-    // albedo: bright neutral silver ~0.62..0.78 with fine per-pixel grain
-    const base = 165 + row * 0.5;
-    const rough = 46 + row * 0.4; // 0.15 .. 0.23 effective roughness
-    const height = 128 + row * 0.6;
+    const rowStreak = random() * 0.22 + random() * 0.1;
     for (let x = 0; x < size; x += 1) {
-      const grain = (random() - 0.5) * 4;
-      const level = Math.max(0, Math.min(255, Math.round(base + grain)));
-      albedoCtx.fillStyle = 'rgb(' + level + ',' + level + ',' + (level + 1) + ')';
-      albedoCtx.fillRect(x, y, 1, 1);
-      const roughLevel = Math.max(0, Math.min(255, Math.round(rough + grain)));
-      roughnessCtx.fillStyle = 'rgb(' + roughLevel + ',' + roughLevel + ',' + roughLevel + ')';
-      roughnessCtx.fillRect(x, y, 1, 1);
-      const bumpLevel = Math.max(0, Math.min(255, Math.round(height + grain * 2)));
-      bumpCtx.fillStyle = 'rgb(' + bumpLevel + ',' + bumpLevel + ',' + bumpLevel + ')';
-      bumpCtx.fillRect(x, y, 1, 1);
+      const fine = random();
+      const streak = rowStreak + fine * 0.06;
+      const base = 0.6 + streak * 0.16;
+      const index = (y * size + x) * 4;
+      const albedoValue = Math.round(Math.min(1, base) * 255);
+      albedoData.data[index] = albedoValue - 3;
+      albedoData.data[index + 1] = albedoValue - 1;
+      albedoData.data[index + 2] = albedoValue + 2;
+      albedoData.data[index + 3] = 255;
+      const roughnessValue = Math.round((0.3 + streak * 0.18 + fine * 0.03) * 255);
+      roughnessData.data[index] = roughnessValue;
+      roughnessData.data[index + 1] = roughnessValue;
+      roughnessData.data[index + 2] = roughnessValue;
+      roughnessData.data[index + 3] = 255;
+      const bumpValue = Math.round((0.5 + streak * 0.35) * 255);
+      bumpData.data[index] = bumpValue;
+      bumpData.data[index + 1] = bumpValue;
+      bumpData.data[index + 2] = bumpValue;
+      bumpData.data[index + 3] = 255;
     }
   }
-
+  albedoCtx.putImageData(albedoData, 0, 0);
+  roughnessCtx.putImageData(roughnessData, 0, 0);
+  bumpCtx.putImageData(bumpData, 0, 0);
   return {
-    albedo: canvasTexture(albedo, { srgb: true }),
-    roughness: canvasTexture(roughness),
-    bump: canvasTexture(bump),
+    map: canvasTexture(albedo, { srgb: true }),
+    roughnessMap: canvasTexture(roughness),
+    bumpMap: canvasTexture(bump),
   };
-}
-
-/** Soft radial contact-shadow alpha (black with a smooth falloff). */
-function buildShadowTexture(size = 256) {
-  const canvas = makeCanvas(size, size);
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, 'rgba(0,0,0,0.92)');
-  gradient.addColorStop(0.45, 'rgba(0,0,0,0.62)');
-  gradient.addColorStop(0.78, 'rgba(0,0,0,0.2)');
-  gradient.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.encoding = THREE.LinearEncoding;
-  return texture;
-}
-
-function vec3(values) {
-  return new THREE.Vector3(values[0], values[1], values[2]);
 }
 
 /**
- * Purpose-built PMREM studio for the wave: a dark room with a strong white
- * softbox upper-left (the reference's white light), a softer white panel front
- * right, a blue-violet panel behind-left (so the blue underside reflects blue,
- * not grey) and a brand-gold strip low-right (the reference's orange accent
- * reflections). The palette is why the silver reads as satin metal here instead
- * of the dim silver-studio environment used by Hero/Gallery.
- *
- * @param {THREE.WebGLRenderer} renderer
- * @returns {{texture: THREE.Texture, dispose: () => void}}
+ * TEKO gold satin: soft, low-contrast satin sheen (no brushed streaks), a very
+ * gentle mottling and a satin roughness (0.34..0.46) so it reads smooth matte
+ * gold rather than mirror chrome.
+ */
+function buildSatinGoldMaps(size = 512) {
+  const random = lcg(0x60d5a71);
+  const albedo = makeCanvas(size, size);
+  const roughness = makeCanvas(size, size);
+  const ctx = albedo.getContext('2d');
+  const rCtx = roughness.getContext('2d');
+  const albedoData = ctx.createImageData(size, size);
+  const roughnessData = rCtx.createImageData(size, size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = (y * size + x) * 4;
+      const mottle = (random() - 0.5) * 0.05;
+      const value = 0.72 + mottle; // neutral value: the TEKO gold colour tints it
+      albedoData.data[index] = Math.round(Math.min(1, value) * 255);
+      albedoData.data[index + 1] = Math.round(Math.min(1, value) * 255);
+      albedoData.data[index + 2] = Math.round(Math.min(1, value) * 255);
+      albedoData.data[index + 3] = 255;
+      const roughnessValue = Math.round((0.36 + random() * 0.12) * 255);
+      roughnessData.data[index] = roughnessValue;
+      roughnessData.data[index + 1] = roughnessValue;
+      roughnessData.data[index + 2] = roughnessValue;
+      roughnessData.data[index + 3] = 255;
+    }
+  }
+  ctx.putImageData(albedoData, 0, 0);
+  rCtx.putImageData(roughnessData, 0, 0);
+  return {
+    map: canvasTexture(albedo, { srgb: true }),
+    roughnessMap: canvasTexture(roughness),
+  };
+}
+
+/** Soft radial contact-shadow sprite (authored, deterministic, no blur filter). */
+function buildContactShadowTexture(size = 256) {
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(0,0,0,0.55)');
+  gradient.addColorStop(0.45, 'rgba(0,0,0,0.3)');
+  gradient.addColorStop(0.78, 'rgba(0,0,0,0.08)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  return canvas;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Wave environment + geometry                                               */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Neutral dark PMREM studio: a large soft overhead panel, two broad neutral
+ * side panels, a dim back wall and a faint warm bounce for the gold. No floor,
+ * no network assets, no clock/random.
  */
 export function buildWaveEnvironment(renderer) {
+  if (!renderer) return null;
   const envScene = new THREE.Scene();
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const resources = [geometry];
-
-  const addPanel = (color, intensity, position, scale, lookAt = [0, 0, 0]) => {
-    const material = new THREE.MeshBasicMaterial();
-    material.color.setRGB(color[0] * intensity, color[1] * intensity, color[2] * intensity);
+  envScene.background = new THREE.Color(0x050607);
+  const resources = [];
+  const addPanel = ({ width, height, depth, x = 0, y = 0, z = 0, color, intensity }) => {
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), fog: false });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(position[0], position[1], position[2]);
-    mesh.scale.set(scale[0], scale[1], scale[2]);
-    mesh.lookAt(lookAt[0], lookAt[1], lookAt[2]);
+    mesh.position.set(x, y, z);
     envScene.add(mesh);
-    resources.push(material);
-    return mesh;
+    resources.push({ mesh, geometry, material });
   };
-
-  // dark blue-grey room shell (low ambient body for the metals)
-  const shellMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0d16, side: THREE.BackSide });
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(26, 12, 8), shellMaterial);
-  envScene.add(shell);
-  resources.push(shell.geometry, shellMaterial);
-
-  // Main white softbox directly ABOVE the composition: the band's silver top
-  // face mirrors to +Y at the coins, so this is the reflection that makes the
-  // broad brushed surface read bright.
-  addPanel([1.0, 0.98, 0.95], 3.6, [0, 16, 1], [16, 11, 0.1]);
-  // Secondary softbox above/front: brightens the near slopes of the wave.
-  addPanel([1.0, 0.98, 0.95], 2.0, [0, 12, 12], [10, 6, 0.1]);
-  // Secondary softbox above/behind: gives the far edges and rims a cool sheen.
-  addPanel([0.92, 0.96, 1.0], 1.8, [0, 15, -7], [14, 9, 0.1]);
-  // Quiet front panel: coin faces point at the camera, so their mirror
-  // reflection samples this panel — keep it dim so the satin coins stay a mid
-  // tone with readable relief instead of clipping white.
-  addPanel([1.0, 0.98, 0.95], 0.55, [-3, 5, 14], [8, 5, 0.1]);
-  // Blue-violet sweep behind-left (blue underside reflections).
-  addPanel([0.3, 0.36, 1.0], 3.2, [-15, 3, -4], [8, 12, 0.1]);
-  // Blue-violet panel behind the CAMERA: the blue underside faces the viewer,
-  // so its mirror reflection samples this panel and reads as blue-violet glass.
-  addPanel([0.34, 0.4, 1.0], 2.2, [-5, 3, 15], [9, 7, 0.1]);
-  // White kicker behind-right (silver rim highlights).
-  addPanel([1.0, 0.97, 0.92], 1.2, [12, 7, -4], [8, 8, 0.1]);
-  // Brand-gold accent strip low-right (reference orange).
-  addPanel([1.0, 0.72, 0.1], 2.2, [9, -4, 5], [6, 2, 0.1]);
+  addPanel({ width: 26, height: 0.4, depth: 16, x: 0, y: 8.0, z: -1.0, color: 0xffffff, intensity: 1.2 });
+  addPanel({ width: 18, height: 0.3, depth: 2.5, x: 0, y: 6.4, z: 3.4, color: 0xffffff, intensity: 1.0 });
+  addPanel({ width: 0.4, height: 7.0, depth: 14, x: -8.0, y: 2.4, z: -2.4, color: 0xe3eaf2, intensity: 1.3 });
+  addPanel({ width: 0.4, height: 7.0, depth: 14, x: 8.0, y: 2.4, z: -2.4, color: 0xe3eaf2, intensity: 1.3 });
+  addPanel({ width: 24, height: 9, depth: 0.3, x: 0, y: 2.0, z: -12.0, color: 0xb8c2cc, intensity: 0.45 });
+  addPanel({ width: 12, height: 0.3, depth: 0.6, x: 0, y: -2.6, z: 4.2, color: 0xffcf6a, intensity: 0.9 });
 
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const target = pmrem.fromScene(envScene, 0.02);
+  const target = pmrem.fromScene(envScene, 0.04);
   pmrem.dispose();
-  for (const resource of resources) resource.dispose();
+  for (const resource of resources) {
+    envScene.remove(resource.mesh);
+    resource.geometry.dispose();
+    resource.material.dispose();
+  }
+  envScene.clear();
   return {
     texture: target.texture,
+    renderTarget: target,
     dispose() {
       target.dispose();
     },
@@ -197,241 +207,310 @@ export function buildWaveEnvironment(renderer) {
 }
 
 /**
- * Build the wave band + lighting + contact shadows.
- * @param {{ castShadow?: boolean, renderer?: THREE.WebGLRenderer }} [options]
+ * Ribbon geometry from the exact analytic surface: top sheet (metal material,
+ * group 0), polished long-edge side walls (group 1) and underside (group 0).
+ * The ribbon is a broad flat strap that undulates along X; its two long edges
+ * follow the wave, so the wave reads as a wavy ribbon silhouette.
+ */
+function buildRibbonGeometry(wave, { xSegments = 220, zSegments = 10 } = {}) {
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const indicesTop = [];
+  const indicesEdge = [];
+  const halfLength = wave.length / 2;
+  const zStart = wave.zStart;
+  const zSpan = wave.zEnd - wave.zStart;
+  const uRepeat = 6;
+
+  const pushVertex = (x, y, z, nx, ny, nz, u, v) => {
+    positions.push(x, y, z);
+    normals.push(nx, ny, nz);
+    uvs.push(u, v);
+    return positions.length / 3 - 1;
+  };
+
+  // top sheet
+  const topStart = positions.length / 3;
+  for (let i = 0; i <= xSegments; i += 1) {
+    const x = -halfLength + (wave.length * i) / xSegments;
+    const surfaceY = waveSurfaceHeight(wave.kind, x, zStart);
+    const normal = waveSurfaceNormal(wave.kind, x, zStart);
+    for (let j = 0; j <= zSegments; j += 1) {
+      const z = zStart + (zSpan * j) / zSegments;
+      pushVertex(x, surfaceY, z, normal[0], normal[1], normal[2], (i / xSegments) * uRepeat, j / zSegments);
+    }
+  }
+  for (let i = 0; i < xSegments; i += 1) {
+    for (let j = 0; j < zSegments; j += 1) {
+      const a = topStart + i * (zSegments + 1) + j;
+      const b = a + 1;
+      const c = a + (zSegments + 1);
+      const d = c + 1;
+      indicesTop.push(a, c, b, b, c, d);
+    }
+  }
+
+  // underside, opposite winding
+  const bottomStart = positions.length / 3;
+  for (let i = 0; i <= xSegments; i += 1) {
+    const x = -halfLength + (wave.length * i) / xSegments;
+    const surfaceY = waveSurfaceHeight(wave.kind, x, zStart);
+    for (let j = 0; j <= zSegments; j += 1) {
+      const z = zStart + (zSpan * j) / zSegments;
+      pushVertex(x, surfaceY - wave.thickness, z, 0, -1, 0, (i / xSegments) * uRepeat, j / zSegments);
+    }
+  }
+  for (let i = 0; i < xSegments; i += 1) {
+    for (let j = 0; j < zSegments; j += 1) {
+      const a = bottomStart + i * (zSegments + 1) + j;
+      const b = a + 1;
+      const c = a + (zSegments + 1);
+      const d = c + 1;
+      indicesTop.push(a, b, c, b, d, c);
+    }
+  }
+
+  // polished long-edge side walls (two long edges of the strap)
+  for (const edge of [
+    { z: zStart, side: -1 },
+    { z: wave.zEnd, side: 1 },
+  ]) {
+    const edgeStart = positions.length / 3;
+    const normal = [0, 0.18, edge.side];
+    const normalLength = Math.hypot(normal[0], normal[1], normal[2]);
+    const n = [normal[0] / normalLength, normal[1] / normalLength, normal[2] / normalLength];
+    for (let i = 0; i <= xSegments; i += 1) {
+      const x = -halfLength + (wave.length * i) / xSegments;
+      const surfaceY = waveSurfaceHeight(wave.kind, x, edge.z);
+      pushVertex(x, surfaceY, edge.z, n[0], n[1], n[2], (i / xSegments) * uRepeat, 1);
+      pushVertex(x, surfaceY - wave.thickness, edge.z, n[0], n[1], n[2], (i / xSegments) * uRepeat, 0);
+    }
+    for (let i = 0; i < xSegments; i += 1) {
+      const a = edgeStart + i * 2;
+      const b = a + 1;
+      const c = a + 2;
+      const d = a + 3;
+      if (edge.side > 0) indicesEdge.push(a, b, c, c, b, d);
+      else indicesEdge.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex([...indicesTop, ...indicesEdge]);
+  geometry.addGroup(0, indicesTop.length, 0);
+  geometry.addGroup(indicesTop.length, indicesEdge.length, 1);
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Composition                                                               */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Build the Wave scene (ribbons + studio + contact decals + lights).
+ * @param {{ renderer?: THREE.WebGLRenderer, castShadow?: boolean }} [options]
  * @returns {{
  *   group: THREE.Group,
- *   band: THREE.Mesh,
- *   materials: Record<string, THREE.Material>,
- *   lights: Record<string, THREE.Light>,
  *   environment: { texture: THREE.Texture, dispose: () => void } | null,
- *   decals: THREE.Mesh[],
- *   debug(): object,
- *   dispose(): void
+ *   lights: Record<string, THREE.Light>,
+ *   materials: Record<string, THREE.Material>,
+ *   waves: Record<string, { mesh: THREE.Mesh, geometry: THREE.BufferGeometry }>,
+ *   frame: () => object,
+ *   debug: () => object,
+ *   dispose: () => void
  * }}
  */
 export function createWaveComposition(options = {}) {
-  const castShadow = options.castShadow !== false;
+  const renderer = options.renderer || null;
   const group = new THREE.Group();
-  group.name = 'coin-wave';
-  // Purpose-built PMREM studio (returned to the page, which owns
-  // scene.environment and restores the silver-studio env on mode exit).
-  const environment = options.renderer ? buildWaveEnvironment(options.renderer) : null;
+  group.name = 'coin-wave-composition';
 
-  const geometry = new THREE.BufferGeometry();
-  const data = WAVE.ribbon.geometry;
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(data.positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(data.normals, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(data.uvs, 2));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(data.colors, 3));
-  geometry.setIndex(new THREE.Uint32BufferAttribute(data.indices, 1));
-  for (const entry of data.groups) geometry.addGroup(entry.start, entry.count, entry.material);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
+  const steelMaps = buildBrushedMaps(512);
+  const goldMaps = buildSatinGoldMaps(512);
+  const contactTexture = new THREE.CanvasTexture(buildContactShadowTexture(256));
+  contactTexture.encoding = THREE.LinearEncoding;
+  contactTexture.needsUpdate = true;
 
-  const brushed = buildBrushedMaps(512);
-
-  const silver = new THREE.MeshPhysicalMaterial({
-    name: 'wave-silver-brushed',
+  const steelMaterial = new THREE.MeshPhysicalMaterial({
+    map: steelMaps.map,
+    roughnessMap: steelMaps.roughnessMap,
+    bumpMap: steelMaps.bumpMap,
+    bumpScale: 0.0016,
     color: 0xffffff,
-    map: brushed.albedo,
-    roughnessMap: brushed.roughness,
-    roughness: 1.0,
     metalness: 1.0,
-    bumpMap: brushed.bump,
-    bumpScale: 0.0025,
-    envMapIntensity: 1.08,
-  });
-  const blue = new THREE.MeshPhysicalMaterial({
-    name: 'wave-blue-underside',
-    color: 0xffffff,
-    vertexColors: true,
-    metalness: 0.28,
-    roughness: 0.2,
-    clearcoat: 0.7,
-    clearcoatRoughness: 0.16,
+    roughness: 0.38,
+    clearcoat: 0.04,
+    clearcoatRoughness: 0.35,
     envMapIntensity: 1.0,
+    side: THREE.DoubleSide,
   });
-  const rim = new THREE.MeshPhysicalMaterial({
-    name: 'wave-polished-rim',
-    color: 0xe4e8ee,
+  steelMaterial.name = 'wave-steel-brushed';
+  const goldMaterial = new THREE.MeshPhysicalMaterial({
+    map: goldMaps.map,
+    roughnessMap: goldMaps.roughnessMap,
+    color: 0xffd60a,
+    metalness: 0.0,
+    roughness: 0.5,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    envMapIntensity: 0.5,
+    side: THREE.DoubleSide,
+  });
+  goldMaterial.name = 'wave-gold-satin';
+  const goldEdgeMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xffe55c,
     metalness: 1.0,
-    roughness: 0.07,
-    envMapIntensity: 1.55,
+    roughness: 0.24,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 1.15,
+    side: THREE.DoubleSide,
   });
-  const rimEnd = rim.clone();
-  rimEnd.name = 'wave-polished-rim-end';
+  goldEdgeMaterial.name = 'wave-gold-polished-edge';
+  const edgeMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xdfe4ea,
+    metalness: 1.0,
+    roughness: 0.2,
+    clearcoat: 0.28,
+    clearcoatRoughness: 0.12,
+    envMapIntensity: 1.1,
+    side: THREE.DoubleSide,
+  });
+  edgeMaterial.name = 'wave-polished-edge';
 
-  const materials = [silver, blue, rim, rimEnd];
-  const band = new THREE.Mesh(geometry, materials);
-  band.name = 'wave-band';
-  band.castShadow = false;
-  band.receiveShadow = true;
-  group.add(band);
+  const goldRibbonMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xffd60a,
+    metalness: 0.5,
+    roughness: 0.48,
+    clearcoat: 0.04,
+    clearcoatRoughness: 0.5,
+    envMapIntensity: 1.25,
+    side: THREE.DoubleSide,
+  });
+  goldRibbonMaterial.name = 'wave-gold-satin';
+  const materials = { steel: steelMaterial, gold: goldRibbonMaterial, edge: edgeMaterial };
+  const textures = [steelMaps.map, steelMaps.roughnessMap, steelMaps.bumpMap, goldMaps.map, goldMaps.roughnessMap];
+  const geometries = [];
+  const waves = {};
 
-  /* ------------------------------------------------------------ lighting */
-
-  // Neutral WHITE key: the reference's white light is kept white (only the
-  // accent light takes the brand gold). It also casts the coins' soft shadows
-  // onto the band.
-  const whiteKey = new THREE.DirectionalLight(WAVE_ACCENT.white, 1.2);
-  whiteKey.name = 'wave-white-key';
-  whiteKey.position.set(-7.5, 4.5, 5.0);
-  whiteKey.target.position.set(0.4, 0.2, 0.2);
-  whiteKey.castShadow = castShadow;
-  if (castShadow) {
-    whiteKey.shadow.mapSize.set(2048, 2048);
-    whiteKey.shadow.camera.left = -12;
-    whiteKey.shadow.camera.right = 12;
-    whiteKey.shadow.camera.top = 8;
-    whiteKey.shadow.camera.bottom = -8;
-    whiteKey.shadow.camera.near = 1;
-    whiteKey.shadow.camera.far = 40;
-    whiteKey.shadow.bias = -0.0008;
-    whiteKey.shadow.normalBias = 0.02;
-    whiteKey.shadow.radius = 4;
+  for (const kind of ['steel', 'gold']) {
+    const spec = WAVE.waves[kind];
+    const geometry = buildRibbonGeometry(spec);
+    geometries.push(geometry);
+    // one material per ribbon so the whole wave surface reads as that metal
+    const mesh = new THREE.Mesh(geometry, kind === 'steel' ? steelMaterial : goldRibbonMaterial);
+    mesh.name = 'wave-ribbon-' + kind;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    group.add(mesh);
+    waves[kind] = { mesh, geometry, spec };
   }
-  group.add(whiteKey);
-  group.add(whiteKey.target);
 
-  // A second, softer white key from the camera side reads the brushed top face.
-  const whiteFill = new THREE.DirectionalLight(0xffffff, 0.18);
-  whiteFill.name = 'wave-white-fill';
-  whiteFill.position.set(2.5, 7.0, 9.0);
-  whiteFill.target.position.set(0.8, 0.4, 0.2);
-  group.add(whiteFill);
-  group.add(whiteFill.target);
-
-  // Brand-gold accent (reference orange): a grazing light on the near rim of
-  // the band, kept low and away from the coin faces so the satin silver coins
-  // stay silver — only their bottom rims pick up the warm edge.
-  const goldAccent = new THREE.PointLight(WAVE_ACCENT.gold, 24, 7, 2);
-  goldAccent.name = 'wave-gold-accent';
-  goldAccent.position.set(2.4, -2.3, 2.3);
-  group.add(goldAccent);
-
-  // A white raking light from the camera-right, low: it skims across the satin
-  // coin faces so the embossed relief reads (a frontal key alone leaves the
-  // glyph bevels flat at this scale).
-  const whiteRake = new THREE.DirectionalLight(0xffffff, 1.6);
-  whiteRake.name = 'wave-white-rake';
-  whiteRake.position.set(11, 2.6, 6);
-  whiteRake.target.position.set(1.2, 0.4, 0.6);
-  group.add(whiteRake);
-  group.add(whiteRake.target);
-
-  // A quiet cool fill keeps the blue underside from going black.
-  const coolFill = new THREE.PointLight(0x8fa4ff, 5.0, 24, 2);
-  coolFill.name = 'wave-cool-fill';
-  coolFill.position.set(-4.6, 2.2, -4.2);
-  group.add(coolFill);
-
-  /* ------------------------------------------------- contact shadow decals */
-
-  const shadowTexture = buildShadowTexture(256);
+  // soft contact shadows under the page-owned coins (grounding, no float look)
   const decals = [];
-  const decalGroup = new THREE.Group();
-  decalGroup.name = 'wave-contact-shadows';
-  group.add(decalGroup);
-
-  const addDecal = ({ t, f, width, height, opacity, offsetAlong, offsetSide }) => {
-    const surface = waveSurfaceAt(t, f);
+  for (const coin of WAVE.coins) {
+    const surface = waveSurfaceHeight(coin.surface, coin.position[0], coin.position[2]);
+    const geometry = new THREE.PlaneGeometry(coin.radius * 3.2, coin.radius * 2.4);
     const material = new THREE.MeshBasicMaterial({
-      name: 'wave-contact-shadow',
-      map: shadowTexture,
-      color: 0x000000,
+      map: contactTexture,
       transparent: true,
-      opacity,
+      opacity: 0.42,
       depthWrite: false,
       toneMapped: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-      polygonOffsetUnits: -4,
+      side: THREE.DoubleSide,
     });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
-    mesh.name = 'wave-shadow-decal';
-    const basis = new THREE.Matrix4().makeBasis(
-      vec3(surface.frame.side),
-      vec3(surface.frame.tangent),
-      vec3(surface.frame.up)
-    );
-    mesh.quaternion.setFromRotationMatrix(basis);
-    mesh.position
-      .copy(vec3(surface.point))
-      .addScaledVector(vec3(surface.frame.up), 0.012)
-      .addScaledVector(vec3(surface.frame.tangent), offsetAlong || 0)
-      .addScaledVector(vec3(surface.frame.side), offsetSide || 0);
-    mesh.renderOrder = 2;
-    decalGroup.add(mesh);
-    decals.push(mesh);
-    return mesh;
-  };
-
-  for (const coin of WAVE.coins) {
-    const scale = coin.scale;
-    addDecal({
-      t: coin.contactT,
-      f: coin.contactF,
-      width: 2.1 * scale,
-      height: 1.25 * scale,
-      opacity: 0.55,
-      offsetAlong: -0.12 * scale,
-      offsetSide: -0.04 * scale,
-    });
+    const decal = new THREE.Mesh(geometry, material);
+    decal.name = 'wave-contact-' + coin.id;
+    decal.rotation.x = -Math.PI / 2;
+    decal.position.set(coin.position[0], surface + 0.002, coin.position[2]);
+    group.add(decal);
+    decals.push({ decal, geometry, material });
   }
 
-  const dispose = () => {
-    geometry.dispose();
-    for (const material of materials) material.dispose();
-    brushed.albedo.dispose();
-    brushed.roughness.dispose();
-    brushed.bump.dispose();
-    shadowTexture.dispose();
-    for (const mesh of decals) {
-      mesh.geometry.dispose();
-      mesh.material.dispose();
-    }
-    whiteKey.dispose();
-    whiteFill.dispose();
-    whiteRake.dispose();
-    goldAccent.dispose();
-    coolFill.dispose();
-    if (environment) environment.dispose();
-  };
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(4.5, 7.5, 6.5);
+  key.castShadow = false;
+  group.add(key);
+  const fill = new THREE.DirectionalLight(0xdfe6f0, 0.35);
+  fill.position.set(-5.5, 3.5, 4.5);
+  fill.castShadow = false;
+  group.add(fill);
+  const back = new THREE.DirectionalLight(0xffffff, 0.25);
+  back.position.set(-2.5, 4.5, -6.0);
+  back.castShadow = false;
+  group.add(back);
+  const lights = { key, fill, back };
 
-  const debug = () => ({
-    band: {
-      vertices: data.vertexCount,
-      triangles: data.triangleCount,
-      groups: data.groups.map((entry) => ({ material: entry.material, count: entry.count / 3 })),
-      materials: materials.map((material) => material.name),
-      width: WAVE.ribbon.metrics.width,
-      thickness: WAVE.ribbon.metrics.thickness,
-      length: WAVE.ribbon.metrics.length,
-      twistDeg: {
-        min: Math.round((Math.min(...WAVE.frames.map((frame) => frame.twistRad)) * 180) / Math.PI),
-        max: Math.round((Math.max(...WAVE.frames.map((frame) => frame.twistRad)) * 180) / Math.PI),
-      },
-    },
-    lights: {
-      white: { type: 'DirectionalLight', color: '#' + WAVE_ACCENT.white.toString(16).padStart(6, '0'), castShadow },
-      gold: { color: '#' + WAVE_ACCENT.gold.toString(16).padStart(6, '0'), role: WAVE_ACCENT.role },
-      names: [whiteKey.name, whiteFill.name, whiteRake.name, goldAccent.name, coolFill.name],
-      shadowMap: castShadow,
-    },
-    environment: environment ? 'wave-pmrem-studio' : null,
-    decals: decals.length,
-    textures: ['brushed-albedo', 'brushed-roughness', 'brushed-bump', 'contact-shadow'],
-  });
+  const environment = renderer ? buildWaveEnvironment(renderer) : null;
 
-  return {
+  let disposed = false;
+  const composition = {
     group,
-    band,
-    materials: { silver, blue, rim, rimEnd },
-    lights: { whiteKey, whiteFill, whiteRake, goldAccent, coolFill },
     environment,
-    decals,
-    debug,
-    dispose,
+    lights,
+    materials,
+    waves,
+    frame() {
+      return composition.debug();
+    },
+    debug() {
+      return {
+        design: 'two-ribbon-waves',
+        waves: Object.keys(waves).map((kind) => ({
+          kind,
+          label: WAVE.waves[kind].label,
+          finish: WAVE.waves[kind].finish,
+          vertices: waves[kind].geometry.getAttribute('position').count,
+          triangles: waves[kind].geometry.index.count / 3,
+          zStart: WAVE.waves[kind].zStart,
+          zEnd: WAVE.waves[kind].zEnd,
+          troughX: WAVE.waves[kind].troughX ?? WAVE.waves[kind].crestX,
+          amplitude: WAVE.waves[kind].amplitude,
+          wavelength: WAVE.waves[kind].wavelength,
+        })),
+        materials: Object.keys(materials).map((keyName) => ({
+          key: keyName,
+          name: materials[keyName].name,
+          color: '#' + materials[keyName].color.getHexString(),
+          metalness: materials[keyName].metalness,
+          roughness: materials[keyName].roughness,
+        })),
+        lights: Object.keys(lights).map((name) => ({ name, type: lights[name].type, intensity: lights[name].intensity })),
+        environment: Boolean(environment),
+        contactDecals: decals.length,
+        coins: WAVE.count,
+        spacing: WAVE.metrics.spacing,
+        phase: WAVE.metrics.phase,
+        contact: WAVE.metrics.contact,
+        bounds: WAVE.metrics.bounds,
+        shadows: false,
+        postProcessing: false,
+        disposed,
+      };
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      for (const geometry of geometries) geometry.dispose();
+      geometries.length = 0;
+      for (const e of Object.values(materials)) e.dispose();
+      for (const texture of textures) texture.dispose();
+      contactTexture.dispose();
+      for (const decal of decals) {
+        decal.geometry.dispose();
+        decal.material.dispose();
+      }
+      decals.length = 0;
+      if (environment) environment.dispose();
+      for (const light of Object.values(lights)) group.remove(light);
+      group.removeFromParent();
+      group.clear();
+    },
   };
+  return composition;
 }

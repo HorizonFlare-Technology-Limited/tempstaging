@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TEKO — Silver brand square plate (provisional)</title>
+<link rel="stylesheet" href="./src/brandplate-styles.css" />
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body>
+<div id="bp-stage" aria-label="Silver brand square plate composition"></div>
+
+<header id="bp-header">
+  <div id="bp-title">
+    <h1>Silver brand square plate</h1>
+    <span id="bp-badge" title="Reference images were not attached">PROVISIONAL</span>
+  </div>
+  <p id="bp-note">References missing: provisional build uses silver satin plates, the TEKO brand logo and the black-mirror-metal middle frame (card R15-1 family).</p>
+</header>
+
+<div id="bp-error" role="alert" hidden></div>
+
+<footer id="bp-controls">
+  <div id="bp-progress-track" aria-hidden="true"><div id="bp-progress"></div></div>
+  <div id="bp-button-row">
+    <button id="bp-replay" type="button">Replay</button>
+    <button id="bp-playpause" type="button" aria-pressed="false">Play</button>
+    <button id="bp-autoplay" type="button" aria-pressed="true">Autoplay</button>
+    <span id="bp-phase" aria-live="polite">START</span>
+    <span id="bp-time" aria-live="polite">0.00 s / 3.0 s</span>
+  </div>
+  <p id="bp-hint">Five upright plates gather from right to left into a shingled stack (right plate on top). Keyboard: R replay · Space play/pause.</p>
+</footer>
+
+<script type="module" src="./src/brandplate-preview.js"></script>
+</body>
+</html>

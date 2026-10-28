@@ -27,7 +27,7 @@ const COIN_THICKNESS = 0.16;
 const COUNT = 7;
 const IDS = ['gbp', 'eur', 'cny', 'usd', 'vnd', 'php', 'thb'];
 const DURATION_SECONDS = 12;
-const SPIN_PERIOD_SECONDS = 3; // divides 12 s: exact loop seam
+const SPIN_PERIOD_SECONDS = null; // R15-2: coins no longer self-rotate; ring motion only
 const RING_TURNS_PER_LOOP = 1;
 
 /** minimum ring radius so neighbouring coins never interpenetrate: r >= 1/sin(pi/n) * 1.06 */
@@ -37,7 +37,7 @@ const NEIGHBOUR_CLEARANCE = 2 * RING_RADIUS * Math.sin(Math.PI / COUNT) - 2 * CO
 
 const START_ANGLE = Math.PI / 2; // coin 0 sits at the front of the ring at t = 0
 const RING_DIRECTION = -1; // clockwise when seen from above
-const SPIN_DIRECTION = 1;
+const SPIN_DIRECTION = 0;
 
 /**
  * Evenly distributed fixed spin phases (one per coin, spaced TAU/7 apart).
@@ -73,12 +73,15 @@ export const PARADE = Object.freeze({
     turnsPerLoop: RING_TURNS_PER_LOOP,
     startAngle: START_ANGLE,
   }),
+  // R15-2: the coins do not rotate about their own axis any more. The ring
+  // still turns; facing/roll are derived from the ring angle alone.
   spin: Object.freeze({
-    periodSeconds: SPIN_PERIOD_SECONDS,
-    direction: SPIN_DIRECTION,
-    phases: SPIN_PHASES,
-    phaseOffset: SPIN_PHASE_OFFSET,
-    spinsPerLoop: DURATION_SECONDS / SPIN_PERIOD_SECONDS,
+    enabled: false,
+    periodSeconds: null,
+    direction: 0,
+    phases: SPIN_PHASES.map(() => 0),
+    phaseOffset: 0,
+    spinsPerLoop: 0,
   }),
   camera: Object.freeze({
     fovDeg: 13.5, // long lens, 13-15 deg as in the reference
@@ -124,8 +127,8 @@ export function paradeRingAngle(loopTime) {
 }
 
 /** Common spin angle (radians) for a loop time; per-coin phase is added on top. */
-export function paradeSpinAngle(loopTime) {
-  return SPIN_DIRECTION * TAU * (loopTime / SPIN_PERIOD_SECONDS);
+export function paradeSpinAngle() {
+  return 0;
 }
 
 /* ------------------------------- quaternion math -------------------------- */
@@ -243,7 +246,7 @@ export function paradePose(seconds) {
   const radius = PARADE.ring.radius;
   const coins = IDS.map((id, index) => {
     const angle = START_ANGLE + (index * TAU) / COUNT + ringAngle;
-    const spin = spinAngle + PARADE.spin.phases[index];
+    const spin = 0; // R15-2: no self-rotation
     const x = radius * Math.cos(angle);
     const z = radius * Math.sin(angle);
     // upright, face radial; spin about the world vertical through the coin centre

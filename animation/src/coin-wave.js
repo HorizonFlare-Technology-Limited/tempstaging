@@ -1,53 +1,31 @@
 /**
- * tekoanimation — Wave composition math: the broad twisted ribbon/wave band and
- * the coins that stand/roll on it (round 6, reference `refs/round6/coin-wave.png`).
+ * coin-wave.js — pure deterministic composition math for the Rev15 coin Wave.
  *
- * Pure, deterministic geometry only: no three.js import, no DOM, no Math.random,
- * no clock. `src/preview.js` feeds `WAVE.ribbon.geometry` into a BufferGeometry
- * and `WAVE.coins` into the studio's presentation rig; it builds the materials
- * and lights itself (`src/coin-wave-scene.js`). Everything that decides the
- * look of the composition is therefore verifiable offline by
- * `tools/verify-wave.mjs`.
+ * SPEC "Collection Revision 15" R15-3: two broad, wide-top ribbon waves running
+ * left-right on a neutral dark studio. Each ribbon is a broad flat strap whose
+ * cross-section along the run (the wave) is a gentle, low-frequency, low-slope
+ * flattened sine: wide flat crests/troughs, smooth curvature, no creases. The
+ * front ribbon is brushed stainless steel; the back ribbon is the same wave in
+ * TEKO gold with a satin finish, offset HALF A PHASE (its crests sit exactly
+ * over the steel wave's troughs and vice versa). Three different-currency coins
+ * stand in the steel wave's broad trough in a row, bottom rims exactly on the
+ * surface; their screen spacing is exactly 100 CSS px at the default camera for
+ * 1440x900 and 1200x900 stages.
  *
- * What the composition is
- * -----------------------
- * The reference is a single broad satin-silver ribbon folded into a wave: its
- * top face is brushed metal, its underside is dark blue/violet glass, the long
- * edges carry a polished silver rim, and one accent light (orange in the
- * reference, brand gold on the page) grazes the near rim. Three silver coins
- * stand on edge on the ribbon as if caught mid-roll, facing the camera. This
- * module reproduces the GEOMETRY of that composition:
- *
- *  - `WAVE.ribbon`: a swept stadium-section ribbon (half width 1.6, half
- *    thickness 0.045) along a Catmull-Rom wave path. Frames are parallel-
- *    transported along the path (no artificial roll), then twisted about the
- *    tangent by `twistAt(t)`: -1.8 rad at the left end (so the blue underside
- *    turns to face the camera as the broad blue sweep), unwinding through an
- *    edge-on line to +0.78..+0.86 rad where the coins stand (so the brushed
- *    silver top face is the stage and tilts toward the camera). The twist makes
- *    the single ribbon read as both the blue band and the silver band of the
- *    reference, separated by the polished rim.
- *  - The section is a stadium (flat faces + semicircular long edges), so the
- *    ribbon is a closed watertight solid: silver top face group, blue underside
- *    face group, polished rim groups at both long edges. The returned geometry
- *    is a flat index/position/normal/uv buffer plus per-material index groups.
- *  - `WAVE.coins`: 4 coins (GBP/EUR/USD/CNY, one different symbol each — the
- *    catalog has no RUB) resting on the silver top face at different points
- *    across the band, facing a fixed presentation camera (elevation 20 deg)
- *    with small deterministic yaw/roll differences. Each coin is placed so its
- *    lowest rim point sits exactly on the ribbon top surface (minus a small
- *    authored sink), i.e. it is genuinely standing on the band.
- *  - `WAVE.metrics`: ribbon bounds, coin-contact error and minimum coin-coin
- *    surface clearance, so the verifier can assert "on the band" and "no
- *    interpenetration" without the browser.
+ * This module is dependency-free (no three.js, DOM, clock or randomness) so the
+ * offline verifier and any renderer share exactly the same numbers.
+ * Scene-space == world-space; the coin model's local +Y is its face normal and
+ * local -Z is the symbol's up direction.
  *
  * Coordinate conventions
- * ----------------------
- * Composition space equals world space (the page applies no group transform
- * before the studio orbit group). Coin model local +Y is the face normal and
- * local -Z is the symbol's up direction, exactly as `coin-compositions.js`
- * documents; a coin's `quaternion` is therefore the orientation of the coin
- * model group and `position` is its centre.
+ *  - X runs left-right along each ribbon (the wave runs along X).
+ *  - Y is up, Z is depth (toward the camera).
+ *  - A ribbon occupies z in [zStart, zEnd] (a broad flat top across its width);
+ *    its top surface height is
+ *        y = baseY + amplitude * profile(x / wavelength + phase)
+ *    where profile() is the broad-top flattened sine in [-1, 1].
+ *  - Steel trough is at x = 0; the gold ribbon's phase is +0.5 cycles, so at
+ *    x = 0 the gold surface is at its crest: crest-over-trough by construction.
  */
 
 export const COIN_GEOMETRY = Object.freeze({
@@ -57,14 +35,13 @@ export const COIN_GEOMETRY = Object.freeze({
 });
 
 const TAU = Math.PI * 2;
-const DEG = 180 / Math.PI;
-const HALF_PI = Math.PI / 2;
+const DEG = Math.PI / 180;
 
 const clamp = (value, lo, hi) => (value < lo ? lo : value > hi ? hi : value);
-const lerp = (a, b, t) => a + (b - a) * t;
-const smoothstep = (t) => {
-  const x = clamp(t, 0, 1);
-  return x * x * (3 - 2 * x);
+const tanh = (value) => {
+  const x = clamp(value, -20, 20);
+  const e = Math.exp(2 * x);
+  return (e - 1) / (e + 1);
 };
 const round6 = (value) => Math.round(value * 1e6) / 1e6;
 const round6Vec = (v) => [round6(v[0]), round6(v[1]), round6(v[2])];
@@ -78,882 +55,480 @@ function deepFreeze(value) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* Small pure vector / quaternion helpers (quaternions are [x, y, z, w])     */
-/* ------------------------------------------------------------------------- */
-
-function vecAdd(a, b) {
-  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-}
-function vecSub(a, b) {
-  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-}
-function vecScale(a, s) {
-  return [a[0] * s, a[1] * s, a[2] * s];
-}
-function vecDot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-function vecCross(a, b) {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-}
-function vecLength(a) {
-  return Math.sqrt(vecDot(a, a));
-}
-function vecNormalize(a) {
-  const length = vecLength(a) || 1;
-  return [a[0] / length, a[1] / length, a[2] / length];
-}
-
-function quatAxisAngle(ax, ay, az, angle) {
-  const length = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
-  const s = Math.sin(angle / 2) / length;
-  return [ax * s, ay * s, az * s, Math.cos(angle / 2)];
-}
-
-function quatMultiply(a, b) {
-  const ax = a[0];
-  const ay = a[1];
-  const az = a[2];
-  const aw = a[3];
-  const bx = b[0];
-  const by = b[1];
-  const bz = b[2];
-  const bw = b[3];
-  return [
-    aw * bx + ax * bw + ay * bz - az * by,
-    aw * by - ax * bz + ay * bw + az * bx,
-    aw * bz + ax * by - ay * bx + az * bw,
-    aw * bw - ax * bx - ay * by - az * bz,
-  ];
-}
-
-function quatNormalize(q) {
-  const length = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]) || 1;
-  return [q[0] / length, q[1] / length, q[2] / length, q[3] / length];
-}
-
-function quatRotate(q, v) {
-  const qx = q[0];
-  const qy = q[1];
-  const qz = q[2];
-  const qw = q[3];
-  const vx = v[0];
-  const vy = v[1];
-  const vz = v[2];
-  const cx = qy * vz - qz * vy;
-  const cy = qz * vx - qx * vz;
-  const cz = qx * vy - qy * vx;
-  const ccx = qy * cz - qz * cy;
-  const ccy = qz * cx - qx * cz;
-  const ccz = qx * cy - qy * cx;
-  return [
-    vx + 2 * (qw * cx + ccx),
-    vy + 2 * (qw * cy + ccy),
-    vz + 2 * (qw * cz + ccz),
-  ];
-}
-
-/** Rotation matrix with columns (xAxis, yAxis, zAxis) -> quaternion [x,y,z,w]. */
-function quatFromBasis(xAxis, yAxis, zAxis) {
-  const m00 = xAxis[0];
-  const m10 = xAxis[1];
-  const m20 = xAxis[2];
-  const m01 = yAxis[0];
-  const m11 = yAxis[1];
-  const m21 = yAxis[2];
-  const m02 = zAxis[0];
-  const m12 = zAxis[1];
-  const m22 = zAxis[2];
-  const trace = m00 + m11 + m22;
-  let x;
-  let y;
-  let z;
-  let w;
-  if (trace > 0) {
-    const s = Math.sqrt(trace + 1) * 2; // 4w
-    w = 0.25 * s;
-    x = (m21 - m12) / s;
-    y = (m02 - m20) / s;
-    z = (m10 - m01) / s;
-  } else if (m00 > m11 && m00 > m22) {
-    const s = Math.sqrt(1 + m00 - m11 - m22) * 2; // 4x
-    w = (m21 - m12) / s;
-    x = 0.25 * s;
-    y = (m01 + m10) / s;
-    z = (m02 + m20) / s;
-  } else if (m11 > m22) {
-    const s = Math.sqrt(1 + m11 - m00 - m22) * 2; // 4y
-    w = (m02 - m20) / s;
-    x = (m01 + m10) / s;
-    y = 0.25 * s;
-    z = (m12 + m21) / s;
-  } else {
-    const s = Math.sqrt(1 + m22 - m00 - m11) * 2; // 4z
-    w = (m10 - m01) / s;
-    x = (m02 + m20) / s;
-    y = (m12 + m21) / s;
-    z = 0.25 * s;
-  }
-  return quatNormalize([x, y, z, w]);
-}
-
-/* ------------------------------------------------------------------------- */
-/* Tuning block                                                              */
+/* Wave cross-section profile (along the run)                                */
 /* ------------------------------------------------------------------------- */
 
 /**
- * Wave tuning block. Lengths are in composition/world units (coin radius 1.0,
- * thickness 0.16); the camera block mirrors the page's fov-30 deterministic
- * fit so the probe direction used for the coin orientations matches the render.
+ * Broad-top sine profile in [-1, 1]; u is in cycles (0..1 = one wavelength).
+ * tanh() compresses the sine extremes so crests/troughs become wide flat tops
+ * while the flanks stay smooth; the curve is C-infinity (no creases).
  */
-const WAVE_SPEC = Object.freeze({
-  /** 3-5 coins, one different symbol each (reference shows three). */
-  ids: Object.freeze(['gbp', 'eur', 'usd', 'cny']),
-  coinScale: 1.0,
-  faceSize: 512,
-  /** authored sink of each coin's lowest rim point below the band surface */
-  coinSink: 0.03,
-  camera: Object.freeze({ elevationDeg: 20, fitMargin: 1.05, probeDistance: 18 }),
-  ribbon: Object.freeze({
-    /**
-     * Catmull-Rom control points, left -> right. The path holds the reference's
-     * long S: high at the left (the blue back face), through a trough just left
-     * of the coins, then a steady rise to the upper right under the silver face.
-     */
-    controlPoints: Object.freeze([
-      Object.freeze([-6.6, 1.7, -1.3]),
-      Object.freeze([-5.0, 1.05, -1.4]),
-      Object.freeze([-3.0, 0.05, -1.0]),
-      Object.freeze([-0.9, -0.75, -0.1]),
-      Object.freeze([1.6, -0.55, 0.9]),
-      Object.freeze([3.9, 0.0, 0.2]),
-      Object.freeze([5.7, 0.9, -0.9]),
-      Object.freeze([7.0, 1.65, -2.0]),
-    ]),
-    /** samples along the path (vertices along the ribbon = samples) */
-    samples: 240,
-    /** stadium section: total width 2 * halfWidth, thickness 2 * halfThickness */
-    halfWidth: 1.6,
-    halfThickness: 0.045,
-    /** gentle crown on both flat faces (world units at the centre line) */
-    crown: 0.012,
-    /** subdivisions across each flat face and around each semicircular edge */
-    faceSegments: 12,
-    edgeSegments: 10,
-    /** brushed-silver UVs repeat every `tileLength` world units along the band */
-    tileLength: 2.5,
-    /**
-     * Twist about the tangent, piecewise-smoothstep between knots. NEGATIVE at
-     * the left end: the blue underside then faces the camera as the broad blue
-     * sweep, unwinding through the edge-on rim line to a strong POSITIVE twist
-     * where the coins stand, tilting the brushed silver top face toward the
-     * camera like the reference's broad ribbon surface.
-     */
-    twistKnots: Object.freeze([
-      Object.freeze([0.0, -1.8]),
-      Object.freeze([0.14, -1.4]),
-      Object.freeze([0.28, -0.3]),
-      Object.freeze([0.4, 0.55]),
-      Object.freeze([0.5, 0.8]),
-      Object.freeze([0.65, 0.86]),
-      Object.freeze([0.8, 0.82]),
-      Object.freeze([1.0, 0.78]),
-    ]),
-  }),
-  /** Per-coin placement on the band: t along the ribbon, f across it (-1..1). */
-  coins: Object.freeze([
-    Object.freeze({ id: 'gbp', t: 0.44, f: -0.3, yawDeg: -8, rollDeg: 2.5, scale: 1.02 }),
-    Object.freeze({ id: 'eur', t: 0.55, f: 0.04, yawDeg: 5, rollDeg: -3, scale: 0.98 }),
-    Object.freeze({ id: 'usd', t: 0.66, f: 0.3, yawDeg: -4, rollDeg: 4, scale: 1.0 }),
-    Object.freeze({ id: 'cny', t: 0.77, f: -0.14, yawDeg: 9, rollDeg: -1.5, scale: 0.96 }),
-  ]),
+const PROFILE = Object.freeze({
+  sharpness: 0.7,
+  flatTopThreshold: 0.8,
 });
 
-/* ------------------------------------------------------------------------- */
-/* Wave path + frames                                                        */
-/* ------------------------------------------------------------------------- */
-
-/** Uniform Catmull-Rom sample of the control polygon (endpoints duplicated). */
-function samplePath(controlPoints, t) {
-  const last = controlPoints.length - 1;
-  const u = clamp(t, 0, 1) * last;
-  const index = Math.min(Math.floor(u), last - 1);
-  const local = u - index;
-  const p0 = controlPoints[Math.max(0, index - 1)];
-  const p1 = controlPoints[index];
-  const p2 = controlPoints[index + 1];
-  const p3 = controlPoints[Math.min(last, index + 2)];
-  const t2 = local * local;
-  const t3 = t2 * local;
-  const out = [0, 0, 0];
-  for (let axis = 0; axis < 3; axis += 1) {
-    out[axis] =
-      0.5 *
-      (2 * p1[axis] +
-        (-p0[axis] + p2[axis]) * local +
-        (2 * p0[axis] - 5 * p1[axis] + 4 * p2[axis] - p3[axis]) * t2 +
-        (-p0[axis] + 3 * p1[axis] - 3 * p2[axis] + p3[axis]) * t3);
-  }
-  return out;
+function profile(u) {
+  const cycles = u - Math.floor(u);
+  return tanh(PROFILE.sharpness * Math.sin(TAU * cycles)) / tanh(PROFILE.sharpness);
 }
 
-/** Twist angle (radians) at path parameter t, smoothstep between the knots. */
-function twistAt(t) {
-  const knots = WAVE_SPEC.ribbon.twistKnots;
-  const value = clamp(t, 0, 1);
-  for (let index = 0; index < knots.length - 1; index += 1) {
-    const [t0, a0] = knots[index];
-    const [t1, a1] = knots[index + 1];
-    if (value >= t0 && value <= t1) {
-      const local = t1 > t0 ? (value - t0) / (t1 - t0) : 0;
-      return lerp(a0, a1, smoothstep(local));
-    }
-  }
-  return knots[knots.length - 1][1];
+/** first derivative of the profile with respect to u (cycles) */
+function profileDerivative(u) {
+  const cycles = u - Math.floor(u);
+  const s = PROFILE.sharpness;
+  const sin = Math.sin(TAU * cycles);
+  const cos = Math.cos(TAU * cycles);
+  const sech2 = 1 / Math.cosh(s * sin) ** 2;
+  return (sech2 * s * cos * TAU) / tanh(s);
 }
 
-/**
- * Deterministic ribbon frames: positions along the Catmull-Rom wave, tangents
- * by central difference, a parallel-transported up vector (so the section does
- * not build up roll along the curve) and the twist about the tangent.
- */
-function buildFrames(controlPoints, samples) {
-  const frames = [];
-  let distance = 0;
-  let previous = null;
-  // baseUp is the UNTWISTED parallel-transported section up: the twist is
-  // applied on top of it for the stored frame, never accumulated step to step.
-  let baseUp = null;
-  for (let index = 0; index < samples; index += 1) {
-    const t = samples === 1 ? 0 : index / (samples - 1);
-    const position = samplePath(controlPoints, t);
-    if (previous) distance += vecLength(vecSub(position, previous));
-    previous = position;
-
-    const dt = 1 / (samples - 1);
-    const before = samplePath(controlPoints, Math.max(0, t - dt));
-    const after = samplePath(controlPoints, Math.min(1, t + dt));
-    let tangent = vecNormalize(vecSub(after, before));
-    // guard a degenerate tangent near duplicated end control points
-    if (!Number.isFinite(tangent[0]) || vecLength(tangent) < 1e-6) tangent = [1, 0, 0];
-
-    if (!baseUp) {
-      // initial section up: world up projected off the tangent
-      baseUp = vecSub([0, 1, 0], vecScale(tangent, tangent[1]));
-      if (vecLength(baseUp) < 1e-4) baseUp = vecSub([0, 0, 1], vecScale(tangent, tangent[2]));
-      baseUp = vecNormalize(baseUp);
-    } else {
-      const previousTangent = frames[frames.length - 1].tangent;
-      const axis = vecCross(previousTangent, tangent);
-      const axisLength = vecLength(axis);
-      if (axisLength >= 1e-9) {
-        const angle = Math.acos(clamp(vecDot(previousTangent, tangent), -1, 1));
-        const delta = quatAxisAngle(axis[0], axis[1], axis[2], angle);
-        baseUp = quatRotate(delta, baseUp);
-      }
-      // re-orthonormalize against the new tangent
-      baseUp = vecNormalize(vecSub(baseUp, vecScale(tangent, vecDot(baseUp, tangent))));
-    }
-    const baseSide = vecNormalize(vecCross(tangent, baseUp)); // right-handed (up, side, tangent)
-    const twist = twistAt(t);
-    const cosTwist = Math.cos(twist);
-    const sinTwist = Math.sin(twist);
-    // rotate the section about the tangent by the twist angle (applied once,
-    // from the untwisted base frame)
-    const up = vecNormalize(vecAdd(vecScale(baseUp, cosTwist), vecScale(baseSide, sinTwist)));
-    const side = vecNormalize(vecCross(tangent, up));
-
-    frames.push({
-      t,
-      position,
-      tangent,
-      up,
-      side,
-      twistRad: twist,
-      distance,
-    });
-  }
-  return frames;
-}
-
-/**
- * Interpolated frame at an arbitrary parameter t. Frames vary smoothly along
- * the ribbon, so component lerp + orthonormalization is stable here.
- */
-export function waveFrameAt(t) {
-  const frames = FRAMES;
-  const value = clamp(Number(t) || 0, 0, 1);
-  const scaled = value * (frames.length - 1);
-  const index = Math.min(Math.floor(scaled), frames.length - 2);
-  const frac = scaled - index;
-  const a = frames[index];
-  const b = frames[index + 1];
-  const position = vecAdd(vecScale(a.position, 1 - frac), vecScale(b.position, frac));
-  const tangent = vecNormalize(vecAdd(vecScale(a.tangent, 1 - frac), vecScale(b.tangent, frac)));
-  const twist = lerp(a.twistRad, b.twistRad, frac);
-  // both stored frames carry the same twist convention, so a component blend of
-  // the section vectors is valid at the small per-sample twist step
-  const up = vecNormalize(vecAdd(vecScale(a.up, 1 - frac), vecScale(b.up, frac)));
-  const side = vecNormalize(vecCross(tangent, up));
-  return {
-    t: value,
-    position,
-    tangent,
-    up: vecNormalize(vecSub(up, vecScale(tangent, vecDot(up, tangent)))),
-    side,
-    twistRad: twist,
-    distance: lerp(a.distance, b.distance, frac),
-  };
+/** second derivative of the profile with respect to u (cycles) */
+function profileSecondDerivative(u) {
+  const cycles = u - Math.floor(u);
+  const s = PROFILE.sharpness;
+  const sin = Math.sin(TAU * cycles);
+  const cos = Math.cos(TAU * cycles);
+  const sech2 = 1 / Math.cosh(s * sin) ** 2;
+  const th = Math.tanh(s * sin);
+  const dSech = -2 * sech2 * th * s * cos * TAU;
+  return (dSech * s * cos * TAU + sech2 * (-s * sin * TAU * TAU)) / tanh(s);
 }
 
 /* ------------------------------------------------------------------------- */
-/* Ribbon section + geometry                                                 */
+/* Wave definitions                                                          */
 /* ------------------------------------------------------------------------- */
 
-/**
- * Stadium section across the band. Returns the closed ring of section points
- * (side, up coordinates), their outward normals, per-segment material indices
- * and the arc-length normalized coordinate used for the v UV.
- *
- * Segment material order: [silver top face] [rim right edge] [blue underside]
- * [rim left edge] — four contiguous index groups in the built geometry.
- */
-function buildSection(halfWidth, halfThickness, faceSegments, edgeSegments, crown) {
-  const h = halfThickness;
-  const a = halfWidth - h;
-  const points = [];
-  const push = (side, up, normalSide, normalUp) => points.push({ side, up, normalSide, normalUp });
+const WAVELENGTH = 7.4;
+const AMPLITUDE = 0.45;
+const RIBBON_LENGTH = 26;
+const RIBBON_WIDTH = 2.2; // broad flat top across the ribbon width (Z)
+const PHASE_STEEL = 0.75; // trough exactly at x = 0
+const PHASE_GOLD = PHASE_STEEL + 0.5; // half a phase behind -> crest at x = 0
+const STEEL_Z_START = 0.6;
+const STEEL_Z_END = 2.8;
+const GOLD_Z_START = -1.6;
+const GOLD_Z_END = 0.6;
+const GOLD_BASE_Y = 0.55; // the gold ribbon rides behind/above the steel one
+const COIN_SCALE = 0.18; // ~86 CSS px diameter, leaving a visible gap on the 100 px spacing
+const COIN_IDS = Object.freeze(['gbp', 'eur', 'usd']);
+const COIN_Z = (STEEL_Z_START + STEEL_Z_END) / 2;
 
-  // top face: -a -> +a (crowned)
-  for (let k = 0; k <= faceSegments; k += 1) {
-    const side = -a + (2 * a * k) / faceSegments;
-    const ratio = side / a;
-    const up = h + crown * (1 - ratio * ratio);
-    const slope = (-2 * crown * ratio) / a;
-    const length = Math.hypot(-slope, 1);
-    push(side, up, -slope / length, 1 / length);
-  }
-  // right semicircular edge: top (+pi/2) -> bottom (-pi/2)
-  for (let k = 1; k <= edgeSegments; k += 1) {
-    const angle = HALF_PI - (Math.PI * k) / edgeSegments;
-    push(a + h * Math.cos(angle), h * Math.sin(angle), Math.cos(angle), Math.sin(angle));
-  }
-  // bottom face: +a -> -a (crowned downwards)
-  for (let k = 1; k <= faceSegments; k += 1) {
-    const side = a - (2 * a * k) / faceSegments;
-    const ratio = side / a;
-    const up = -h - crown * (1 - ratio * ratio);
-    const slope = (2 * crown * ratio) / a;
-    const length = Math.hypot(slope, -1);
-    push(side, up, slope / length, -1 / length);
-  }
-  // left semicircular edge: bottom (-pi/2) -> top (-3pi/2), excluding both ends
-  for (let k = 1; k < edgeSegments; k += 1) {
-    const angle = -HALF_PI - (Math.PI * k) / edgeSegments;
-    push(-a + h * Math.cos(angle), h * Math.sin(angle), Math.cos(angle), Math.sin(angle));
-  }
+const WAVES = deepFreeze({
+  steel: {
+    kind: 'steel',
+    label: 'Brushed stainless steel',
+    finish: 'brushed',
+    material: { color: 0xcfd4da, roughness: 0.38, metalness: 1 },
+    length: RIBBON_LENGTH,
+    width: RIBBON_WIDTH,
+    zStart: STEEL_Z_START,
+    zEnd: STEEL_Z_END,
+    thickness: 0.22,
+    baseY: 0,
+    wavelength: WAVELENGTH,
+    amplitude: AMPLITUDE,
+    phase: PHASE_STEEL,
+    troughX: 0,
+    crestXs: [-WAVELENGTH / 2, WAVELENGTH / 2],
+  },
+  gold: {
+    kind: 'gold',
+    label: 'TEKO gold satin',
+    finish: 'satin',
+    material: { color: 0xffd60a, roughness: 0.5, metalness: 1 },
+    length: RIBBON_LENGTH,
+    width: RIBBON_WIDTH,
+    zStart: GOLD_Z_START,
+    zEnd: GOLD_Z_END,
+    thickness: 0.2,
+    baseY: GOLD_BASE_Y,
+    wavelength: WAVELENGTH,
+    amplitude: AMPLITUDE,
+    phase: PHASE_GOLD,
+    troughX: -WAVELENGTH / 2,
+    crestX: 0,
+  },
+});
 
-  const count = points.length;
-  // arc length around the closed section (for v)
-  let perimeter = 0;
-  const arcs = [0];
-  for (let index = 0; index < count; index += 1) {
-    const next = points[(index + 1) % count];
-    const point = points[index];
-    perimeter += Math.hypot(next.side - point.side, next.up - point.up);
-    arcs.push(perimeter);
-  }
+const WAVE_PHASE_OFFSET_CYCLES = (WAVES.gold.phase - WAVES.steel.phase + 1) % 1;
 
-  const materialSegments = [
-    { material: 0, start: 0, count: faceSegments }, // silver top
-    { material: 2, start: faceSegments, count: edgeSegments }, // rim (right)
-    { material: 1, start: faceSegments + edgeSegments, count: faceSegments }, // blue underside
-    { material: 3, start: faceSegments + edgeSegments + faceSegments, count: edgeSegments }, // rim (left)
-  ];
-
-  return { points, count, arcs, perimeter, materialSegments };
+function rawSurfaceY(wave, x) {
+  return wave.baseY + wave.amplitude * profile(x / wave.wavelength + wave.phase);
 }
 
-/**
- * Build the ribbon mesh buffers: one vertex per (sample, section point), shared
- * by the four material groups; indices are emitted group-by-group so the page
- * can attach one material per group without duplicating vertices.
- */
-/**
- * Rounded ribbon ends: the section narrows over the first/last `TAPER` of the
- * path so the band finishes in a soft sculpted tip instead of a flat cut face.
- * Coins live well inside this range, so their contact surface is unscaled.
- */
-const RIBBON_TAPER = 0.055;
-function ribbonTaperAt(t) {
-  const edge = Math.min(t, 1 - t);
-  if (edge >= RIBBON_TAPER) return 1;
-  return 0.07 + 0.93 * smoothstep(edge / RIBBON_TAPER);
+function rawSlope(wave, x) {
+  return (wave.amplitude / wave.wavelength) * profileDerivative(x / wave.wavelength + wave.phase);
 }
 
-function buildRibbonGeometry(frames, section) {
-  const positions = [];
-  const normals = [];
-  const uvs = [];
-  const colors = [];
-  const indices = [];
-  const groups = [];
-  const tileLength = WAVE_SPEC.ribbon.tileLength;
-  const pathLength = frames[frames.length - 1].distance || 1;
-  // blue underside gradient: deep navy -> periwinkle highlight -> deep navy
-  const blueStops = [
-    [0.0, [0.07, 0.08, 0.2]],
-    [0.26, [0.2, 0.23, 0.55]],
-    [0.48, [0.42, 0.46, 0.95]],
-    [0.72, [0.22, 0.25, 0.6]],
-    [1.0, [0.07, 0.08, 0.2]],
-  ];
-
-  for (const frame of frames) {
-    const ratio = frame.distance / pathLength;
-    const taper = ribbonTaperAt(frame.t);
-    let stop = 1;
-    while (stop < blueStops.length - 1 && ratio > blueStops[stop][0]) stop += 1;
-    const [t0, c0] = blueStops[stop - 1];
-    const [t1, c1] = blueStops[stop];
-    const blend = clamp((ratio - t0) / Math.max(1e-6, t1 - t0), 0, 1);
-    const blue = [lerp(c0[0], c1[0], blend), lerp(c0[1], c1[1], blend), lerp(c0[2], c1[2], blend)];
-    for (let index = 0; index < section.count; index += 1) {
-      const point = section.points[index];
-      const world = vecAdd(
-        frame.position,
-        vecAdd(
-          vecScale(frame.side, point.side * taper),
-          vecScale(frame.up, point.up * taper)
-        )
-      );
-      const normal = vecNormalize(
-        vecAdd(vecScale(frame.side, point.normalSide), vecScale(frame.up, point.normalUp))
-      );
-      positions.push(round6(world[0]), round6(world[1]), round6(world[2]));
-      normals.push(round6(normal[0]), round6(normal[1]), round6(normal[2]));
-      uvs.push(
-        round6(frame.distance / tileLength),
-        round6(section.arcs[index] / section.perimeter)
-      );
-      colors.push(round6(blue[0]), round6(blue[1]), round6(blue[2]));
-    }
-  }
-
-  const stride = section.count;
-  const triangle = (a, b, c) => {
-    indices.push(a, b, c);
-  };
-  for (const group of section.materialSegments) {
-    const start = indices.length;
-    for (let sample = 0; sample < frames.length - 1; sample += 1) {
-      for (let segment = 0; segment < group.count; segment += 1) {
-        const s0 = group.start + segment;
-        const s1 = (s0 + 1) % section.count;
-        const a = sample * stride + s0;
-        const b = sample * stride + s1;
-        const c = (sample + 1) * stride + s0;
-        const d = (sample + 1) * stride + s1;
-        // winding: cross(section step, path step) = outward normal
-        triangle(a, b, c);
-        triangle(b, d, c);
-      }
-    }
-    groups.push({ material: group.material, start, count: indices.length - start });
-  }
-
-  // Closed ends: a fan from the section centre to the end ring, so the ribbon
-  // is a watertight solid (the ring vertices are shared with the side surface).
-  const first = frames[0];
-  const last = frames[frames.length - 1];
-  const capStartIndex = positions.length / 3;
-  for (const frame of [first, last]) {
-    positions.push(round6(frame.position[0]), round6(frame.position[1]), round6(frame.position[2]));
-    const outward = frame === first ? vecScale(frame.tangent, -1) : frame.tangent;
-    normals.push(round6(outward[0]), round6(outward[1]), round6(outward[2]));
-    uvs.push(0.5, 0.5);
-    colors.push(frame === first ? 0.055 : 0.05, frame === first ? 0.07 : 0.06, frame === first ? 0.16 : 0.15);
-  }
-  const fanStart = indices.length;
-  for (let segment = 0; segment < section.count; segment += 1) {
-    const ringA = segment;
-    const ringB = (segment + 1) % section.count;
-    // profile runs clockwise in the (side, up) plane, so this winding faces -tangent
-    triangle(capStartIndex, ringB, ringA);
-  }
-  for (let segment = 0; segment < section.count; segment += 1) {
-    const ringA = (frames.length - 1) * stride + segment;
-    const ringB = (frames.length - 1) * stride + ((segment + 1) % section.count);
-    // and this winding faces +tangent at the far end
-    triangle(capStartIndex + 1, ringA, ringB);
-  }
-  groups.push({ material: 2, start: fanStart, count: indices.length - fanStart });
-
-  return { positions, normals, uvs, colors, indices, groups };
+function rawCurvature(wave, x) {
+  return (wave.amplitude / (wave.wavelength * wave.wavelength)) * profileSecondDerivative(x / wave.wavelength + wave.phase);
 }
 
 /* ------------------------------------------------------------------------- */
-/* Coins on the band                                                         */
+/* Exact surface functions (single source of truth for scene + verifier)     */
 /* ------------------------------------------------------------------------- */
 
-/** Camera position used for the presentation direction (matches the page fit). */
-const ELEVATION_RAD = (WAVE_SPEC.camera.elevationDeg * Math.PI) / 180;
-const PROBE_CAMERA = [0, WAVE_SPEC.camera.probeDistance * Math.tan(ELEVATION_RAD), WAVE_SPEC.camera.probeDistance];
-
 /**
- * Point on the ribbon's SILVER TOP surface at path parameter t and fractional
- * position f across the flat top face (-1..1, 0 = centre line). Returns the
- * point and the section frame, so callers can also orient decals/shadows.
+ * Top-surface height of a wave at (x, z). The ribbon's top is flat across its
+ * width, so z only selects the ribbon (and does not change the height).
+ * @param {'steel'|'gold'} kind
+ * @param {number} x
+ * @param {number} z
  */
-export function waveSurfaceAt(t, f) {
-  const frame = waveFrameAt(t);
-  const ribbon = WAVE_SPEC.ribbon;
-  const a = ribbon.halfWidth - ribbon.halfThickness;
-  const ratio = clamp(Number(f) || 0, -1, 1);
-  const sideOffset = ratio * a;
-  const upOffset = ribbon.halfThickness + ribbon.crown * (1 - ratio * ratio);
-  const point = vecAdd(
-    frame.position,
-    vecAdd(vecScale(frame.side, sideOffset), vecScale(frame.up, upOffset))
-  );
-  return { point, frame, sideOffset, upOffset };
+export function waveSurfaceHeight(kind, x, z) {
+  const wave = WAVES[kind];
+  if (!wave) throw new Error('coin-wave: unknown wave "' + kind + '"');
+  return rawSurfaceY(wave, x);
 }
 
-/** Presentation camera direction of every coin (parallel to the fitted view). */
-function presentationDirection() {
-  return vecNormalize(PROBE_CAMERA);
+/** Surface normal (unit) of a wave at x: tilts along X only. */
+export function waveSurfaceNormal(kind, x, z) {
+  const wave = WAVES[kind];
+  if (!wave) throw new Error('coin-wave: unknown wave "' + kind + '"');
+  const slope = rawSlope(wave, x);
+  const inv = 1 / Math.sqrt(1 + slope * slope);
+  return Object.freeze([-slope * inv, inv, 0]);
 }
 
-/**
- * Build one coin placement: the coin stands on edge on the band, facing the
- * presentation camera with deterministic yaw/roll, its lowest rim point on the
- * top surface (minus `coinSink`).
- */
-function buildCoin(spec) {
-  const radius = WAVE_SPEC.coinScale * spec.scale * COIN_GEOMETRY.radius;
-  const halfThickness = WAVE_SPEC.coinScale * spec.scale * COIN_GEOMETRY.halfThickness;
-  const yaw = (spec.yawDeg * Math.PI) / 180;
-  const roll = (spec.rollDeg * Math.PI) / 180;
-  const elevation = ELEVATION_RAD;
+/** Wave phase at x in cycles (steel trough = 0.75, steel crest = 0.25). */
+export function wavePhase(kind, x) {
+  const wave = WAVES[kind];
+  return (x / wave.wavelength + wave.phase) % 1;
+}
 
-  // face normal (local +Y): the presentation camera direction, yawed per coin
-  const faceNormal = vecNormalize([
-    Math.cos(elevation) * Math.sin(yaw),
-    Math.sin(elevation),
-    Math.cos(elevation) * Math.cos(yaw),
+/** local slope dy/dx and curvature d2y/dx2 (for smoothness checks). */
+export function waveSlope(kind, x) {
+  return rawSlope(WAVES[kind], x);
+}
+export function waveCurvature(kind, x) {
+  return rawCurvature(WAVES[kind], x);
+}
+
+/** raw normalized profile value of a wave at x (in [-1, 1]). */
+export function waveProfileAt(kind, x) {
+  const wave = WAVES[kind];
+  return profile(x / wave.wavelength + wave.phase);
+}
+
+/* ------------------------------------------------------------------------- */
+/* Camera + projection (default hero framing)                                */
+/* ------------------------------------------------------------------------- */
+
+const CAMERA = Object.freeze({
+  fovDeg: 30,
+  elevationDeg: 20,
+  distance: 7,
+  target: Object.freeze([0, 0.25, 0.7]),
+  stageWidth: 1440,
+  stageHeight: 900,
+});
+
+/**
+ * Default deterministic hero camera for the Wave scene. The camera distance is
+ * fixed (not aspect-dependent) so the composition's pixel scale depends only on
+ * the stage HEIGHT: 1440x900 and 1200x900 share exactly the same px/world
+ * scale, which is what makes the 100 CSS px coin spacing hold at both.
+ */
+export function waveCameraPose(stageWidth = CAMERA.stageWidth, stageHeight = CAMERA.stageHeight) {
+  const fov = CAMERA.fovDeg * DEG;
+  const elevation = CAMERA.elevationDeg * DEG;
+  const target = Object.freeze([CAMERA.target[0], CAMERA.target[1], CAMERA.target[2]]);
+  const position = Object.freeze([
+    target[0],
+    target[1] + CAMERA.distance * Math.sin(elevation),
+    target[2] + CAMERA.distance * Math.cos(elevation),
   ]);
-  // symbol up (local -Z): world up projected into the coin plane
-  let symbolUp = vecNormalize(vecSub([0, 1, 0], vecScale(faceNormal, vecDot([0, 1, 0], faceNormal))));
-  const inPlaneRight = vecNormalize(vecCross(symbolUp, faceNormal));
-  symbolUp = vecNormalize(vecAdd(vecScale(symbolUp, Math.cos(roll)), vecScale(inPlaneRight, Math.sin(roll))));
-  // local axes: +Y = faceNormal, +Z = -symbolUp, +X = symbolUp x faceNormal
-  const axisX = vecNormalize(vecCross(symbolUp, faceNormal));
-  const axisZ = vecScale(symbolUp, -1);
-  const quaternion = quatFromBasis(axisX, faceNormal, axisZ);
-
-  const surface = waveSurfaceAt(spec.t, spec.f);
-  const contact = surface.point;
-  // lowest rim point = centre - symbolUp * radius; sink it slightly into the band
-  const centre = vecSub(vecAdd(contact, vecScale(symbolUp, radius)), vecScale(symbolUp, WAVE_SPEC.coinSink));
-  const lowestRim = vecAdd(centre, vecScale(symbolUp, -radius));
-
-  return {
-    id: spec.id,
-    t: round6(spec.t),
-    f: round6(spec.f),
-    scale: spec.scale,
-    yawDeg: spec.yawDeg,
-    rollDeg: spec.rollDeg,
-    radius: round6(radius),
-    thickness: round6(halfThickness * 2),
-    position: round6Vec(centre),
-    quaternion: [round6(quaternion[0]), round6(quaternion[1]), round6(quaternion[2]), round6(quaternion[3])],
-    faceNormal: round6Vec(faceNormal),
-    symbolUp: round6Vec(symbolUp),
-    contact: round6Vec(contact),
-    contactT: round6(spec.t),
-    contactF: round6(spec.f),
-    /** authored lowest rim point (it sits `coinSink` under the contact point) */
-    lowestRim: round6Vec(lowestRim),
-  };
+  const pxPerWorld = stageHeight / (2 * CAMERA.distance * Math.tan(fov / 2));
+  return Object.freeze({
+    fovDeg: CAMERA.fovDeg,
+    fov,
+    elevationDeg: CAMERA.elevationDeg,
+    elevation,
+    distance: CAMERA.distance,
+    target,
+    position,
+    stage: Object.freeze({ width: stageWidth, height: stageHeight }),
+    pxPerWorld,
+    pxPerWorldAt900: round6(900 / (2 * CAMERA.distance * Math.tan(fov / 2))),
+  });
 }
 
-/** Sample points on a coin's closed surface for measurements (pure math). */
-function coinSamplePoints(coin) {
-  const q = coin.quaternion;
-  const radius = coin.radius;
-  const half = coin.thickness / 2;
-  const points = [];
-  const STEPS = 24;
-  for (let step = 0; step < STEPS; step += 1) {
-    const angle = (step / STEPS) * TAU;
-    for (const level of [-half, 0, half]) {
-      // local rim circle: (cos, level, sin) with local +Y the face normal
-      const local = [Math.cos(angle) * radius, level, Math.sin(angle) * radius];
-      const rotated = quatRotate(q, local);
-      points.push(vecAdd(coin.position, rotated));
-    }
-  }
-  return points;
-}
-
-/** Minimum surface clearance between each neighbouring pair of coins. */
-function measureCoinClearance(coins) {
-  let minimum = Infinity;
-  let pair = null;
-  for (let i = 0; i < coins.length; i += 1) {
-    for (let j = i + 1; j < coins.length; j += 1) {
-      const a = coinSamplePoints(coins[i]);
-      const b = coinSamplePoints(coins[j]);
-      let best = Infinity;
-      for (const pa of a) {
-        for (const pb of b) {
-          const distance = vecLength(vecSub(pa, pb));
-          if (distance < best) best = distance;
-        }
-      }
-      if (best < minimum) {
-        minimum = best;
-        pair = [coins[i].id, coins[j].id];
-      }
-    }
-  }
-  return { minClearance: minimum, pair };
+/** Project a world point to CSS pixels (origin top-left) with the hero camera. */
+export function waveProjectPoint(worldPoint, camera = waveCameraPose()) {
+  const eye = camera.position;
+  const forward = normalize([
+    camera.target[0] - eye[0],
+    camera.target[1] - eye[1],
+    camera.target[2] - eye[2],
+  ]);
+  const right = normalize(cross(forward, [0, 1, 0]));
+  const up = cross(right, forward);
+  const rel = [worldPoint[0] - eye[0], worldPoint[1] - eye[1], worldPoint[2] - eye[2]];
+  const zCam = dot(forward, rel);
+  const tanHalf = Math.tan(camera.fov / 2);
+  const aspect = camera.stage.width / camera.stage.height;
+  const ndcX = dot(right, rel) / (zCam * tanHalf * aspect);
+  const ndcY = dot(up, rel) / (zCam * tanHalf);
+  return Object.freeze([
+    (ndcX * 0.5 + 0.5) * camera.stage.width,
+    (0.5 - ndcY * 0.5) * camera.stage.height,
+  ]);
 }
 
 /* ------------------------------------------------------------------------- */
-/* Bounds + camera fit                                                       */
+/* Coin placements in the steel trough                                       */
 /* ------------------------------------------------------------------------- */
 
-function boundsFromPoints(points) {
-  const min = [Infinity, Infinity, Infinity];
-  const max = [-Infinity, -Infinity, -Infinity];
-  for (const point of points) {
-    for (let axis = 0; axis < 3; axis += 1) {
-      if (point[axis] < min[axis]) min[axis] = point[axis];
-      if (point[axis] > max[axis]) max[axis] = point[axis];
+function buildCoins() {
+  const camera = waveCameraPose();
+  const surfaceYAt = (x) => rawSurfaceY(WAVES.steel, x);
+  // solve the world spacing that projects to exactly 100 CSS px at the default
+  // 1440x900 camera; coin centres share z and sit r above the local surface
+  const projectAt = (x) => waveProjectPoint([x, surfaceYAt(x) + COIN_SCALE, COIN_Z], camera);
+  let spacingWorld = 0.4;
+  for (let iteration = 0; iteration < 60; iteration += 1) {
+    const p0 = projectAt(0);
+    const p1 = projectAt(spacingWorld);
+    const pixels = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    const error = 100 / pixels;
+    spacingWorld *= error;
+    if (Math.abs(error - 1) < 1e-14) break;
+  }
+  const half = Math.SQRT1_2;
+  const quaternion = Object.freeze([half, 0, 0, half]); // Rx(pi/2): face +Z, symbol up +Y
+  return COIN_IDS.map((id, index) => {
+    const x = (index - (COIN_IDS.length - 1) / 2) * spacingWorld;
+    const surface = surfaceYAt(x);
+    return deepFreeze({
+      id,
+      index,
+      surface: 'steel',
+      radius: COIN_SCALE,
+      scale: COIN_SCALE,
+      position: round6Vec([x, surface + COIN_SCALE, COIN_Z]),
+      quaternion,
+      contact: round6Vec([x, surface, COIN_Z]),
+      gap: 0,
+      penetration: 0,
+      facing: '+Z',
+      screenSpacingPx: 100,
+    });
+  });
+}
+
+/* ------------------------------------------------------------------------- */
+/* Bounds, metrics, frozen WAVE object                                       */
+/* ------------------------------------------------------------------------- */
+
+function waveSamples(wave, count = 256) {
+  const samples = [];
+  for (let i = 0; i <= count; i += 1) {
+    const x = -wave.length / 2 + (wave.length * i) / count;
+    samples.push({ x, y: rawSurfaceY(wave, x) });
+  }
+  return samples;
+}
+
+function buildBounds() {
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const kind of ['steel', 'gold']) {
+    const wave = WAVES[kind];
+    for (const sample of waveSamples(wave)) {
+      minY = Math.min(minY, sample.y - wave.thickness);
+      maxY = Math.max(maxY, sample.y);
     }
   }
-  return { min, max };
+  for (const coin of COINS) {
+    minY = Math.min(minY, coin.position[1] - coin.radius);
+    maxY = Math.max(maxY, coin.position[1] + coin.radius);
+  }
+  const min = [-RIBBON_LENGTH / 2, minY, GOLD_Z_START];
+  const max = [RIBBON_LENGTH / 2, maxY, STEEL_Z_END];
+  const center = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+  return deepFreeze({ min: round6Vec(min), max: round6Vec(max), center: round6Vec(center), size: round6Vec(size) });
 }
 
-function ribbonBounds(geometry) {
-  const points = [];
-  const p = geometry.positions;
-  for (let index = 0; index < p.length; index += 3) points.push([p[index], p[index + 1], p[index + 2]]);
-  return boundsFromPoints(points);
-}
-
-function coinBounds(coins) {
-  const points = [];
-  for (const coin of coins) {
-    const q = coin.quaternion;
-    const radius = coin.radius;
-    const half = coin.thickness / 2;
-    for (let step = 0; step < 32; step += 1) {
-      const angle = (step / 32) * TAU;
-      for (const level of [-half, half]) {
-        points.push(
-          vecAdd(coin.position, quatRotate(q, [Math.cos(angle) * radius, level, Math.sin(angle) * radius]))
-        );
-      }
+function buildMetrics() {
+  let maxSlope = 0;
+  let maxCurvature = 0;
+  let flatSamples = 0;
+  let totalSamples = 0;
+  const slopeSteps = [];
+  for (const kind of ['steel', 'gold']) {
+    const wave = WAVES[kind];
+    for (let i = 0; i < 1440; i += 1) {
+      const x = -wave.wavelength / 2 + (i / 1440) * wave.wavelength;
+      maxSlope = Math.max(maxSlope, Math.abs(rawSlope(wave, x)));
+      maxCurvature = Math.max(maxCurvature, Math.abs(rawCurvature(wave, x)));
+      if (Math.abs(profile(x / wave.wavelength + wave.phase)) >= PROFILE.flatTopThreshold) flatSamples += 1;
+      totalSamples += 1;
+      slopeSteps.push(rawSlope(wave, x));
     }
   }
-  return boundsFromPoints(points);
-}
-
-function mergeBounds(a, b) {
-  return {
-    min: [Math.min(a.min[0], b.min[0]), Math.min(a.min[1], b.min[1]), Math.min(a.min[2], b.min[2])],
-    max: [Math.max(a.max[0], b.max[0]), Math.max(a.max[1], b.max[1]), Math.max(a.max[2], b.max[2])],
+  let maxSlopeJump = 0;
+  for (let i = 1; i < slopeSteps.length; i += 1) maxSlopeJump = Math.max(maxSlopeJump, Math.abs(slopeSteps[i] - slopeSteps[i - 1]));
+  const flatTopFraction = flatSamples / totalSamples;
+  // anti-phase proof: gold(x) - goldBaseY === -(steel(x) - steelBaseY)
+  let maxAntiPhaseError = 0;
+  for (let i = 0; i < 720; i += 1) {
+    const x = -WAVELENGTH / 2 + (i / 720) * WAVELENGTH;
+    const steelOffset = rawSurfaceY(WAVES.steel, x) - WAVES.steel.baseY;
+    const goldOffset = rawSurfaceY(WAVES.gold, x) - WAVES.gold.baseY;
+    maxAntiPhaseError = Math.max(maxAntiPhaseError, Math.abs(steelOffset + goldOffset));
+  }
+  // crest/trough alignment at x = 0 (steel trough, gold crest)
+  const steelTroughY = rawSurfaceY(WAVES.steel, 0);
+  const goldCrestY = rawSurfaceY(WAVES.gold, 0);
+  const steelCrestY = rawSurfaceY(WAVES.steel, WAVELENGTH / 2);
+  const goldTroughY = rawSurfaceY(WAVES.gold, WAVELENGTH / 2);
+  const spacingWorld = COINS[1].position[0] - COINS[0].position[0];
+  const camera1440 = waveCameraPose(1440, 900);
+  const camera1200 = waveCameraPose(1200, 900);
+  const camera390 = waveCameraPose(390, 844);
+  const pxProject = (camera, a, b) => {
+    const pa = waveProjectPoint(a.position, camera);
+    const pb = waveProjectPoint(b.position, camera);
+    return Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
   };
+  let maxContactGap = 0;
+  let maxPenetration = 0;
+  for (const coin of COINS) {
+    const surface = waveSurfaceHeight(coin.surface, coin.position[0], coin.position[2]);
+    const rimY = coin.position[1] - coin.radius;
+    const gap = rimY - surface;
+    maxContactGap = Math.max(maxContactGap, Math.abs(gap));
+    maxPenetration = Math.max(maxPenetration, Math.max(0, -gap));
+  }
+  return deepFreeze({
+    bounds: buildBounds(),
+    minCoinClearance: round6(spacingWorld - 2 * COIN_SCALE),
+    clearancePair: ['gbp', 'eur'],
+    contact: { authoredSink: 0, maxGap: round6(maxContactGap), maxPenetration: round6(maxPenetration), contactPoints: COINS.map((coin) => coin.contact) },
+    coinCount: COINS.length,
+    spacing: {
+      world: round6(spacingWorld),
+      pixels1440: round6(pxProject(camera1440, COINS[0], COINS[1])),
+      pixels1200: round6(pxProject(camera1200, COINS[0], COINS[1])),
+      pixels390: round6(pxProject(camera390, COINS[0], COINS[1])),
+    },
+    phase: {
+      offsetCycles: round6(WAVE_PHASE_OFFSET_CYCLES),
+      offsetDegrees: round6(WAVE_PHASE_OFFSET_CYCLES * 360),
+      maxAntiPhaseError: round6(maxAntiPhaseError),
+      steelTroughX: WAVES.steel.troughX,
+      steelTroughY: round6(steelTroughY),
+      goldCrestX: WAVES.gold.crestX,
+      goldCrestY: round6(goldCrestY),
+      steelCrestX: WAVELENGTH / 2,
+      steelCrestY: round6(steelCrestY),
+      goldTroughX: WAVELENGTH / 2,
+      goldTroughY: round6(goldTroughY),
+    },
+    profile: {
+      sharpness: PROFILE.sharpness,
+      wavelength: WAVELENGTH,
+      amplitude: AMPLITUDE,
+      maxSlope: round6(maxSlope),
+      maxSlopeDegrees: round6((Math.atan(maxSlope) * 180) / Math.PI),
+      maxCurvature: round6(maxCurvature),
+      maxSlopeJump: round6(maxSlopeJump),
+      flatTopThreshold: PROFILE.flatTopThreshold,
+      flatTopFraction: round6(flatTopFraction),
+      troughFlatWidth: round6(flatWidthFor(WAVES.steel)),
+    },
+    layers: {
+      steelZ: [STEEL_Z_START, STEEL_Z_END],
+      goldZ: [GOLD_Z_START, GOLD_Z_END],
+      goldBaseY: GOLD_BASE_Y,
+      layers: 'steel front, gold behind and half a phase along X',
+    },
+  });
 }
+
+/** world width of the broad flat part of the steel trough (where the coins sit) */
+function flatWidthFor(wave) {
+  // scan the trough side of one period: |profile| >= flatTopThreshold
+  let count = 0;
+  const samples = 4096;
+  for (let i = 0; i < samples; i += 1) {
+    const x = (i / samples) * wave.wavelength - wave.wavelength / 2;
+    if (Math.abs(profile(x / wave.wavelength + wave.phase)) >= PROFILE.flatTopThreshold) count += 1;
+  }
+  void count;
+  // trough flat region alone: sample around x = troughX
+  let lo = 0;
+  let hi = 0;
+  for (let i = 0; i < 4096; i += 1) {
+    const x = (i / 4096) * (wave.wavelength / 2);
+    const value = profile(x / wave.wavelength + wave.phase);
+    if (value <= -PROFILE.flatTopThreshold) {
+      lo = Math.min(lo, x);
+      hi = Math.max(hi, x);
+    }
+  }
+  return hi - lo;
+}
+
+const COINS = buildCoins();
+const METRICS = buildMetrics();
+const CAMERA_METRICS = waveCameraPose();
 
 /**
- * Deterministic fov-30 fit of a camera at (0, d*tan(elevation), d) looking at
- * the origin so every bounds corner stays inside the stage. This is the same
- * method src/preview.js uses for Ring/Stack (and the browser verifier
- * re-derives it independently).
- */
-function fitDistance(bounds, aspect, { fitMargin, elevationRad, fov = 30 }) {
-  const corners = [];
-  for (const x of [bounds.min[0], bounds.max[0]]) {
-    for (const y of [bounds.min[1], bounds.max[1]]) {
-      for (const z of [bounds.min[2], bounds.max[2]]) corners.push([x, y, z]);
-    }
-  }
-  const safeAspect = aspect > 0 ? aspect : 1.5;
-  const tanHalf = Math.tan((fov * Math.PI) / 360);
-  const project = (point, distance) => {
-    const camY = distance * Math.tan(elevationRad);
-    // camera basis looking at the origin: forward = -normalize(cam), right = +X,
-    // up = cross(right, forward)
-    const forward = vecNormalize([-0, -camY, -distance]);
-    const right = [1, 0, 0];
-    const up = vecNormalize(vecCross(right, forward));
-    const rel = vecSub(point, [0, camY, distance]);
-    // forward points from the camera at (0, camY, distance) to the origin
-    const depth = vecDot(rel, forward);
-    if (depth <= 1e-6) return null;
-    const ndcY = vecDot(rel, up) / (depth * tanHalf);
-    const ndcX = vecDot(rel, right) / (depth * tanHalf * safeAspect);
-    return { x: ndcX, y: ndcY, depth };
-  };
-  const limit = 1 / fitMargin;
-  let lo = 0.4;
-  let hi = 240;
-  for (let iteration = 0; iteration < 32; iteration += 1) {
-    const mid = (lo + hi) / 2;
-    let fits = true;
-    for (const corner of corners) {
-      const projected = project(corner, mid);
-      if (!projected || Math.abs(projected.x) > limit || Math.abs(projected.y) > limit) {
-        fits = false;
-        break;
-      }
-    }
-    if (fits) hi = mid;
-    else lo = mid;
-  }
-  return hi + 0.02;
-}
-
-/* ------------------------------------------------------------------------- */
-/* Build                                                                     */
-/* ------------------------------------------------------------------------- */
-
-const RIBBON_SPEC = WAVE_SPEC.ribbon;
-const FRAMES = buildFrames(RIBBON_SPEC.controlPoints, RIBBON_SPEC.samples);
-const SECTION = buildSection(
-  RIBBON_SPEC.halfWidth,
-  RIBBON_SPEC.halfThickness,
-  RIBBON_SPEC.faceSegments,
-  RIBBON_SPEC.edgeSegments,
-  RIBBON_SPEC.crown
-);
-const GEOMETRY = buildRibbonGeometry(FRAMES, SECTION);
-const COINS = WAVE_SPEC.coins.map((spec) => buildCoin(spec));
-const CLEARANCE = measureCoinClearance(COINS);
-const RIBBON_BOUNDS = ribbonBounds(GEOMETRY);
-const COIN_BOUNDS = coinBounds(COINS);
-const BOUNDS = mergeBounds(RIBBON_BOUNDS, COIN_BOUNDS);
-const ELEVATION_DEG = WAVE_SPEC.camera.elevationDeg;
-const FIT_MARGIN = WAVE_SPEC.camera.fitMargin;
-const PATH_LENGTH = FRAMES[FRAMES.length - 1].distance;
-
-/**
- * Per-coin contact depth: how far the authored lowest rim point sits BELOW the
- * band's top surface, measured along the surface normal (positive = embedded in
- * the band, i.e. touching/sunk by the authored sink; negative would float).
- */
-function measureContact(coins) {
-  const depths = [];
-  for (const coin of coins) {
-    const surface = waveSurfaceAt(coin.contactT, coin.contactF);
-    const lowest = vecSub(vecAdd(coin.position, vecScale(coin.symbolUp, -coin.radius)), surface.point);
-    depths.push(-vecDot(lowest, surface.frame.up));
-  }
-  return {
-    minNormalDepth: Math.min(...depths),
-    maxNormalDepth: Math.max(...depths),
-  };
-}
-
-/**
- * Wave composition (frozen): ribbon frames + mesh buffers, 4 coin placements on
- * the band, measured bounds/clearance/contact and the deterministic camera
- * block. `entries` is aliased as `coins` for symmetry with RING/STACK.
+ * Frozen Wave composition (public contract).
  */
 export const WAVE = deepFreeze({
   mode: 'wave',
-  ids: WAVE_SPEC.ids.slice(),
+  ids: COIN_IDS.slice(),
   count: COINS.length,
-  coinScale: WAVE_SPEC.coinScale,
-  faceSize: WAVE_SPEC.faceSize,
+  coinScale: COIN_SCALE,
+  faceSize: 512,
   camera: {
-    elevationDeg: ELEVATION_DEG,
-    elevationRad: round6(ELEVATION_RAD),
-    fitMargin: FIT_MARGIN,
-    fov: 30,
-    probeDistance: WAVE_SPEC.camera.probeDistance,
-    baseDistance: round6(fitDistance(BOUNDS, 960.516 / 593.016, {
-      fitMargin: FIT_MARGIN,
-      elevationRad: ELEVATION_RAD,
-    })),
+    fovDeg: CAMERA.fovDeg,
+    fov: CAMERA.fovDeg * DEG,
+    elevationDeg: CAMERA.elevationDeg,
+    elevationRad: round6(CAMERA.elevationDeg * DEG),
+    distance: CAMERA.distance,
+    targetY: CAMERA.target[1],
+    target: [CAMERA.target[0], CAMERA.target[1], CAMERA.target[2]],
+    position: CAMERA_METRICS.position.slice(),
+    stage: { width: CAMERA.stageWidth, height: CAMERA.stageHeight },
+    fitMargin: 1.0,
+    fitMode: 'height',
+    pxPerWorld: round6(CAMERA_METRICS.pxPerWorld),
+    baseDistance: round6(CAMERA.distance),
   },
   layout: {
-    coinSink: WAVE_SPEC.coinSink,
-    path: 'catmull-rom',
-    twist: 'tangent-twist',
-    coins: WAVE_SPEC.coins.map((entry) => ({ ...entry })),
+    design: 'two-ribbon-waves',
+    coinRow: 'steel-trough-flat',
+    coinScale: COIN_SCALE,
+    coins: COINS.map((coin) => ({ ...coin })),
   },
-  frames: FRAMES.map((frame) => ({
-    t: round6(frame.t),
-    position: round6Vec(frame.position),
-    tangent: round6Vec(frame.tangent),
-    up: round6Vec(frame.up),
-    side: round6Vec(frame.side),
-    twistRad: round6(frame.twistRad),
-    distance: round6(frame.distance),
-  })),
+  waves: {
+    steel: { ...WAVES.steel, profile: { ...PROFILE, wavelength: WAVELENGTH, amplitude: AMPLITUDE } },
+    gold: { ...WAVES.gold, profile: { ...PROFILE, wavelength: WAVELENGTH, amplitude: AMPLITUDE } },
+  },
   ribbon: {
-    spec: {
-      samples: RIBBON_SPEC.samples,
-      halfWidth: RIBBON_SPEC.halfWidth,
-      halfThickness: RIBBON_SPEC.halfThickness,
-      crown: RIBBON_SPEC.crown,
-      faceSegments: RIBBON_SPEC.faceSegments,
-      edgeSegments: RIBBON_SPEC.edgeSegments,
-      tileLength: RIBBON_SPEC.tileLength,
-      twistKnots: RIBBON_SPEC.twistKnots.map((knot) => knot.slice()),
-      controlPoints: RIBBON_SPEC.controlPoints.map((point) => point.slice()),
-    },
-    section: {
-      points: SECTION.points.length,
-      perimeter: round6(SECTION.perimeter),
-      materials: ['silverTop', 'blueUnder', 'rim'],
-    },
-    geometry: {
-      positions: GEOMETRY.positions,
-      normals: GEOMETRY.normals,
-      uvs: GEOMETRY.uvs,
-      colors: GEOMETRY.colors,
-      indices: GEOMETRY.indices,
-      groups: GEOMETRY.groups,
-      vertexCount: GEOMETRY.positions.length / 3,
-      triangleCount: GEOMETRY.indices.length / 3,
-    },
-    metrics: {
-      length: round6(PATH_LENGTH),
-      width: round6(RIBBON_SPEC.halfWidth * 2),
-      thickness: round6(RIBBON_SPEC.halfThickness * 2),
-      bounds: {
-        min: round6Vec(RIBBON_BOUNDS.min),
-        max: round6Vec(RIBBON_BOUNDS.max),
-      },
-    },
+    metrics: { length: RIBBON_LENGTH, width: RIBBON_WIDTH, steelThickness: 0.22, goldThickness: 0.2 },
+    section: { materials: ['brushed-steel', 'gold-satin', 'polished-edge'] },
   },
   coins: COINS,
   entries: COINS,
-  metrics: {
-    bounds: { min: round6Vec(BOUNDS.min), max: round6Vec(BOUNDS.max) },
-    size: round6Vec(vecSub(BOUNDS.max, BOUNDS.min)),
-    center: round6Vec(vecScale(vecAdd(BOUNDS.min, BOUNDS.max), 0.5)),
-    minCoinClearance: round6(CLEARANCE.minClearance),
-    clearancePair: CLEARANCE.pair,
-    contact: { authoredSink: WAVE_SPEC.coinSink, ...measureContact(COINS) },
-    pathLength: round6(PATH_LENGTH),
-    coinCount: COINS.length,
-  },
-  /** Predicted projection at the reference stage aspect (offline framing test). */
-  predicted: {
-    aspect: round6(960.516 / 593.016),
-    cameraDistance: round6(fitDistance(BOUNDS, 960.516 / 593.016, {
-      fitMargin: FIT_MARGIN,
-      elevationRad: ELEVATION_RAD,
-    })),
-  },
+  metrics: METRICS,
 });
 
-/** Convenience alias used by the page builder. */
+/** Convenience alias used by the page builder / verifier. */
 export const WAVE_COMPOSITION = WAVE;
+
+function dot(a, b) {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+function cross(a, b) {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+function normalize(a) {
+  const length = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / length, a[1] / length, a[2] / length];
+}

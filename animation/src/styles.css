@@ -346,9 +346,9 @@ body[data-mode='stack'] .stage-caption {
   transform: none;
 }
 
-/* Wave composition (docs/coin-wave.md): cinematic near-black stage — the
-   reference's dark backdrop — with the caption naming the mode. The stage aura
-   turns into a faint blue-violet haze behind the ribbon. */
+/* Wave composition (docs/coin-wave.md, Revision 15): neutral dark studio — the
+   two ribbon waves (brushed steel + TEKO gold satin) are the only colour, so the
+   stage stays a near-neutral charcoal with a faint silver sheen. */
 body[data-mode='wave'] .stage-caption {
   opacity: 1;
   transform: none;
@@ -356,14 +356,46 @@ body[data-mode='wave'] .stage-caption {
 
 body[data-mode='wave'] .stage {
   background:
-    radial-gradient(118% 96% at 52% 40%, rgba(28, 34, 64, 0.55) 0%, rgba(7, 8, 14, 0.15) 58%, rgba(3, 4, 8, 0) 78%),
-    #030408;
+    radial-gradient(122% 100% at 50% 46%, rgba(26, 29, 33, 0.92) 0%, rgba(12, 14, 17, 0.85) 48%, rgba(6, 7, 9, 0.96) 78%, #030405 100%),
+    #040506;
 }
 
 body[data-mode='wave'] .stage-aura {
   background:
-    radial-gradient(closest-side at 54% 42%, rgba(96, 106, 186, 0.14), rgba(96, 106, 186, 0.03) 52%, rgba(96, 106, 186, 0) 74%),
-    radial-gradient(closest-side at 68% 66%, rgba(255, 214, 10, 0.05), rgba(255, 214, 10, 0) 62%);
+    radial-gradient(closest-side at 50% 44%, rgba(226, 234, 244, 0.075), rgba(226, 234, 244, 0.015) 54%, rgba(226, 234, 244, 0) 74%),
+    radial-gradient(closest-side at 62% 72%, rgba(255, 214, 10, 0.055), rgba(255, 214, 10, 0) 64%);
+}
+
+/* The Wave interaction hint is longer than the hero hint; let it wrap inside the
+   stage instead of running off narrow screens. */
+body[data-mode='wave'] .stage-hint {
+  left: auto;
+  right: 12px;
+  top: 26px;
+  bottom: auto;
+  max-width: calc(100% - 24px);
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(5, 6, 8, 0.55);
+  white-space: normal;
+  text-align: right;
+  line-height: 1.55;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: rgba(226, 234, 244, 0.72);
+}
+
+@media (max-width: 760px) {
+  body[data-mode='wave'] .stage-hint {
+    right: 8px;
+    top: 24px;
+    bottom: auto;
+    max-width: calc(100% - 16px);
+    padding: 3px 6px;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    line-height: 1.5;
+  }
 }
 
 .stage-hint {
