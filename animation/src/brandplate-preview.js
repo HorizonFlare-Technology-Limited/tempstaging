@@ -1,15 +1,17 @@
 /**
- * brandplate-preview.js — PROVISIONAL silver brand square plate page (Rev15 R15-4).
+ * brandplate-preview.js — REFERENCE BUILD silver brand square plate page (Rev16 R16-1).
  *
- * Renders 5 thick silver-satin square plates with a black-mirror-metal middle
- * frame (same finish family as the Rev15 black card) and the local TEKO brand
- * logo. The plates start in an evenly spaced upright row and gather from RIGHT
- * to LEFT into a shingled stack (right plate on top / nearest camera, left
- * plates behind). ~3 s deterministic eased animation with replay + autoplay.
+ * Rev16 reference (K:\HFWorkspace\refs\brandplate-ref.webp): a stack of thick,
+ * rounded-square plates in a deep navy studio with a glossy dark floor. The
+ * front/main plate (rightmost, nearest camera) has a silver-grey metal middle
+ * frame with a bright blue fluorescent strip inlaid around the recessed face,
+ * and a large monochrome silver TEKO mark. The rear stacked plates have neutral
+ * grey metal frames (grey for now, per user) with no glow. Plate bodies are
+ * silver satin, thicker and more rounded than the provisional build, with a
+ * deeper recessed face and a prominent beveled frame.
  *
  * The composition math comes from ./brandplate-model.js (pure/deterministic);
  * this module owns the three.js scene, materials, animation loop, UI and QA API.
- * Reference images for the plate were not supplied, so the page is provisional.
  */
 import * as THREE from 'three';
 import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
@@ -17,16 +19,20 @@ import {
   BRANDPLATE,
   brandplatePose,
   cameraFit,
+  plateFrameRole,
 } from './brandplate-model.js';
 
 const PARAMS = new URLSearchParams(window.location.search);
-const PROVISIONAL = BRANDPLATE.provisional;
 const DURATION = BRANDPLATE.layout.durationSeconds;
 const PLATE = BRANDPLATE.plate;
 const FRAME = BRANDPLATE.frame;
+const STRIP = BRANDPLATE.strip;
 const LOGO = BRANDPLATE.logo;
 const SILVER = BRANDPLATE.silver;
-const MIRROR = BRANDPLATE.blackMirror;
+const FRONT_FRAME = BRANDPLATE.frontFrame;
+const REAR_FRAME = BRANDPLATE.rearFrame;
+const STUDIO = BRANDPLATE.studio;
+const MAIN_INDEX = BRANDPLATE.mainPlateIndex;
 
 const errors = [];
 const state = {
@@ -71,15 +77,15 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
-renderer.setClearColor(0x010203, 1);
+renderer.setClearColor(new THREE.Color(STUDIO.background), 1);
 renderer.shadowMap.enabled = false;
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x010203);
+scene.background = new THREE.Color(STUDIO.background);
 const camera = new THREE.PerspectiveCamera(BRANDPLATE.camera.fovDeg, 1, BRANDPLATE.camera.near, BRANDPLATE.camera.far);
 
-// neutral dark studio environment (local RoomEnvironment, PMREM)
+// neutral studio environment (local RoomEnvironment, PMREM) for satin metal
 const pmrem = new THREE.PMREMGenerator(renderer);
 const room = new RoomEnvironment();
 const envTarget = pmrem.fromScene(room, 0.035);
@@ -87,35 +93,51 @@ scene.environment = envTarget.texture;
 room.dispose();
 pmrem.dispose();
 
-// backdrop wall + floor (neutral dark, no shadows)
-const backdrop = new THREE.Mesh(
-  new THREE.PlaneGeometry(80, 40),
-  new THREE.MeshBasicMaterial({ color: 0x05070a }),
-);
-backdrop.position.set(0, 4, -6.5);
-scene.add(backdrop);
+// glossy dark-blue floor: unlit vertical sheen gradient (deep navy -> near black)
+function buildFloorTexture(size = 512) {
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, '#02040a'); // near edge (bottom of the screen)
+  gradient.addColorStop(0.55, '#071022');
+  gradient.addColorStop(0.82, '#0b1a33'); // sheen toward the horizon
+  gradient.addColorStop(1, '#071022');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  const glow = ctx.createRadialGradient(size * 0.5, size * 0.78, 0, size * 0.5, size * 0.78, size * 0.42);
+  glow.addColorStop(0, 'rgba(47,107,255,0.16)');
+  glow.addColorStop(0.55, 'rgba(47,107,255,0.05)');
+  glow.addColorStop(1, 'rgba(47,107,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+  return canvas;
+}
+const floorTexture = new THREE.CanvasTexture(buildFloorTexture(512));
+floorTexture.encoding = THREE.sRGBEncoding;
+floorTexture.anisotropy = 8;
+floorTexture.needsUpdate = true;
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(80, 40),
-  new THREE.MeshBasicMaterial({ color: 0x0a0d11 }),
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.MeshBasicMaterial({ map: floorTexture }),
 );
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0;
 scene.add(floor);
 
-// light rig: white key + fill + cool rim so satin silver and black mirror read
-const key = new THREE.DirectionalLight(0xffffff, 1.15);
+// light rig: neutral key + fill + cool rim; the blue strip adds its own bounce
+const key = new THREE.DirectionalLight(0xffffff, 0.55);
 key.position.set(5, 7.5, 8);
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xdfe6f0, 0.32);
-fill.position.set(-6, 4, 6);
+const fill = new THREE.DirectionalLight(0xcfd9e8, 0.24);
+fill.position.set(-6, 4.5, 6);
 scene.add(fill);
-const rim = new THREE.DirectionalLight(0xffffff, 0.85);
+const rim = new THREE.DirectionalLight(0xdfe9ff, 0.3);
 rim.position.set(2.5, 5.5, -7);
 scene.add(rim);
-const top = new THREE.DirectionalLight(0xffffff, 0.3);
+const top = new THREE.DirectionalLight(0xffffff, 0.18);
 top.position.set(-1, 9, 1);
 scene.add(top);
-const ambient = new THREE.AmbientLight(0x8892a0, 0.1);
+const ambient = new THREE.AmbientLight(0x24324a, 0.08);
 scene.add(ambient);
 
 /* ------------------------------------------------------------------------- */
@@ -163,13 +185,13 @@ function buildSilverSatinMaps(size) {
     for (let x = 0; x < size; x += 1) {
       const fine = random();
       const streak = row + fine * 0.05;
-      const value = Math.min(1, 0.72 + streak * 0.2);
+      const value = Math.min(1, 0.7 + streak * 0.2);
       const index = (y * size + x) * 4;
-      albedoData.data[index] = Math.round(value * 248);
-      albedoData.data[index + 1] = Math.round(value * 251);
+      albedoData.data[index] = Math.round(value * 246);
+      albedoData.data[index + 1] = Math.round(value * 250);
       albedoData.data[index + 2] = Math.round(value * 255);
       albedoData.data[index + 3] = 255;
-      const rough = Math.round((0.24 + streak * 0.14 + fine * 0.03) * 255);
+      const rough = Math.round((0.24 + streak * 0.16 + fine * 0.03) * 255);
       roughnessData.data[index] = rough;
       roughnessData.data[index + 1] = rough;
       roughnessData.data[index + 2] = rough;
@@ -192,31 +214,68 @@ function buildSilverSatinMaps(size) {
 }
 
 const silverMaps = buildSilverSatinMaps(512);
-const silverMaterial = new THREE.MeshPhysicalMaterial({
-  map: silverMaps.map,
-  roughnessMap: silverMaps.roughnessMap,
-  bumpMap: silverMaps.bumpMap,
-  bumpScale: 0.0018,
-  color: new THREE.Color(SILVER.color),
-  metalness: SILVER.metalness,
-  roughness: SILVER.roughness,
-  clearcoat: SILVER.clearcoat,
-  clearcoatRoughness: SILVER.clearcoatRoughness,
-  envMapIntensity: SILVER.envMapIntensity,
-  side: THREE.FrontSide,
-});
-silverMaterial.name = 'plate-silver-satin';
 
-const blackMirrorMaterial = new THREE.MeshPhysicalMaterial({
-  color: new THREE.Color(MIRROR.color),
-  metalness: MIRROR.metalness,
-  roughness: MIRROR.roughness,
-  clearcoat: MIRROR.clearcoat,
-  clearcoatRoughness: MIRROR.clearcoatRoughness,
-  envMapIntensity: MIRROR.envMapIntensity,
+function buildSilverMaterial(color, roughness, envIntensity, metalness = 1.0) {
+  const material = new THREE.MeshPhysicalMaterial({
+    map: silverMaps.map,
+    roughnessMap: silverMaps.roughnessMap,
+    bumpMap: silverMaps.bumpMap,
+    bumpScale: 0.0018,
+    color: new THREE.Color(color),
+    metalness,
+    roughness,
+    clearcoat: 0.05,
+    clearcoatRoughness: 0.3,
+    envMapIntensity: envIntensity,
+    side: THREE.FrontSide,
+  });
+  return material;
+}
+
+const silverBodyMaterial = buildSilverMaterial('#cfd4da', 0.36, 0.9);
+silverBodyMaterial.name = 'plate-silver-satin';
+const silverFaceMaterial = buildSilverMaterial('#cfd5dc', 0.4, 1.4, 0.65);
+silverFaceMaterial.name = 'plate-silver-face';
+
+const frontFrameMaterial = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color(FRONT_FRAME.color),
+  metalness: 0.85,
+  roughness: 0.55,
+  clearcoat: FRONT_FRAME.clearcoat,
+  clearcoatRoughness: FRONT_FRAME.clearcoatRoughness,
+  envMapIntensity: 0.22,
   side: THREE.DoubleSide,
 });
-blackMirrorMaterial.name = 'plate-black-mirror-metal';
+frontFrameMaterial.name = 'plate-front-frame-silver-grey';
+
+const rearFrameMaterial = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color(REAR_FRAME.color),
+  metalness: 0.85,
+  roughness: 0.55,
+  clearcoat: REAR_FRAME.clearcoat,
+  clearcoatRoughness: REAR_FRAME.clearcoatRoughness,
+  envMapIntensity: 0.22,
+  side: THREE.DoubleSide,
+});
+rearFrameMaterial.name = 'plate-rear-frame-neutral-grey';
+
+const stripCoreMaterial = new THREE.MeshBasicMaterial({
+  color: new THREE.Color('#4a86ff'),
+  toneMapped: false,
+  side: THREE.DoubleSide,
+});
+stripCoreMaterial.name = 'plate-blue-strip-core';
+
+const stripHaloMaterial = new THREE.MeshBasicMaterial({
+  color: new THREE.Color('#2f6bff'),
+  transparent: true,
+  opacity: 0.25,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  toneMapped: false,
+  side: THREE.DoubleSide,
+});
+stripHaloMaterial.name = 'plate-blue-strip-halo';
 
 /* ------------------------------------------------------------------------- */
 /* Rounded-square geometry helpers                                           */
@@ -254,14 +313,30 @@ function roundedRectPath(size, radius) {
   return path;
 }
 
-function buildPlateBody() {
+function buildPlateBodyGeometry() {
   const depth = Math.max(0.02, PLATE.thickness - 2 * PLATE.bevel);
   const geometry = new THREE.ExtrudeGeometry(roundedRectShape(PLATE.size, PLATE.cornerRadius), {
     depth,
     bevelEnabled: true,
     bevelThickness: PLATE.bevel,
     bevelSize: PLATE.bevel,
-    bevelSegments: 5,
+    bevelSegments: 6,
+    curveSegments: 24,
+    steps: 1,
+  });
+  geometry.center();
+  return geometry;
+}
+
+function buildRecessedFaceGeometry() {
+  const size = 1.14; // meets the blue inlay ring (no bright groove between them)
+  const depth = 0.022;
+  const geometry = new THREE.ExtrudeGeometry(roundedRectShape(size, 0.16), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.008,
+    bevelSize: 0.008,
+    bevelSegments: 3,
     curveSegments: 20,
     steps: 1,
   });
@@ -269,31 +344,40 @@ function buildPlateBody() {
   return geometry;
 }
 
-function buildFrameRing() {
+function buildFrameRingGeometry() {
   const shape = roundedRectShape(FRAME.outerSize, FRAME.cornerRadius);
-  shape.holes.push(roundedRectPath(FRAME.innerSize, FRAME.cornerRadius * 0.7));
-  const depth = FRAME.thickness - 0.008;
+  shape.holes.push(roundedRectPath(FRAME.innerSize, FRAME.cornerRadius * 0.75));
+  const depth = Math.max(0.02, FRAME.thickness - 2 * FRAME.bevel);
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: true,
-    bevelThickness: 0.004,
-    bevelSize: 0.004,
+    bevelThickness: FRAME.bevel,
+    bevelSize: FRAME.bevel,
     bevelSegments: 3,
-    curveSegments: 16,
+    curveSegments: 20,
     steps: 1,
   });
   geometry.center();
   return geometry;
 }
 
-/* Contact shadow sprite */
+function buildFlatRingGeometry(outer, inner, cornerRadius) {
+  // flat rounded-square ring (guarantees the thin fluorescent line reads from the front)
+  const shape = roundedRectShape(outer, cornerRadius);
+  shape.holes.push(roundedRectPath(inner, Math.max(0.02, cornerRadius - (outer - inner) * 0.5)));
+  const geometry = new THREE.ShapeGeometry(shape, 20);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/* Contact shadow sprite (subtle, on the glossy floor) */
 function buildContactShadowTexture(size) {
   const canvas = makeCanvas(size, size);
   const ctx = canvas.getContext('2d');
   const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, 'rgba(0,0,0,0.6)');
-  gradient.addColorStop(0.45, 'rgba(0,0,0,0.32)');
-  gradient.addColorStop(0.8, 'rgba(0,0,0,0.08)');
+  gradient.addColorStop(0, 'rgba(0,0,0,0.62)');
+  gradient.addColorStop(0.45, 'rgba(0,0,0,0.3)');
+  gradient.addColorStop(0.8, 'rgba(0,0,0,0.06)');
   gradient.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
@@ -303,50 +387,126 @@ const contactTexture = new THREE.CanvasTexture(buildContactShadowTexture(256));
 contactTexture.encoding = THREE.LinearEncoding;
 contactTexture.needsUpdate = true;
 
-/* TEKO logo texture (local asset) */
-const logoTexture = new THREE.TextureLoader().load(LOGO.src, () => {
-  logoTexture.encoding = THREE.sRGBEncoding;
-  logoTexture.anisotropy = 8;
-  logoTexture.needsUpdate = true;
+/* TEKO mark -> monochrome SILVER inlay texture (Rev16; not gold) */
+let logoLoadError = null;
+const logoTexture = new THREE.TextureLoader().load(LOGO.srcSilver, (texture) => {
+  texture.encoding = THREE.sRGBEncoding;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  renderer.render(scene, camera);
+}, undefined, (error) => {
+  logoLoadError = error;
+  reportError(error);
 });
-logoTexture.encoding = THREE.sRGBEncoding;
-logoTexture.anisotropy = 8;
-
 const logoMaterial = new THREE.MeshPhysicalMaterial({
-  map: logoTexture,
   color: 0xffffff,
-  metalness: 0.65,
-  roughness: 0.3,
-  clearcoat: 0.1,
-  clearcoatRoughness: 0.25,
-  envMapIntensity: 1.25,
+  metalness: LOGO.metalness,
+  roughness: LOGO.roughness,
+  clearcoat: 0.08,
+  clearcoatRoughness: 0.22,
+  envMapIntensity: 1.3,
   transparent: true,
   alphaTest: 0.02,
   side: THREE.DoubleSide,
 });
-logoMaterial.name = 'plate-teko-logo-gold';
+logoMaterial.name = 'plate-teko-logo-silver-inlay';
+logoMaterial.map = logoTexture;
+logoMaterial.needsUpdate = true;
 
-const plateBodyGeometry = buildPlateBody();
-const frameGeometry = buildFrameRing();
+// dark recessed backing behind the logo makes the silver inlay read as engraved
+const logoBackingMaterial = new THREE.MeshStandardMaterial({
+  color: 0x22262c,
+  metalness: 0.35,
+  roughness: 0.62,
+  side: THREE.DoubleSide,
+});
+logoBackingMaterial.name = 'plate-logo-recess-shadow';
+
+/* ------------------------------------------------------------------------- */
+/* Plate assembly                                                            */
+/* ------------------------------------------------------------------------- */
+
+const bodyGeometry = buildPlateBodyGeometry();
+const faceGeometry = buildRecessedFaceGeometry();
+const frameGeometry = buildFrameRingGeometry();
+const stripOuter = 1.18;
+const stripInner = stripOuter - STRIP.bandWidth;
+const haloOuter = stripOuter + 0.004;
+const haloInner = stripInner - 0.004;
+const stripCoreGeometry = buildFlatRingGeometry(stripOuter, stripInner, 0.14);
+const stripHaloGeometry = buildFlatRingGeometry(haloOuter, haloInner, 0.15);
 const logoGeometry = new THREE.PlaneGeometry(LOGO.size, LOGO.size);
-const shadowGeometry = new THREE.PlaneGeometry(2.6, 1.3);
+const backingGeometry = new THREE.PlaneGeometry(LOGO.size * 1.06, LOGO.size * 1.06);
+const shadowGeometry = new THREE.PlaneGeometry(3.0, 1.6);
 
 const plates = [];
 for (let index = 0; index < BRANDPLATE.count; index += 1) {
+  const role = plateFrameRole(index);
+  const isFront = role === 'front';
   const group = new THREE.Group();
   group.name = 'brandplate-' + index;
-  const body = new THREE.Mesh(plateBodyGeometry, silverMaterial);
+  group.userData.role = role;
+
+  const body = new THREE.Mesh(bodyGeometry, silverBodyMaterial);
   body.name = 'plate-body-' + index;
   group.add(body);
-  const frame = new THREE.Mesh(frameGeometry, blackMirrorMaterial);
+
+  const centreZ = PLATE.thickness / 2;
+
+  // recessed face panel (the face sits behind the prominent frame)
+  const face = new THREE.Mesh(faceGeometry, silverFaceMaterial);
+  face.name = 'plate-face-' + index;
+  // the body is a solid slab (front at +thickness/2); the recessed content sits
+  // just in front of it and the frame stands proud, giving the deep face recess
+  face.position.z = centreZ - 0.018; // face front ~= body front
+  group.add(face);
+
+  // prominent beveled middle frame (silver-grey front, neutral grey rear)
+  const frame = new THREE.Mesh(frameGeometry, isFront ? frontFrameMaterial : rearFrameMaterial);
   frame.name = 'plate-frame-' + index;
-  frame.position.z = PLATE.thickness / 2 + FRAME.proud - FRAME.thickness / 2 + FRAME.thickness / 2;
-  frame.position.z = PLATE.thickness / 2 + FRAME.proud - 0.004;
+  frame.position.z = centreZ + FRAME.proud - FRAME.thickness / 2;
   group.add(frame);
+
+  // blue fluorescent inlay strip around the face inside the frame: front only
+  if (isFront && STRIP.frontOnly) {
+    const strip = new THREE.Mesh(stripCoreGeometry, stripCoreMaterial);
+    strip.name = 'plate-blue-strip-' + index;
+    strip.position.z = centreZ + 0.006;
+    group.add(strip);
+    const halo = new THREE.Mesh(stripHaloGeometry, stripHaloMaterial);
+    halo.name = 'plate-blue-halo-' + index;
+    halo.position.z = centreZ + 0.004;
+    group.add(halo);
+    const bounce = new THREE.PointLight(
+      new THREE.Color(STRIP.bounceColor),
+      STRIP.bounceIntensity,
+      STRIP.bounceDistance,
+      2,
+    );
+    bounce.name = 'plate-blue-bounce-' + index;
+    bounce.position.set(0, 0, centreZ + 0.22);
+    group.add(bounce);
+  }
+
+  // logo: large monochrome silver inlay with a soft dark silhouette behind it
+  const logoShadowMaterial = new THREE.MeshBasicMaterial({
+    map: logoTexture,
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+  });
+  const backing = new THREE.Mesh(backingGeometry, logoShadowMaterial);
+  backing.name = 'plate-logo-shadow-' + index;
+  backing.position.z = centreZ + 0.009;
+  group.add(backing);
   const logo = new THREE.Mesh(logoGeometry, logoMaterial);
   logo.name = 'plate-logo-' + index;
-  logo.position.z = PLATE.thickness / 2 + FRAME.proud + 0.004;
+  logo.position.z = centreZ + 0.014;
   group.add(logo);
+
   const shadowMaterial = new THREE.MeshBasicMaterial({
     map: contactTexture,
     transparent: true,
@@ -360,7 +520,7 @@ for (let index = 0; index < BRANDPLATE.count; index += 1) {
   shadow.position.y = 0.004;
   scene.add(shadow);
   scene.add(group);
-  plates.push({ index, group, body, frame, logo, shadow, shadowMaterial });
+  plates.push({ index, role, group, body, face, frame, logo, backing, shadow, shadowMaterial });
 }
 
 /* ------------------------------------------------------------------------- */
@@ -369,8 +529,8 @@ for (let index = 0; index < BRANDPLATE.count; index += 1) {
 
 let lastCamera = null;
 
-function applyCamera(width, height) {
-  const fit = cameraFit(width, height);
+function applyCamera(width, height, time = state.time) {
+  const fit = cameraFit(width, height, time);
   lastCamera = fit;
   camera.fov = fit.fovDeg;
   camera.aspect = width / height;
@@ -384,12 +544,12 @@ function applyCamera(width, height) {
 
 function applyCloseupCamera() {
   const pose = brandplatePose(DURATION);
-  const topPlate = pose.plates[BRANDPLATE.count - 1];
+  const topPlate = pose.plates[MAIN_INDEX];
   const target = [topPlate.position[0], topPlate.position[1], topPlate.position[2]];
   camera.fov = 30;
   camera.near = 0.05;
   camera.far = 40;
-  camera.position.set(target[0] + 0.12, target[1] + 0.1, target[2] + 3.4);
+  camera.position.set(target[0] + 0.5, target[1] + 0.12, target[2] + 3.0);
   camera.lookAt(target[0], target[1] - 0.02, target[2]);
   camera.updateProjectionMatrix();
 }
@@ -399,7 +559,7 @@ function resize() {
   const height = Math.max(1, window.innerHeight);
   renderer.setSize(width, height, false);
   if (state.mode === 'closeup') applyCloseupCamera();
-  else applyCamera(width, height);
+  else applyCamera(width, height, state.time);
 }
 window.addEventListener('resize', resize);
 
@@ -413,8 +573,7 @@ function applyPose(pose) {
     plate.group.position.set(target.position[0], target.position[1], target.position[2]);
     plate.group.rotation.set(0, target.yawRad, 0);
     plate.shadow.position.set(target.position[0], 0.004, target.position[2]);
-    plate.shadow.scale.setScalar(0.84 + 0.12 * (1 - Math.abs(Math.sin(Math.PI * target.progress))));
-    plate.shadowMaterial.opacity = 0.34 + 0.18 * (1 - Math.abs(Math.sin(Math.PI * target.progress)));
+    plate.shadow.scale.setScalar(0.9 + 0.1 * (1 - Math.abs(Math.sin(Math.PI * target.progress))));
   }
   document.body.dataset.brandplateTime = String(pose.time);
   document.body.dataset.brandplatePhase = pose.phase;
@@ -458,6 +617,7 @@ function setTime(seconds) {
   state.time = Math.min(DURATION, Math.max(0, Number(seconds) || 0));
   state.playing = false;
   applyPose(brandplatePose(state.time));
+  if (state.mode !== 'closeup') applyCamera(window.innerWidth, window.innerHeight, state.time);
   updateUi();
   return state.time;
 }
@@ -483,6 +643,7 @@ function animate(now) {
       }
     }
     applyPose(brandplatePose(state.time));
+    if (state.mode !== 'closeup') applyCamera(window.innerWidth, window.innerHeight, state.time);
     updateUi();
   } else {
     lastFrame = 0;
@@ -492,13 +653,15 @@ function animate(now) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* QА API + controls                                                         */
+/* QA API + controls                                                         */
 /* ------------------------------------------------------------------------- */
 
 window.__brandplate = {
-  version: '1.0.0',
-  provisional: PROVISIONAL,
+  version: '1.1.0',
+  referenceBuild: BRANDPLATE.referenceBuild,
+  referenceImage: BRANDPLATE.referenceImage,
   duration: DURATION,
+  mainPlateIndex: MAIN_INDEX,
   getTime: () => state.time,
   setTime,
   play,
@@ -511,7 +674,7 @@ window.__brandplate = {
   pose: () => brandplatePose(state.time),
   camera: () => lastCamera,
   debug: () => ({
-    provisional: PROVISIONAL,
+    referenceBuild: BRANDPLATE.referenceBuild,
     count: BRANDPLATE.count,
     duration: DURATION,
     time: state.time,
@@ -519,10 +682,14 @@ window.__brandplate = {
     phase: brandplatePose(state.time).phase,
     direction: BRANDPLATE.layout.direction,
     topLayer: BRANDPLATE.layout.topLayer,
+    mainPlateIndex: MAIN_INDEX,
     plate: PLATE,
     frame: FRAME,
+    strip: STRIP,
     silver: { finish: SILVER.finish, metalness: SILVER.metalness, roughness: SILVER.roughness },
-    blackMirror: { finish: MIRROR.finish, metalness: MIRROR.metalness, roughness: MIRROR.roughness, color: MIRROR.color },
+    frontFrame: { finish: FRONT_FRAME.finish, metalness: FRONT_FRAME.metalness, roughness: FRONT_FRAME.roughness, color: FRONT_FRAME.color },
+    rearFrame: { finish: REAR_FRAME.finish, metalness: REAR_FRAME.metalness, roughness: REAR_FRAME.roughness, color: REAR_FRAME.color },
+    studio: STUDIO,
     logo: LOGO,
     camera: lastCamera,
     bounds: BRANDPLATE.bounds,
@@ -550,10 +717,11 @@ function bindControls() {
       const next = !state.autoplay;
       setAutoplay(next);
       if (next && !state.playing) {
-        // Turning autoplay on starts/restarts the gather without disabling it again.
+        // Turning autoplay on starts/restarts the gather without clearing the preference.
         state.time = 0;
         state.playing = true;
         applyPose(brandplatePose(0));
+        if (state.mode !== 'closeup') applyCamera(window.innerWidth, window.innerHeight, 0);
         updateUi();
       }
     });
@@ -589,28 +757,30 @@ function boot() {
     state.playing = state.autoplay;
   }
   applyPose(brandplatePose(state.time));
+  if (state.mode !== 'closeup') applyCamera(window.innerWidth, window.innerHeight, state.time);
   updateUi();
   bindControls();
   if (state.mode === 'closeup') applyCloseupCamera();
   renderer.render(scene, camera);
   state.ready = true;
   document.body.dataset.ready = '1';
-  document.body.dataset.debug = JSON.stringify({
-    canvas: [renderer.domElement.width, renderer.domElement.height],
-    camera: camera.position.toArray().map((value) => Math.round(value * 100) / 100),
-    plates: plates.length,
-    calls: renderer.info.render.calls,
-    triangles: renderer.info.render.triangles,
-    env: Boolean(scene.environment),
-    plateY: plates.length ? plates[0].group.position.toArray().map((value) => Math.round(value * 100) / 100) : null,
-  });
-  document.body.dataset.provisional = PROVISIONAL ? '1' : '0';
+  document.body.dataset.referenceBuild = '1';
+  if (PARAMS.get('ui') === '0') document.body.classList.add('bp-chrome-hidden');
+  document.body.dataset.brandplateRole = 'front:' + plates.filter((plate) => plate.role === 'front').length + ',rear:' + plates.filter((plate) => plate.role === 'rear').length;
   document.body.dataset.brandplateReducedMotion = state.reducedMotion ? '1' : '0';
+  document.body.dataset.debug = JSON.stringify({
+    logoMap: Boolean(logoMaterial.map),
+    logoError: Boolean(logoLoadError),
+    logoMeshes: plates.length,
+    stripMeshes: plates.reduce((count, plate) => count + plate.group.children.filter((child) => /blue-(strip|halo)|blue-bounce/.test(child.name)).length, 0),
+    errors: errors.length,
+  });
+
   const staticShot = state.reducedMotion || PARAMS.get('shot') === '1';
   if (staticShot) {
     // deterministic static state. The pose is fixed, but keep presenting frames
     // through requestAnimationFrame so headless compositing reliably captures
-    // the WebGL result (a single pre-composite render can be missed).
+    // the WebGL result.
     state.shotTime = state.time;
     document.body.dataset.shot = PARAMS.get('shot') === '1' ? '1' : '0';
     let presented = 0;
@@ -619,8 +789,8 @@ function boot() {
       presented += 1;
       if (presented === 3) {
         document.title = state.reducedMotion
-          ? 'TEKO - Silver brand square plate (provisional, reduced motion)'
-          : 'TEKO - Silver brand square plate (provisional, shot ' + state.time.toFixed(2) + ' s)';
+          ? 'OK brandplate reduced'
+          : 'OK brandplate shot ' + state.time.toFixed(2);
         document.body.dataset.ready = '2';
       }
       requestAnimationFrame(present);
@@ -628,7 +798,7 @@ function boot() {
     requestAnimationFrame(present);
     return;
   }
-  document.title = 'TEKO - Silver brand square plate (provisional)';
+  document.title = 'OK brandplate ready';
   requestAnimationFrame(animate);
 }
 

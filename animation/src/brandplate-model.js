@@ -27,30 +27,56 @@ const STAGGER_SECONDS = 0.28;
 const MOVE_SECONDS = 1.55;
 
 const PLATE = Object.freeze({
-  size: 1.6, // square face edge length (world)
-  thickness: 0.18, // thick slab
-  cornerRadius: 0.14,
-  bevel: 0.035,
+  size: 1.7, // square face edge length (world)
+  thickness: 0.24, // thicker slab (reference build)
+  cornerRadius: 0.34, // heavily rounded square (reference)
+  bevel: 0.06, // prominent bevel
   edgeSegments: 6,
+  recess: 0.05, // deeper recessed face inside the frame
 });
 
 const FRAME = Object.freeze({
-  // black-mirror-metal middle frame, a square ring set into the plate face
-  outerSize: 1.2,
-  innerSize: 0.84,
-  width: 0.18,
-  thickness: 0.034,
-  proud: 0.012, // sits slightly proud of the silver face
-  cornerRadius: 0.09,
-  finish: 'black-mirror-metal',
+  // prominent beveled middle frame around the recessed face
+  outerSize: 1.52,
+  innerSize: 1.28,
+  width: 0.12,
+  thickness: 0.06,
+  proud: 0.028, // stands proud of the silver body (prominent frame)
+  cornerRadius: 0.24,
+  bevel: 0.02,
+  // silver-grey metal front frame, neutral grey rear frames (Rev16 reference build)
+  frontFinish: 'silver-grey-metal',
+  rearFinish: 'neutral-grey-metal',
+});
+
+const STRIP = Object.freeze({
+  // bright cool-blue fluorescent strip inlaid around the face inside the frame,
+  // FRONT (main) plate only; rear plates have no glow for now (user request)
+  finish: 'blue-fluorescent-inlay',
+  coreColor: '#2f6bff',
+  coreEmissiveIntensity: 3.4,
+  haloColor: '#2f6bff',
+  haloOpacity: 0.32,
+  haloWidth: 0.055,
+  bandWidth: 0.035,
+  insetFromFrame: 0.025, // ring sits just inside the frame's front opening
+  bounceColor: '#2f6bff',
+  bounceIntensity: 1.6,
+  bounceDistance: 3.2,
+  frontOnly: true,
 });
 
 const LOGO = Object.freeze({
   src: 'assets/brandplate/teko-logo.png',
+  srcSilver: 'assets/brandplate/teko-logo-silver-mark.png', // baked + trimmed silver inlay
   srcSvg: 'assets/brandplate/teko-logo.svg',
-  size: 0.7,
-  clearance: 0.03, // sits in the silver centre inside the black frame opening
-  color: '#ffd60a',
+  size: 0.62, // ~56% of the recessed face width (reference-like central monogram)
+  faceSize: 1.14,
+  clearance: 0.03,
+  finish: 'silver-inlay',
+  color: '#cfd4d9', // monochrome silver, not gold
+  metalness: 1.0,
+  roughness: 0.28,
   plane: 'front',
 });
 
@@ -58,37 +84,59 @@ const SILVER = Object.freeze({
   finish: 'silver-satin',
   label: 'Silver satin',
   metalness: 1.0,
-  roughness: 0.3,
+  roughness: 0.32,
   color: '#d8dde2',
   clearcoat: 0.05,
   clearcoatRoughness: 0.4,
-  envMapIntensity: 1.15,
+  envMapIntensity: 1.2,
   brushed: true,
 });
 
-const BLACK_MIRROR = Object.freeze({
-  // same finish family as the Rev15 black card middle frame (R15-1)
-  finish: 'black-mirror-metal',
-  label: 'Black mirror metal (card frame family)',
+const FRONT_FRAME = Object.freeze({
+  // main/front plate (rightmost, nearest camera): silver-grey metal, no black mirror
+  finish: 'silver-grey-metal',
+  label: 'Silver-grey satin metal',
   metalness: 1.0,
-  roughness: 0.045,
-  color: '#0e1114',
-  clearcoat: 0.08,
-  clearcoatRoughness: 0.12,
-  envMapIntensity: 2.6,
+  roughness: 0.3,
+  color: '#7a8088',
+  clearcoat: 0.02,
+  clearcoatRoughness: 0.4,
+  envMapIntensity: 0.5,
+});
+
+const REAR_FRAME = Object.freeze({
+  // rear stacked plates: neutral grey metal, no glow (user: grey for now)
+  finish: 'neutral-grey-metal',
+  label: 'Neutral grey metal',
+  metalness: 1.0,
+  roughness: 0.38,
+  color: '#5f656d',
+  clearcoat: 0.02,
+  clearcoatRoughness: 0.4,
+  envMapIntensity: 0.45,
+});
+
+const STUDIO = Object.freeze({
+  finish: 'navy-studio',
+  label: 'Deep navy studio with glossy dark floor',
+  background: '#0b1220',
+  floor: '#0a1424',
+  floorMetalness: 0.7,
+  floorRoughness: 0.16,
+  floorClearcoat: 0.5,
 });
 
 const START = Object.freeze({
-  rowSpacing: 2.1,
+  rowSpacing: 2.35, // wider row for the thicker plates
   z: 0,
   yawDeg: 0,
   lift: 0,
 });
 
 const FINAL_STACK = Object.freeze({
-  shingleX: 0.09, // horizontal shingle fan (right plates sit to the right)
-  layerZ: 0.032, // per-index depth step: right plate = highest index = nearest camera
-  yawDeg: 1.0, // tiny per-index yaw so the stack catches studio highlights
+  shingleX: 0.085, // horizontal shingle fan (right plates sit to the right)
+  layerZ: PLATE.thickness, // one slab thickness per layer: right plate = highest index = nearest camera
+  yawDeg: 0.8, // tiny per-index yaw so the stack catches studio highlights
   centerX: 0,
   centerZ: 0,
 });
@@ -107,11 +155,14 @@ const LAYOUT = Object.freeze({
 
 const CAMERA = Object.freeze({
   fovDeg: 30,
-  elevationDeg: 7,
-  target: Object.freeze([0, 0.8, 0]),
+  elevationDeg: 6, // start (wide row view)
+  endElevationDeg: 4.5, // end (close reference-like stack view)
+  target: Object.freeze([0, 0.85, 0]),
   fitMargin: 1.08,
+  endMargin: 1.06,
+  endFillFraction: 0.6, // the front plate fills ~60% of the stage width at the end
   near: 0.05,
-  far: 100,
+  far: 120,
 });
 
 /** base centre height so the bottom edge of every plate rests on y = 0 */
@@ -271,19 +322,62 @@ export const COMPOSITION_BOUNDS = deepFreeze({
 });
 
 /**
- * Deterministic hero camera that fits the whole gather for a given stage size.
- * Same fit for both start row and final stack (the widest state wins).
+ * Deterministic hero camera for the gather. It starts wide enough to fit the
+ * whole 5-plate row and zooms in with the eased gather so the settled stack
+ * fills the frame like the reference (front plate ~60% of the stage width).
+ * The zoom is a pure function of time, so every shot is deterministic.
  */
-export function cameraFit(stageWidth = 1440, stageHeight = 900) {
+export function cameraFit(stageWidth = 1440, stageHeight = 900, time = 0) {
   const fov = CAMERA.fovDeg * DEG;
   const tanHalf = Math.tan(fov / 2);
   const aspect = stageWidth / stageHeight;
   const halfWidth = Math.max(Math.abs(COMPOSITION_BOUNDS.min[0]), Math.abs(COMPOSITION_BOUNDS.max[0]));
   const halfHeight = Math.max(Math.abs(COMPOSITION_BOUNDS.min[1] - CAMERA.target[1]), Math.abs(COMPOSITION_BOUNDS.max[1] - CAMERA.target[1]));
-  const distanceForWidth = (halfWidth * CAMERA.fitMargin) / (tanHalf * aspect);
-  const distanceForHeight = (halfHeight * CAMERA.fitMargin) / tanHalf;
-  const distance = Math.max(distanceForWidth, distanceForHeight, 4.2);
-  const elevation = CAMERA.elevationDeg * DEG;
+  const startDistance = Math.max(
+    (halfWidth * CAMERA.fitMargin) / (tanHalf * aspect),
+    (halfHeight * CAMERA.fitMargin) / tanHalf,
+    4.2,
+  );
+  const endHalfWidth = Math.max(Math.abs(FINAL_BOUNDS.min[0]), Math.abs(FINAL_BOUNDS.max[0]));
+  const endHalfHeight = Math.max(Math.abs(FINAL_BOUNDS.min[1] - CAMERA.target[1]), Math.abs(FINAL_BOUNDS.max[1] - CAMERA.target[1]));
+  const endDistanceWidth = (PLATE.size / CAMERA.endFillFraction / 2) / (tanHalf * aspect);
+  const endDistanceHeight = (endHalfHeight * CAMERA.endMargin) / tanHalf;
+  // Keep the whole settled stack in frame (perspective depth needs extra room)
+  // while the front plate reads large, reference-like, in the stage. The end
+  // distance is solved deterministically against the projected final pose.
+  const makeCamera = (candidateDistance, candidateElevationDeg) => {
+    const candidateElevation = candidateElevationDeg * DEG;
+    return {
+      fovDeg: CAMERA.fovDeg,
+      fov,
+      elevationDeg: candidateElevationDeg,
+      distance: candidateDistance,
+      target: CAMERA.target.slice(),
+      position: [
+        0,
+        CAMERA.target[1] + candidateDistance * Math.sin(candidateElevation),
+        candidateDistance * Math.cos(candidateElevation),
+      ],
+      near: CAMERA.near,
+      far: CAMERA.far,
+      stage: { width: stageWidth, height: stageHeight },
+      aspect,
+    };
+  };
+  let endDistance = Math.max(endDistanceWidth, endDistanceHeight, (endHalfWidth * CAMERA.endMargin) / (tanHalf * aspect), 3.6);
+  const finalPoseForFit = brandplatePose(DURATION_SECONDS);
+  const insideFrame = (bounds) => bounds.min[0] >= stageWidth * 0.02 && bounds.max[0] <= stageWidth * 0.98 && bounds.min[1] >= stageHeight * 0.02 && bounds.max[1] <= stageHeight * 0.98;
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const candidate = makeCamera(endDistance, CAMERA.endElevationDeg);
+    if (insideFrame(projectedBounds(finalPoseForFit, candidate))) break;
+    endDistance *= 1.04;
+  }
+  endDistance *= 1.06; // a little breathing room around the settled stack
+  const clamped = Math.max(0, Math.min(DURATION_SECONDS, Number(time) || 0));
+  const zoom = smootherstep(clamped / DURATION_SECONDS);
+  const distance = lerp(startDistance, endDistance, zoom);
+  const elevationDeg = lerp(CAMERA.elevationDeg, CAMERA.endElevationDeg, zoom);
+  const elevation = elevationDeg * DEG;
   const position = [
     0,
     CAMERA.target[1] + distance * Math.sin(elevation),
@@ -292,8 +386,11 @@ export function cameraFit(stageWidth = 1440, stageHeight = 900) {
   return deepFreeze({
     fovDeg: CAMERA.fovDeg,
     fov,
-    elevationDeg: CAMERA.elevationDeg,
+    elevationDeg: round6(elevationDeg),
     distance: round6(distance),
+    startDistance: round6(startDistance),
+    endDistance: round6(endDistance),
+    zoom: round6(zoom),
     target: CAMERA.target.slice(),
     position: position.map(round6),
     near: CAMERA.near,
@@ -301,7 +398,8 @@ export function cameraFit(stageWidth = 1440, stageHeight = 900) {
     stage: { width: stageWidth, height: stageHeight },
     aspect: round6(aspect),
     fitMargin: CAMERA.fitMargin,
-    fit: distanceForWidth >= distanceForHeight ? 'width' : 'height',
+    endFillFraction: CAMERA.endFillFraction,
+    fit: distance === startDistance ? 'start-row' : zoom >= 1 ? 'end-stack' : 'gather',
   });
 }
 
@@ -343,16 +441,31 @@ export function projectedBounds(pose, camera) {
 /* Frozen public contract                                                    */
 /* ------------------------------------------------------------------------- */
 
+export const MAIN_PLATE_INDEX = COUNT - 1;
+export function plateFrameRole(index) {
+  return index === MAIN_PLATE_INDEX ? 'front' : 'rear';
+}
+export function frameMaterialFor(index) {
+  return plateFrameRole(index) === 'front' ? FRONT_FRAME : REAR_FRAME;
+}
+
 export const BRANDPLATE = deepFreeze({
   mode: 'brandplate',
-  provisional: true,
-  provisionalNote: 'References missing: provisional silver satin plates, TEKO logo and the black-mirror-metal card-frame family.',
+  provisional: false,
+  referenceBuild: true,
+  referenceImage: 'K:/HFWorkspace/refs/brandplate-ref.webp',
+  note: 'Reference build: front plate has the silver-grey frame with the blue fluorescent inlay; rear frame colour pass is grey for now (user request).',
   count: COUNT,
   plate: PLATE,
   frame: FRAME,
+  strip: STRIP,
+  studio: STUDIO,
+  mainPlateIndex: MAIN_PLATE_INDEX,
+  roles: { main: 'front', rear: 'rear', mainIndex: MAIN_PLATE_INDEX },
   logo: LOGO,
   silver: SILVER,
-  blackMirror: BLACK_MIRROR,
+  frontFrame: FRONT_FRAME,
+  rearFrame: REAR_FRAME,
   layout: LAYOUT,
   camera: CAMERA,
   start: START,
@@ -365,9 +478,9 @@ export const BRANDPLATE = deepFreeze({
   shotTimes: LAYOUT.shotTimes,
   labels: {
     title: 'Silver brand square plate',
-    subtitle: 'Provisional',
-    badge: 'PROVISIONAL',
-    note: 'Reference images missing (not attached). This provisional build uses silver satin plates, the TEKO brand logo and the black-mirror-metal middle frame from the card (R15-1).',
+    subtitle: 'Reference build',
+    badge: 'REFERENCE BUILD',
+    note: 'Rear frames grey for now — front plate: silver-grey frame with a blue fluorescent inlay; silver TEKO logo.',
   },
 });
 
