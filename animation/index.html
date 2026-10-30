@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="TEKO Currency Coin ??a three.js silver coin preview. The same Lexend currency symbol in lighting-driven relief on both faces of a satin/twill coin with a reeded middle frame; seven currencies.">
+<meta name="description" content="TEKO Currency Coin ??a three.js silver coin preview. The same Lexend currency symbol in lighting-driven relief on both faces of a satin/micro-dot coin with a reeded middle frame, lit only by one room-photo environment; seven currencies.">
 <title>TEKO ??Currency Coin</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23c9d6e6' stroke-width='1'/%3E%3C/svg%3E">
 <link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="./src/styles.css">
+<link rel="stylesheet" href="./src/site-nav.css">
 <style>
 /* Lead-added cross-link to the additive card deliverable (card.html). */
 .header-note a { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-bright); }
@@ -33,7 +34,22 @@
         <span class="brand-divider" aria-hidden="true"></span>
         <span class="brand-product">Currency Coin</span>
       </a>
-      <p class="header-note">Satin silver <span class="header-dot" aria-hidden="true"></span> Seven currencies <span class="header-dot" aria-hidden="true"></span> <a href="./card.html">Metal Card</a> <span class="header-dot" aria-hidden="true"></span> <a href="./columns.html">Columns</a> <span class="header-dot" aria-hidden="true"></span> <a href="./billing.html">Billing</a> <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a> <span class="header-dot" aria-hidden="true"></span> <a href="./phone.html">iPhone 15</a> <span class="header-dot" aria-hidden="true"></span> <a href="./brandplate.html">Brand Plate</a> <span class="header-dot" aria-hidden="true"></span> <a href="./stacked-panel.html">Stacked Panels</a> <span class="header-dot" aria-hidden="true"></span> <a href="./stacked-coins.html">Stacked Coins</a></p>
+      <nav class="site-nav" aria-label="Collections">
+        <span class="site-nav-current" aria-current="page">Coin</span>
+        <a href="./card.html">Metal Card</a>
+        <a href="./columns.html">Columns</a>
+        <a href="./cards-columns.html">Cards on Columns</a>
+        <a href="./phone.html">iPhone 15</a>
+        <a href="./billing.html">Billing</a>
+        <a href="./shield.html">Shield</a>
+        <a href="./currency-blocks.html">Currency Blocks</a>
+        <a href="./vault.html">Vault</a>
+        <a href="./paperplane.html">Plane</a>
+        <a href="./connection.html">Connection</a>
+        <a href="./logo-blocks.html">Logo Blocks</a>
+        <a href="./stacked-panel.html">Stacked Panel</a>
+      </nav>
+      <p class="header-note">Satin silver <span class="header-dot" aria-hidden="true"></span> Seven currencies</p>
     </header>
 
     <main class="studio" id="studio">
@@ -67,14 +83,6 @@
         </div>
 
         <div class="control-bar" role="group" aria-label="Coin controls">
-          <button class="btn btn-ghost" id="btn-replay" type="button" hidden>
-            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4.2 7.6A6.4 6.4 0 1 1 3.6 11"></path>
-              <path d="M4 3.4v4.4h4.4"></path>
-            </svg>
-            <span>Replay</span>
-          </button>
-
           <div class="control-spacer" aria-hidden="true"></div>
 
           <button class="btn btn-ghost" id="btn-spin" type="button" aria-pressed="false" aria-keyshortcuts="S">
@@ -111,16 +119,6 @@
             <kbd>Y</kbd>
           </button>
 
-          <button class="btn btn-ghost" id="btn-stack" type="button" aria-pressed="false" aria-keyshortcuts="T">
-            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <ellipse cx="10" cy="14.6" rx="6.3" ry="2.3"></ellipse>
-              <ellipse cx="10" cy="10" rx="6.3" ry="2.3"></ellipse>
-              <ellipse cx="10" cy="5.4" rx="6.3" ry="2.3"></ellipse>
-            </svg>
-            <span>Stack</span>
-            <kbd>T</kbd>
-          </button>
-
           <button class="btn btn-ghost" id="btn-wave" type="button" aria-pressed="false" aria-keyshortcuts="W">
             <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M2.2 12.4c2.1-4 4.2-6 6.3-6 2.5 0 3.2 3.2 4.9 5.1 1.3 1.4 2.7 1.7 3.8.5"></path>
@@ -139,6 +137,16 @@
             </svg>
             <span>Parade</span>
             <kbd>P</kbd>
+          </button>
+
+          <button class="btn btn-ghost" id="btn-stack" type="button" aria-pressed="false" aria-keyshortcuts="T">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="10" cy="14.6" rx="6" ry="2"></ellipse>
+              <ellipse cx="10" cy="10.6" rx="6" ry="2"></ellipse>
+              <ellipse cx="10" cy="6.6" rx="6" ry="2"></ellipse>
+            </svg>
+            <span>Stack</span>
+            <kbd>T</kbd>
           </button>
         </div>
 
@@ -184,7 +192,37 @@
         </section>
 
         <div class="info-aside" id="info-aside">
-          <p class="aside-copy">One symbol, two faces &mdash; the same Lexend glyph standing in relief on a satin silver coin with a fine diagonal twill. Its light and shadow come from the lighting rather than paint; the reeded middle frame wraps the edge, leaving both faces clean.</p>
+          <section class="wave-params" id="wave-params" aria-label="Wave coin parameters" hidden>
+          <div class="wave-params-head">
+            <span class="wave-params-title">Coin parameters</span>
+            <span class="wave-params-note">wave-group local space &middot; paste into <code>src/coin-wave.js</code></span>
+            <button class="btn btn-ghost wave-params-copy" id="btn-wave-copy" type="button">Copy JSON</button>
+          </div>
+          <div class="wave-materials" id="wave-materials" role="group" aria-label="Wave materials">
+            <label class="wave-material"><span>Metal wave</span>
+              <select id="wave-mat-steel" data-wave-material="steel" aria-label="Metal wave material">
+                <option value="default" selected>Default (polished steel)</option>
+                <option value="plaster">Plaster</option>
+                <option value="satin">Satin</option>
+                <option value="grain-metal">Grain metal</option>
+                <option value="titanium">Titanium</option>
+              </select></label>
+            <label class="wave-material"><span>Blue wave</span>
+              <select id="wave-mat-blue" data-wave-material="gold" aria-label="Blue wave material">
+                <option value="default" selected>Default (slate ribbon)</option>
+                <option value="plaster">Plaster</option>
+                <option value="satin">Satin</option>
+                <option value="grain-metal">Grain metal</option>
+                <option value="titanium">Titanium</option>
+              </select></label>
+          </div>
+          <div class="wave-params-rows" id="wave-params-rows"></div>
+          <details class="wave-params-more">
+            <summary>Show JSON</summary>
+            <pre class="wave-params-json" id="wave-params-json" tabindex="0"></pre>
+          </details>
+        </section>
+          <p class="aside-copy">One symbol, two faces &mdash; the same Lexend glyph standing in relief on a satin silver coin with a fine micro-dot grid. Its light and shadow come from one room-photo environment (image-based lighting, no scene lights) rather than paint; the reeded middle frame wraps the edge, leaving both faces clean.</p>
           <ul class="legend" aria-label="Keyboard shortcuts">
             <li><kbd class="legend-key">←</kbd><kbd class="legend-key">→</kbd><span>Change currency</span></li>
             <li><kbd class="legend-key">G</kbd><span>Gallery</span></li>

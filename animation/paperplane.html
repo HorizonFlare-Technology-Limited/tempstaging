@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<meta name="description" content="TEKO Paper Plane. A classic folded paper dart: two swept delta wings meeting at a centre ridge, a folded keel and sharp creases. Silver paper with theme-gold transmitted light in a light editorial studio.">
+<meta name="description" content="TEKO Paper Plane. A classic folded paper dart: two swept delta wings meeting at a centre ridge, a folded keel and sharp creases. Silver paper with theme-gold transmitted glow, lit only by one room-photo environment in a pale editorial studio.">
 <title>Paper Plane ??TEKO</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M28 5 4 15l9 3 3 9 4-8 8-14Z' fill='%23dfe4e8' stroke='%23586670' stroke-width='1.1' stroke-linejoin='round'/%3E%3Cpath d='M13 18l15-13' stroke='%23586670' stroke-width='1'/%3E%3Ccircle cx='21' cy='12' r='1' fill='%235b8cc9'/%3E%3Ccircle cx='18' cy='15' r='.8' fill='%235b8cc9'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./src/paperplane-styles.css">
+<link rel="stylesheet" href="./src/site-nav.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-fallback="0" data-qa-fallback="0" data-qa-still="0" data-qa-shot="0" data-qa-reduced-motion="0" data-qa-float="0" data-qa-camera="" data-qa-roll="" data-qa-distance="" data-qa-object-rect="" data-qa-vertices="0" data-qa-triangles="0" data-qa-speckles="0" data-qa-metalness="0.22" data-qa-roughness="0.30" data-qa-model="" data-still="0" data-shot="0" data-mode="studio">
@@ -25,7 +26,7 @@
       <span class="brand-product">Paper Plane</span>
     </a>
 
-    <nav class="collection-nav" aria-label="Collections">
+    <nav class="site-nav" aria-label="Collections">
       <a href="./">Coin</a>
       <a href="./card.html">Metal Card</a>
       <a href="./columns.html">Columns</a>
@@ -34,7 +35,10 @@
       <a href="./shield.html">Shield</a>
       <a href="./currency-blocks.html">Currency Blocks</a>
       <a href="./vault.html">Vault</a>
-      <span class="current" aria-current="page">Plane</span>
+      <span class="site-nav-current" aria-current="page">Plane</span>
+      <a href="./connection.html">Connection</a>
+      <a href="./logo-blocks.html">Logo Blocks</a>
+      <a href="./stacked-panel.html">Stacked Panel</a>
     </nav>
 
     <span class="edition">Object 010 &mdash; volume study</span>
@@ -55,7 +59,7 @@
     </section>
 
     <section class="stage" id="stage" aria-label="Interactive folded paper plane viewer">
-      <canvas id="stage-canvas" aria-label="A folded silver paper plane with theme-gold transmitted light: two swept wings meeting at a centre ridge, a folded keel and sharp creases, floating in a light studio. Drag to orbit, scroll to zoom."></canvas>
+      <canvas id="stage-canvas" aria-label="A folded silver paper plane with theme-gold transmitted light: two swept wings meeting at a centre ridge, a folded keel and sharp creases, floating in a pale studio lit by one room photograph. Drag to orbit, scroll to zoom."></canvas>
 
       <div class="stage-meta stage-meta--top">
         <span class="stage-dot" aria-hidden="true"></span>
@@ -215,7 +219,7 @@
       </div>
       <ul class="notes">
         <li><span class="note-key">Fold</span> One sheet, seven paper panels: two swept delta wings split by a crease, a raised centre ridge and a tucked keel beneath the body.</li>
-        <li><span class="note-key">Light</span> Silver translucent paper (transmission 0.30) with theme-gold <code>#ffd60a</code> attenuation, additive gold fold-edge lines and a warm back light; no image textures.</li>
+        <li><span class="note-key">Light</span> Silver translucent paper (transmission 0.30) with theme-gold <code>#ffd60a</code> attenuation and a gold halo sprite &mdash; material emission only, the page has no scene lights; no image textures.</li>
         <li><span class="note-key">Motion</span> A slow float and rock (0.2&nbsp;Hz) written as a closed-form pose; frozen under <code>?still=1</code>, <code>?shot=1</code> and reduced motion.</li>
       </ul>
     </aside>
@@ -234,7 +238,7 @@
       <span class="curtain-wordmark">TEKO</span>
       <p class="curtain-title" id="loading-title">Folding the paper</p>
       <span class="curtain-line" aria-hidden="true"><i></i></span>
-      <p class="curtain-note">Folded panels &middot; silver &amp; gold light &middot; light studio</p>
+      <p class="curtain-note">Folded panels &middot; silver &amp; gold glow &middot; room-photo studio</p>
     </div>
   </div>
 

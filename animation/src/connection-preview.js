@@ -9,8 +9,10 @@
  * seam in the acrylic and leaving both open ends through clear rod bundles.
  *
  * The model (geometry, materials, flow path, clearance report) comes from
- * ./connection-model.js; this file owns the renderer, the dark hand-built PMREM
- * studio, the fitted 33° / 33° three-quarter camera, the faint reflective
+ * ./connection-model.js; this file owns the renderer, the Rev21 image-based
+ * lighting (ONLY the shared room photograph assets/env/modern-empty-room.jpg
+ * through ./env-room.js — no THREE lights, no procedural dome/softbox studio),
+ * the fitted 33° / 33° three-quarter camera, the faint reflective
  * ground, the contact darkening under the satin columns, the drag-to-orbit
  * controls, the deterministic modes, the QA hooks and the fallback.
  *
@@ -34,6 +36,7 @@ import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { loadColumnBank } from './columns-model.js';
 import * as ConnectionModel from './connection-model.js';
+import { applyEnvRoom } from './env-room.js';
 
 const VERSION = '1.0.0';
 const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
@@ -98,39 +101,20 @@ const STILL_PHASE = Number.isFinite(Number(FLOW.stillPhase)) ? clampPhase(Number
 
 /* ------------------------------------------------------------ render tuning */
 
-// Dark editorial studio: a black room with hard softbox highlights where the
-// acrylic and the silver ribs catch them, so the object reads as crystal in a
-// void rather than a lit product shot on white.
-const RENDERER = Object.freeze({ exposure: 1.05, dprMax: 2 });
+// Rev21 image-based lighting: the dark-room photograph supplies both the black
+// ambience of the void and the bright ceiling downlights that the silver ribs,
+// acrylic edges and satin columns mirror. No direct light exists on the page.
+const RENDERER = Object.freeze({ exposure: 1.0, dprMax: 2 });
 
-const ENVIRONMENT = Object.freeze({ sigma: 0.03 });
+/**
+ * The only light source on the page. ./env-room.js filters
+ * `assets/env/modern-empty-room.jpg` into a PMREM and assigns it to
+ * `scene.environment`; on r151 the intensity multiplies each material's own
+ * `envMapIntensity`, so the authored metal/acrylic ratios are preserved.
+ */
 const ENV_ROOM = Object.freeze({
-  dome: [0.012, 0.015, 0.022],
-  floor: [0.02, 0.024, 0.034],
-  domeRadius: 44,
-});
-const ENV_PANELS = Object.freeze([
-  // Large cool-white key softbox, upper-left.
-  Object.freeze({ position: [-11, 9.5, 11], size: [14, 8], color: [0.84, 0.91, 1.0], intensity: 8.4 }),
-  // Large cool-white fill softbox, upper-front.
-  Object.freeze({ position: [2, 7.5, 12.5], size: [12, 7], color: [0.8, 0.88, 1.0], intensity: 4.6 }),
-  // Wide bright rear strip: thin white highlights along the glass edges.
-  Object.freeze({ position: [0.5, 13, -12.5], size: [18, 1.7], color: [0.92, 0.96, 1.0], intensity: 6.4 }),
-  // Tall warm-orange strip, left: the brand warm rim.
-  Object.freeze({ position: [-14.5, 5.5, 1.5], size: [3, 14], color: [1.0, 0.44, 0.16], intensity: 4.6 }),
-  // Tall cool-blue strip, right / back: the brand cool rim.
-  Object.freeze({ position: [12.5, 6.5, -7.5], size: [3, 13], color: [0.24, 0.46, 1.0], intensity: 4.8 }),
-  // Low cool fill, front: soft vertical reflection for the satin columns.
-  Object.freeze({ position: [1.5, 2.4, 14], size: [14, 5], color: [0.26, 0.38, 0.58], intensity: 2.4 }),
-]);
-
-const LIGHTS = Object.freeze({
-  key: { color: 0xdce8ff, intensity: 1.8, position: [-700, 950, 780] },
-  front: { color: 0xbcd2ee, intensity: 1.0, position: [260, 520, 1100] },
-  warmRim: { color: 0xff9444, intensity: 0.7, position: [-900, 560, -660] },
-  coolRim: { color: 0x6f9dff, intensity: 0.95, position: [840, 680, -660] },
-  fill: { color: 0x9fb6d6, intensity: 0.2, position: [420, 240, 900] },
-  ambient: { color: 0x39445a, intensity: 0.24 },
+  intensity: 1.3,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
 });
 
 const GROUND = Object.freeze({
@@ -409,7 +393,7 @@ class ConnectionStudio {
     this.scene = null;
     this.camera = null;
     this.controls = null;
-    this.envRT = null;
+    this.room = null;
     this.ground = null;
     this.contactPlanes = [];
     this.stageBox = { width: 0, height: 0 };
@@ -435,7 +419,7 @@ class ConnectionStudio {
     return !this.still && !this.shot && !this.reducedMotion;
   }
 
-  init() {
+  async init() {
     const scene = new THREE.Scene();
     scene.name = 'connection-studio';
     this.scene = scene;
@@ -445,32 +429,17 @@ class ConnectionStudio {
     camera.up.set(0, 1, 0);
     this.camera = camera;
 
-    this.buildEnvironment();
-
-    const key = new THREE.DirectionalLight(LIGHTS.key.color, LIGHTS.key.intensity);
-    key.position.set(LIGHTS.key.position[0], LIGHTS.key.position[1], LIGHTS.key.position[2]);
-    scene.add(key);
-    const front = new THREE.DirectionalLight(LIGHTS.front.color, LIGHTS.front.intensity);
-    front.position.set(LIGHTS.front.position[0], LIGHTS.front.position[1], LIGHTS.front.position[2]);
-    scene.add(front);
-    const warmRim = new THREE.DirectionalLight(LIGHTS.warmRim.color, LIGHTS.warmRim.intensity);
-    warmRim.position.set(LIGHTS.warmRim.position[0], LIGHTS.warmRim.position[1], LIGHTS.warmRim.position[2]);
-    scene.add(warmRim);
-    const coolRim = new THREE.DirectionalLight(LIGHTS.coolRim.color, LIGHTS.coolRim.intensity);
-    coolRim.position.set(LIGHTS.coolRim.position[0], LIGHTS.coolRim.position[1], LIGHTS.coolRim.position[2]);
-    scene.add(coolRim);
-    const fill = new THREE.DirectionalLight(LIGHTS.fill.color, LIGHTS.fill.intensity);
-    fill.position.set(LIGHTS.fill.position[0], LIGHTS.fill.position[1], LIGHTS.fill.position[2]);
-    scene.add(fill);
-    const ambient = new THREE.AmbientLight(LIGHTS.ambient.color, LIGHTS.ambient.intensity);
-    scene.add(ambient);
-    this.lights = { key, front, warmRim, coolRim, fill, ambient };
-
     this.buildGround();
     this.buildContactDarkening();
 
     scene.add(this.model.group);
     this.collectFitPoints();
+
+    // Rev21: the room photograph is the page's ONLY light source. It is applied
+    // once the scene exists and after the model is in the graph, then refreshed
+    // so the r151 per-material envMapIntensity pass reaches every material.
+    this.room = await applyEnvRoom(THREE, this.renderer, scene, { intensity: ENV_ROOM.intensity });
+    this.room.refresh(scene);
 
     const controls = new OrbitControls(camera, this.canvas);
     controls.enableDamping = true;
@@ -495,52 +464,6 @@ class ConnectionStudio {
     this.loop = this.loop.bind(this);
     this.raf = window.requestAnimationFrame(this.loop);
     return this;
-  }
-
-  /** Black dome + hard softbox panels -> PMREM studio reflection (no RoomEnvironment). */
-  buildEnvironment() {
-    const envScene = new THREE.Scene();
-    envScene.name = 'connection-env-studio';
-    const panelMaterial = (rgb, intensity) => new THREE.MeshBasicMaterial({
-      color: new THREE.Color(rgb[0] * intensity, rgb[1] * intensity, rgb[2] * intensity),
-      toneMapped: false,
-      side: THREE.DoubleSide,
-    });
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(ENV_ROOM.domeRadius, 32, 20),
-      panelMaterial(ENV_ROOM.dome, 1),
-    );
-    dome.material.side = THREE.BackSide;
-    envScene.add(dome);
-    const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(ENV_ROOM.domeRadius * 0.9, 48),
-      panelMaterial(ENV_ROOM.floor, 1),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -ENV_ROOM.domeRadius * 0.36;
-    envScene.add(floor);
-    for (const panel of ENV_PANELS) {
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(panel.size[0], panel.size[1]),
-        panelMaterial(panel.color, panel.intensity),
-      );
-      mesh.name = 'env-softbox';
-      mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-      mesh.lookAt(0, 0, 0);
-      envScene.add(mesh);
-    }
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    pmrem.compileEquirectangularShader();
-    if (this.envRT) this.envRT.dispose();
-    this.envRT = pmrem.fromScene(envScene, ENVIRONMENT.sigma);
-    this.scene.environment = this.envRT.texture;
-    envScene.traverse((object) => {
-      if (object.isMesh) {
-        object.geometry.dispose();
-        object.material.dispose();
-      }
-    });
-    pmrem.dispose();
   }
 
   /** Faint near-black reflective disc with a radial alpha fade; no visible plane edge. */
@@ -957,7 +880,11 @@ class ConnectionStudio {
       toneMappingExposure: RENDERER.exposure,
       outputEncoding: 'sRGB',
       toneMapping: 'ACESFilmic',
-      environment: 'hand-built PMREM studio',
+      // Rev21: image-based lighting only — zero THREE light objects; the scene
+      // is lit by the PMREM of the shared room photograph.
+      environmentIntensity: ENV_ROOM.intensity,
+      environment: ENV_ROOM.label,
+      lights: { directional: 0, point: 0, spot: 0, ambient: 0, hemisphere: 0, rectArea: 0 },
     };
   }
 
@@ -988,9 +915,9 @@ class ConnectionStudio {
       this.ground.material.dispose();
       this.ground = null;
     }
-    if (this.envRT) {
-      this.envRT.dispose();
-      this.envRT = null;
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
     }
     if (this.scene) {
       this.scene.remove(this.model.group);
@@ -1362,7 +1289,9 @@ async function boot() {
       still: state.still,
       shot: state.shot,
     });
-    state.studio.init();
+    // `init()` awaits the shared room PMREM, so the page cannot report ready
+    // before its only light source exists.
+    await state.studio.init();
     state.studio.setPlaying(motionAllowed() && state.playing);
   } catch (error) {
     if (state.studio) {

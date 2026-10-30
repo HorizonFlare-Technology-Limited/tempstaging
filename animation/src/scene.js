@@ -1,10 +1,12 @@
 /**
  * tekoanimation — silver studio 3D scene.
  *
- * Owns the WebGLRenderer, the PMREM RoomEnvironment, the lights, the coin
- * presentation rig (float / tilt / face / spin), the gallery layout and the
- * projected gallery labels. Coin meshes are supplied by ./coin-model.js
- * through the SPEC §4 API; this module never composes coin textures itself.
+ * Owns the WebGLRenderer, the image-based lighting (Revision 21: the shared
+ * room photo through ./env-room.js — no THREE lights and no procedural studio
+ * environment), the coin presentation rig (float / tilt / face / spin), the
+ * gallery layout and the projected gallery labels. Coin meshes are supplied by
+ * ./coin-model.js through the SPEC §4 API; this module never composes coin
+ * textures itself.
  *
  * Interaction: a free quaternion trackball drags the composition 360° around
  * the fixed camera. Pointer positions are mapped onto a virtual unit sphere and
@@ -20,7 +22,7 @@
  * capture environments where rAF is starved (Chrome --virtual-time-budget).
  */
 import * as THREE from 'three';
-import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
+import { applyEnvRoom, ENV_ROOM } from './env-room.js';
 import {
   TRACKBALL,
   arcballDelta,
@@ -50,6 +52,29 @@ const DOUBLE_TAP_MS = 400;
 const DOUBLE_TAP_DIST = 40; // CSS px
 
 const HERO_FIT = { w: 2.78, h: 2.78 };
+
+// Revision 21: image-based lighting only. The shared room photo is a dark
+// interior with a handful of bright ceiling downlights, so the PMREM is
+// multiplied up (per-material on r151) and the ACES exposure retuned until the
+// silver reads as a lit studio metal again — no THREE lights anywhere.
+// rev8 s35: faces are diffuse (s28), so they integrate the whole boosted hemisphere instead
+// of mirroring a few downlights. Measured hero/room (1440x900): gain 4 + highlight boost 9
+// -> coin mean luma 186, 3.8% px clipped at 255; gain 3 + boost 3 -> 137, 0.19% clipped.
+const ENV_ROOM_INTENSITY = 3;
+const ENV_ROOM_BOOST = 3;
+// rev13 s40: coin FACE diffuse env gain (hero/gallery only). The shared x3 room gain integrates the whole
+// ceiling when the face tilts up (pitch -20: 179 mean luma); 0.8 keeps the near-frontal bright angle <=150 in all tiers.
+const COIN_FACE_ENV = 0.8;
+const TOP_LIGHT_COLOR = 0x8f9fb8; // rev5 s28 grey-blue
+const TOP_LIGHT_INTENSITY = 0.5; // small
+function applyCoinFaceEnv(coin) {
+  const material = coin && coin.faceA && coin.faceA.material;
+  if (material && !material.userData.faceEnvApplied) {
+    material.envMapIntensity *= COIN_FACE_ENV;
+    material.userData.faceEnvApplied = true;
+  }
+}
+const ENV_ROOM_LABEL = ENV_ROOM.url + ' (PMREM, env-room)';
 // Rev6: seven coins -> 4 + 3 grid, last row centred.
 const GALLERY_LAYOUT = {
   cols: 4,
@@ -165,54 +190,33 @@ export class CoinStudio {
     renderer.setClearColor(0x000000, 0);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.88;
+    renderer.toneMappingExposure = 1.05;
     this.renderer = renderer;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(30, 1, 0.1, 140);
     this.camera.position.set(0, 0, 6);
 
-    // Silver studio reflections: PMREM-filtered RoomEnvironment (SPEC §5.1).
-    // Revision 2: the room panels are dimmed before filtering so the engraving
-    // is not washed out by broad environment highlights; the reflections that
-    // remain still give the silver its metallic body.
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const envScene = new RoomEnvironment();
-    envScene.traverse((object) => {
-      if (object.isPointLight) object.intensity *= 0.35;
-      if (!object.isMesh || !object.material) return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of materials) {
-        if (material && material.color) material.color.multiplyScalar(0.18);
-      }
-    });
-    this._envRT = pmrem.fromScene(envScene, 0.04);
-    this.scene.environment = this._envRT.texture;
-    envScene.dispose();
-    pmrem.dispose();
-
-    // Warm key + cool rim + soft frontal fill.
-    // Revision 2: stronger key, softer rim/bounce and a quieter environment so
-    // the engraved line work and shallow relief read instead of being washed out.
-    const key = new THREE.DirectionalLight(0xfff0dc, 4.2);
-    key.position.set(6.5, 2.2, 1.8);
-    this.scene.add(key);
-
-    const rim = new THREE.DirectionalLight(0xa9c9ff, 2.6);
-    rim.position.set(-4.5, 3.0, -3.5);
-    this.scene.add(rim);
-
-    const fill = new THREE.DirectionalLight(0xdfe9ff, 0.15);
-    fill.position.set(0.6, -2.6, 3.4);
-    this.scene.add(fill);
-
-    const warmBounce = new THREE.PointLight(0xffd6ae, 0.5, 16, 2);
-    warmBounce.position.set(-2.4, 1.4, 3.2);
-    this.scene.add(warmBounce);
-
-    const coolBounce = new THREE.PointLight(0x9dbfe8, 2.0, 18, 2);
-    coolBounce.position.set(2.8, -1.2, -2.2);
-    this.scene.add(coolBounce);
+    // Revision 21: the shared room photo is the ONLY light source. The PMREM is
+    // produced once by src/env-room.js and assigned to scene.environment; the
+    // studio must not report ready before this promise resolves (init() awaits
+    // it, and the page awaits init()).
+    this.room = await applyEnvRoom(THREE, renderer, this.scene, { intensity: ENV_ROOM_INTENSITY, boost: ENV_ROOM_BOOST, toggleClass: 'env-toggle--stage', toggleContainer: () => document.getElementById('stage') });
+    // rev5 s28 (user-requested exception to the no-lights rule): exactly ONE small
+    // grey-blue light directly above (the env sphere zenith), coin page only.
+    this.topLight = new THREE.DirectionalLight(TOP_LIGHT_COLOR, TOP_LIGHT_INTENSITY);
+    this.topLight.name = 'coin-top-light';
+    this.topLight.position.set(0, 10, 0);
+    this.topLight.target.position.set(0, 0, 0);
+    this.topLight.castShadow = false;
+    this.scene.add(this.topLight);
+    this.scene.add(this.topLight.target);
+    this.environment = {
+      lights: 1,
+      topLight: { type: 'DirectionalLight', color: '#' + TOP_LIGHT_COLOR.toString(16), intensity: TOP_LIGHT_INTENSITY, position: [0, 10, 0] },
+      environment: ENV_ROOM_LABEL,
+      texture: this.room.texture,
+    };
 
     // Presentation rig:
     //   root (float) > tilt (pointer parallax) > presentation (fixed 3/4 tilt)
@@ -250,10 +254,14 @@ export class CoinStudio {
 
     this._applyPresentation();
     this._buildBackdrop();
+    // r151: env-room multiplies each material's own envMapIntensity, so re-walk
+    // the built graph once everything above exists.
+    this.refreshEnvironment();
 
     this._ro = new ResizeObserver(() => this._resize());
     this._ro.observe(this.stage);
     this._resize();
+    this._watchPixelRatio();
 
     this._onPointerDown = (event) => this._handlePointerDown(event);
     this._onPointerMove = (event) => this._handlePointerMove(event);
@@ -279,6 +287,17 @@ export class CoinStudio {
     return this;
   }
 
+  /**
+   * Revision 21: reapply the shared room-env intensity to materials that were
+   * added after init() (the page builds its coins later). On r151 env-room
+   * scales each material's authored envMapIntensity; calling this is idempotent.
+   * @returns {CoinStudio}
+   */
+  refreshEnvironment() {
+    if (this.room) this.room.refresh(this.scene);
+    return this;
+  }
+
   _buildBackdrop() {
     const glowTexture = makeRadialTexture([
       [0, 'rgba(255,255,255,0.5)'],
@@ -291,7 +310,9 @@ export class CoinStudio {
       transparent: true,
       opacity: 0.34,
       depthWrite: false,
-      depthTest: false,
+      // rev13 s40: depthTest ON. With it off, this additive plane (transparent => drawn after the opaque coin)
+      // painted +~24 luma over the coin face at every angle in every env tier.
+      depthTest: true,
       blending: THREE.AdditiveBlending,
       color: 0x9fb6d6,
       toneMapped: false,
@@ -324,8 +345,48 @@ export class CoinStudio {
 
   /* ------------------------------------------------------------- layout */
 
+  /**
+   * rev23 s50: re-apply min(devicePixelRatio, 2) when the DPR changes (window dragged to
+   * another monitor, browser zoom, OS scale). A resolution media query only fires once
+   * per value, so it is re-armed after every change.
+   */
+  _watchPixelRatio() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    this._unwatchPixelRatio();
+    const dpr = window.devicePixelRatio || 1;
+    const query = window.matchMedia('(resolution: ' + dpr + 'dppx)');
+    const onChange = () => {
+      this._syncPixelRatio();
+      this._watchPixelRatio();
+    };
+    if (typeof query.addEventListener === 'function') query.addEventListener('change', onChange, { once: true });
+    else if (typeof query.addListener === 'function') query.addListener(onChange);
+    this._dprWatch = { query, onChange };
+  }
+
+  _unwatchPixelRatio() {
+    const watch = this._dprWatch;
+    if (!watch) return;
+    if (typeof watch.query.removeEventListener === 'function') watch.query.removeEventListener('change', watch.onChange);
+    else if (typeof watch.query.removeListener === 'function') watch.query.removeListener(watch.onChange);
+    this._dprWatch = null;
+  }
+
+  _syncPixelRatio() {
+    if (!this.renderer) return false;
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    if (this.renderer.getPixelRatio() === ratio) return false;
+    this.renderer.setPixelRatio(ratio);
+    if (this._size && this._size.w > 0 && this._size.h > 0) {
+      this.renderer.setSize(this._size.w, this._size.h, false);
+      this.renderNow();
+    }
+    return true;
+  }
+
   _resize() {
     if (!this.renderer) return;
+    this._syncPixelRatio();
     const rect = this.stage.getBoundingClientRect();
     const width = Math.max(1, Math.round(rect.width));
     const height = Math.max(1, Math.round(rect.height));
@@ -367,6 +428,7 @@ export class CoinStudio {
       this._coinGroups = this._galleryEntries.map((entry) => entry.coin.group);
       return;
     }
+    applyCoinFaceEnv(coin);
     const group = coin.group;
     group.rotation.order = 'XYZ';
     group.rotation.set(Math.PI / 2, this._spinAngle, 0);
@@ -403,6 +465,7 @@ export class CoinStudio {
         const flip = new THREE.Group();
         holder.add(flip);
 
+        applyCoinFaceEnv(coin);
         const group = coin.group;
         group.rotation.order = 'XYZ';
         group.rotation.set(Math.PI / 2, this._spinAngle, 0);
@@ -1362,6 +1425,7 @@ export class CoinStudio {
     cancelAnimationFrame(this._raf);
     window.clearInterval(this._pulseTimer);
     if (this._ro) this._ro.disconnect();
+    this._unwatchPixelRatio();
     this.canvas.removeEventListener('pointerdown', this._onPointerDown);
     this.canvas.removeEventListener('pointermove', this._onPointerMove);
     this.canvas.removeEventListener('pointerup', this._onPointerUp);
@@ -1382,7 +1446,10 @@ export class CoinStudio {
       this.shadow.material.map.dispose();
       this.shadow.material.dispose();
     }
-    if (this._envRT) this._envRT.dispose();
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
+    }
     if (this.renderer) this.renderer.dispose();
   }
 }

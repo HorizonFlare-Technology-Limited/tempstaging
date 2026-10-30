@@ -1486,13 +1486,9 @@ body[data-fallback='1'] .fallback {
 @media (max-width: 760px) {
   .control-bar {
     display: grid;
-    /* Auto-spin / Gallery / Ring / Stack in a 2 x 2 grid; in Stack mode the
-       Replay button takes a full-width row of its own instead of a third cell. */
+    /* Auto-spin / Gallery / Ring / Stack in a 2 x 2 grid. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-  }
-  #btn-replay {
-    grid-column: 1 / -1;
   }
   /* Wave is a fifth mode button: give it its own full-width row so the 3 x 2
      grid stays even at 390 px (Auto-spin / Gallery / Ring / Stack / Wave). */
@@ -1822,4 +1818,67 @@ body[data-capture='1'] #stage-canvas {
   .stage-play {
     bottom: 20px;
   }
+}
+
+/* Rev20: per-coin position / rotation readout in Wave mode */
+.wave-params {
+  margin: 10px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 9, 11, 0.72);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.wave-params[hidden] { display: none; }
+.wave-params-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+.wave-params-title {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+  color: var(--ink);
+}
+.wave-params-note { flex: 1 1 auto; font-size: 10px; color: var(--ink-dim); }
+.wave-params-copy { min-height: 28px; padding: 0 12px; font-size: 11px; }
+.wave-materials { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 8px; }
+.wave-material { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.wave-material select { min-height: 28px; padding: 0 8px; font: inherit; letter-spacing: 0; text-transform: none; color: var(--ink); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 8px; }
+.wave-params-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 14px; }
+.wave-params-row { display: grid; grid-template-columns: 34px 1fr; gap: 0 8px; line-height: 1.5; }
+.wave-params-row b { grid-row: span 3; color: var(--ink); letter-spacing: 0.1em; text-transform: uppercase; }
+.wave-params-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wave-params-row[data-selected='1'] b { color: var(--warm); }
+.wave-params-json {
+  margin: 6px 0 0;
+  max-height: 120px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.45;
+  white-space: pre;
+}
+@media (max-width: 760px) {
+  .wave-params-json { max-height: 96px; }
+}
+.wave-params-more summary { margin-top: 6px; cursor: pointer; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+.wave-params-row b { grid-row: span 3; }
+body[data-mode='wave'] .aside-copy { display: none; }
+.wave-params { margin: 14px 0 0; }
+
+/* R21 s25: env toggle floats inside the stage (top-left) so it never adds a control-bar row and shrinks the stage (stack 50 px spacing contract) */
+.stage .env-toggle--stage{left:12px;right:auto;transform:none}
+/* R21 s25: nine control-bar items (Replay + 7 modes) no longer fit one row at the 961 px desktop stage; the wrapped 2nd row took 56 px off the stage height and shrank the stack (50 px gap contract). Compact the desktop buttons so the bar stays one row. */
+@media (min-width: 1001px) {
+  .control-bar { gap: 6px; }
+  .control-bar .btn { padding: 0 9px; gap: 6px; }
 }

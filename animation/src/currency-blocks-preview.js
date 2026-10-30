@@ -16,10 +16,12 @@
  *
  * The model (geometry, procedural maps, Lexend glyph inlays, deterministic poses
  * and the shared timeline) lives in ./currency-blocks-model.js. This file owns the
- * renderer, the PMREM dark-metal studio (damped RoomEnvironment + five HDR softbox
- * panels, unlit floor pool + baked contact shadow + faint additive blue
- * under-glow), the closed-form camera fit, clamped drag-to-orbit, the animation
- * clock, the layout toggle and the QA surface.
+ * renderer, the image-based lighting (Rev21: ONLY the shared room photograph
+ * assets/env/modern-empty-room.jpg through ./env-room.js — no THREE lights, no
+ * procedural room/softbox studio), the unlit floor pool + baked contact
+ * shadow + faint additive blue under-glow (material emission, allowed), the
+ * closed-form camera fit, clamped drag-to-orbit, the animation clock, the layout
+ * toggle and the QA surface.
  *
  * Camera: fixed three-quarter view (fov/azimuth/elevation/near/far from
  * Model.CAMERA_SPEC — v2 sits at 42°/30°, lowered from 38° so the centred glyph on
@@ -42,8 +44,8 @@
  * reused; the module only installs its own capture when the page has none.
  */
 import * as THREE from 'three';
-import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
 import * as Model from './currency-blocks-model.js';
+import { applyEnvRoom } from './env-room.js';
 
 const VERSION = '2.0.0';
 
@@ -64,32 +66,22 @@ const SYMBOL_CHAIN = SYMBOLS.join(' · ');
 
 /* --------------------------------------------------------- render tuning */
 
-const RENDERER = Object.freeze({ exposure: 1.0, dprMax: 2 });
+const RENDERER = Object.freeze({ exposure: 1.3, dprMax: 2 });
 
-// A damped RoomEnvironment plus five HDR softbox panels. Small solid-angle panels
-// read as clean rectangular highlights on the glossy black top faces (the
-// reference's white sheen), while the low blue strips paint the side-wall rim
-// light. sigma stays under three.js' 20-sample PMREM blur limit so no console
-// warning is emitted.
-const ENVIRONMENT = Object.freeze({
-  lightScale: 0.3,
-  panelScale: 0.26,
-  softboxScale: 1.2,
-  sigma: 0.035,
-});
-const SOFTBOXES = Object.freeze([
-  Object.freeze({ position: [-9, 9.5, 8], lookAt: [0, 0.4, 0], scale: [6, 4], color: 0xfff3e6, intensity: 10 }),
-  Object.freeze({ position: [8, 7.5, 7], lookAt: [0, 0.4, 0], scale: [4.4, 4.2], color: 0xbfd6ff, intensity: 6 }),
-  Object.freeze({ position: [-1.5, 13, -1], lookAt: [0, 0, 0], scale: [8.5, 2.4], color: 0xffffff, intensity: 13 }),
-  Object.freeze({ position: [0, -4, -11], lookAt: [0, -0.4, 0], scale: [10, 2.8], color: 0x2a59ff, intensity: 8 }),
-  Object.freeze({ position: [-11, 2, -8], lookAt: [0, 0, 0], scale: [4.5, 6], color: 0x6f9dff, intensity: 4 }),
-]);
-const LIGHTS = Object.freeze({
-  key: { color: 0xfff1e2, intensity: 1.7, position: [-7, 11, 8], target: [0, 0.5, 0] },
-  fill: { color: 0xbcd2f2, intensity: 0.7, position: [8, 5, 7], target: [0, 0.3, 0] },
-  rim: { color: 0x6f9dff, intensity: 2.0, position: [4, 6, -9], target: [0, 0.4, 0] },
-  under: { color: 0x2a59ff, intensity: 1.15, position: [-3, -6, -5], target: [0, -1, 0] },
-  ambient: { color: 0x2b3342, intensity: 0.26 },
+/**
+ * Rev21 image-based lighting (the only light source on the page).
+ *
+ * `assets/env/modern-empty-room.jpg` is a dark interior with bright ceiling
+ * downlights; ./env-room.js filters it into a PMREM and assigns it to
+ * `scene.environment`. The glossy black block faces are metals, so their whole
+ * look (the reference's white ceiling sheen and the side-wall rim) is the room
+ * reflection; on r151 the intensity multiplies each material's authored
+ * `envMapIntensity`. No THREE light objects and no softbox panels exist here.
+ */
+const ENV_ROOM = Object.freeze({
+  intensity: 1.1,
+  boost: 9,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
 });
 const FLOOR = Object.freeze({
   yOffset: 0.42,
@@ -138,17 +130,6 @@ const firstNumber = (...values) => {
   }
   return null;
 };
-
-const srgbToLinear = (value) => (value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4));
-function srgbColor(hex) {
-  const color = new THREE.Color();
-  const r = ((hex >> 16) & 255) / 255;
-  const g = ((hex >> 8) & 255) / 255;
-  const b = (hex & 255) / 255;
-  if (THREE.ColorManagement && THREE.ColorManagement.enabled) color.setHex(hex);
-  else color.setRGB(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b));
-  return color;
-}
 
 function errorMessage(error) {
   if (!error) return 'Unknown error';
@@ -444,14 +425,13 @@ class CurrencyBlocksStudio {
     this.renderer = null;
     this.scene = null;
     this.camera = null;
-    this.envRT = null;
+    this.room = null;
     this.floorPool = null;
     this.contactShadow = null;
     this.underGlow = null;
     this.poolTexture = null;
     this.shadowTexture = null;
     this.glowTexture = null;
-    this.lights = {};
     this.stageBox = { width: 1, height: 1 };
     this.cameraTarget = new THREE.Vector3(0, CAMERA.targetY, 0);
     this.cameraDistance = 10;
@@ -513,12 +493,14 @@ class CurrencyBlocksStudio {
     camera.name = 'currency-blocks-camera';
     this.camera = camera;
 
-    this.buildEnvironment();
-    this.buildLights();
+    this.room = await applyEnvRoom(THREE, renderer, scene, { intensity: ENV_ROOM.intensity, boost: ENV_ROOM.boost });
     this.buildFloor();
 
     this.model.setTime(0);
     scene.add(this.model.root);
+    // r151: the model/floor materials above joined the graph after the initial
+    // pass, so re-apply the room intensity to everything now in the scene.
+    this.room.refresh(scene);
 
     this.bindPointer();
 
@@ -531,61 +513,6 @@ class CurrencyBlocksStudio {
     }
     this.resize();
     return this;
-  }
-
-  /** Damped RoomEnvironment + HDR softbox panels -> PMREM scene environment. */
-  buildEnvironment() {
-    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const room = new RoomEnvironment();
-    room.traverse((object) => {
-      if (object.isLight && typeof object.intensity === 'number') object.intensity *= ENVIRONMENT.lightScale;
-      if (
-        object.isMesh &&
-        object.material &&
-        object.material.isMeshBasicMaterial &&
-        object.material.color &&
-        typeof object.material.color.multiplyScalar === 'function'
-      ) {
-        object.material.color.multiplyScalar(ENVIRONMENT.panelScale);
-      }
-    });
-    for (const panel of SOFTBOXES) {
-      const material = new THREE.MeshBasicMaterial({
-        color: srgbColor(panel.color).multiplyScalar(panel.intensity * ENVIRONMENT.softboxScale),
-        toneMapped: false,
-      });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
-      mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-      mesh.lookAt(panel.lookAt[0], panel.lookAt[1], panel.lookAt[2]);
-      mesh.scale.set(panel.scale[0], panel.scale[1], 1);
-      room.add(mesh);
-    }
-    this.envRT = pmremGenerator.fromScene(room, ENVIRONMENT.sigma);
-    this.scene.environment = this.envRT.texture;
-    room.dispose();
-    pmremGenerator.dispose();
-  }
-
-  buildLights() {
-    const addDirectional = (name, spec) => {
-      const light = new THREE.DirectionalLight(spec.color, spec.intensity);
-      light.name = 'currency-blocks-light-' + name;
-      light.position.set(spec.position[0], spec.position[1], spec.position[2]);
-      light.target.position.set(spec.target[0], spec.target[1], spec.target[2]);
-      this.scene.add(light);
-      this.scene.add(light.target);
-      this.lights[name] = light;
-      return light;
-    };
-    addDirectional('key', LIGHTS.key);
-    addDirectional('fill', LIGHTS.fill);
-    addDirectional('rim', LIGHTS.rim);
-    addDirectional('under', LIGHTS.under);
-    const ambient = new THREE.AmbientLight(LIGHTS.ambient.color, LIGHTS.ambient.intensity);
-    ambient.name = 'currency-blocks-light-ambient';
-    this.scene.add(ambient);
-    this.lights.ambient = ambient;
   }
 
   /**
@@ -1078,7 +1005,10 @@ class CurrencyBlocksStudio {
       triangles: renderer ? renderer.info.render.triangles : 0,
       calls: renderer ? renderer.info.render.calls : 0,
       shadowMap: false,
-      lights: { directional: 4, ambient: 1, environment: 'PMREM RoomEnvironment + 5 softbox panels' },
+      // Rev21: image-based lighting only — zero THREE light objects, the whole
+      // scene is lit by the PMREM of the shared room photograph.
+      environmentIntensity: ENV_ROOM.intensity,
+      lights: { directional: 0, point: 0, spot: 0, ambient: 0, hemisphere: 0, rectArea: 0, environment: ENV_ROOM.label },
     };
   }
 
@@ -1094,7 +1024,10 @@ class CurrencyBlocksStudio {
       this.canvas.removeEventListener('pointercancel', this.onPointerUp);
       this.canvas.removeEventListener('lostpointercapture', this.onPointerUp);
     }
-    if (this.envRT) this.envRT.dispose();
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
+    }
     for (const texture of [this.poolTexture, this.shadowTexture, this.glowTexture]) {
       if (texture) texture.dispose();
     }
@@ -1368,8 +1301,8 @@ function syncCopy() {
   const vertical = state.layout === 'vertical';
   setText(dom.stageEyebrow, vertical ? 'Currency totem' : 'Currency fan');
   setText(dom.stageCode, vertical ? 'VRT' : 'HRZ');
-  setText(dom.stageName, vertical ? 'Vertical stack' : 'Horizontal stack');
-  setText(dom.stageDetail, SYMBOL_CHAIN + (vertical ? ' · stacked top to bottom' : ' · fanned top to bottom'));
+  setText(dom.stageName, vertical ? 'Vertical stack' : 'Upright deck');
+  setText(dom.stageDetail, SYMBOL_CHAIN + (vertical ? ' · stacked top to bottom' : ' · faces touching, fanned left to right'));
 }
 
 function syncSpecs() {
@@ -1386,7 +1319,7 @@ function syncSpecs() {
     layoutDebug && layoutDebug.travel,
     ((BLOCK_COUNT - 1) / 2) * (scatterPitch - tightPitch),
   );
-  setText(dom.specLayout, vertical ? 'Vertical stack · Y axis' : 'Horizontal fan · stacked on Y');
+  setText(dom.specLayout, vertical ? 'Vertical stack · Y axis' : 'Upright deck · fans left/right');
   setText(dom.specBlocks, BLOCK_COUNT + ' · one per currency');
   setText(dom.specBlockSize, trim(BLOCK_SPEC.size) + ' × ' + trim(BLOCK_SPEC.size));
   setText(dom.specCornerRadius, trim(BLOCK_SPEC.radius) + ' · large');

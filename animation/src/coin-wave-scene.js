@@ -1,16 +1,16 @@
 /**
- * coin-wave-scene.js — three.js scene build for the Rev15 coin Wave.
+ * coin-wave-scene.js — three.js scene build for the Rev21 coin Wave.
  *
  * Consumes the pure composition module (./coin-wave.js) and builds:
- *  - two broad, wide-top ribbon waves running left-right: the front one in
- *    brushed stainless steel, the back one in TEKO gold with a satin finish,
- *    half a phase along X (gold crest over the steel trough); both surfaces come
- *    straight from WAVE's exact profile functions (flat-topped sine along X,
- *    broad flat top across the ribbon width), with polished long-edge bevels;
- *  - a neutral dark studio environment (PMREM): a large soft overhead panel,
- *    broad neutral side panels and a faint warm bounce for the gold, no floor;
+ *  - two true sine ribbon waves running left-right: the front one in polished
+ *    stainless steel (sin), the back one in the Rev21 slate blue-violet with a
+ *    diagonal gradient albedo + fine dot-grid (cos after the rev26 s51 swap; steel is
+ *    sin + 19/4); both surfaces come straight from WAVE's
+ *    exact sine profile functions, with polished rounded long-edge bevels;
  *  - soft authored contact-shadow decals under the three coin placements;
- *  - a small neutral light rig (white key + cool-neutral fill + back light).
+ *  - no lights and no private studio environment: the shared room photo
+ *    (src/env-room.js -> assets/env/modern-empty-room.jpg) is the only light
+ *    source (Revision 21).
  *
  * The three coins themselves are page-owned (they come from the coin model
  * bank); the page adds them to the returned group using WAVE.coins.
@@ -19,15 +19,45 @@
  * surfaces come from WAVE, nothing reads the clock or Math.random.
  */
 import * as THREE from 'three';
+import { ENV_ROOM } from './env-room.js';
 import { WAVE, waveSurfaceHeight, waveSurfaceNormal } from './coin-wave.js';
+// s58: IMPORT-ONLY reuse of the columns material bank (columns-model.js is not edited).
+import { loadColumnBank, createColumns, UV_DENSITY_SCALE, COLUMN_PATTERN_SCALE } from './columns-model.js';
 
-/** TEKO theme gold (satin wave) plus the neutral studio accents. */
+// Rev21: the shared room photo is the only light source (applied to the page's
+// own scene by src/env-room.js). The composition never builds an environment.
+const ENV_ROOM_LABEL = ENV_ROOM.url + ' (PMREM, env-room)';
+
+/**
+ * s58: selectable wave materials. 'default' = the authored look (polished steel
+ * / slate ribbon). The rest are the columns-bank materials (reeded excluded;
+ * knurl no longer exists), triplanar-patched by columns-model createColumns.
+ */
+export const WAVE_MATERIAL_CHOICES = Object.freeze(['default', 'plaster', 'satin', 'grain-metal', 'titanium']);
+/** Wave kinds that accept a material choice: steel = metal wave, gold = blue slate ribbon. */
+export const WAVE_MATERIAL_KINDS = Object.freeze(['steel', 'gold']);
+/**
+ * Pattern scale glue. The bank triplanar maps in OBJECT space with
+ * 1 / (tilePx * UV_DENSITY_SCALE * COLUMN_PATTERN_SCALE * patternDivisor); the
+ * columns are ~200 units, the ribbon ~0.25 wide, so the divisor shrinks the
+ * tile to WAVE_PATTERN_TILE_WORLD world units for the plaster tile (420 px);
+ * other materials keep their manifest tile ratio. Fine-detail octaves scale
+ * with the same divisor and fade by screen derivative (no shimmer).
+ */
+export const WAVE_PATTERN_TILE_WORLD = 0.5;
+const WAVE_PATTERN_REF_TILE_PX = 420;
+export const WAVE_PATTERN_DIVISOR = WAVE_PATTERN_TILE_WORLD / (WAVE_PATTERN_REF_TILE_PX * UV_DENSITY_SCALE * COLUMN_PATTERN_SCALE);
+/** Per-material env gain on the wave (the bank values are tuned for the cards page). */
+const WAVE_BANK_ENV = Object.freeze({ plaster: 0.7, satin: 0.8, 'grain-metal': 0.7, titanium: 0.7 });
+
+/** Rev21 slate blue-violet palette (refs/rev21/wave-gold-color.png). */
 export const WAVE_ACCENT = Object.freeze({
-  gold: 0xffd60a,
-  goldDeep: 0x7d5a00,
+  gold: 0x4c5482,
+  goldDeep: 0x2a3054,
+  gradientTop: 0x7e84b2,
   steel: 0xcfd4da,
   white: 0xffffff,
-  role: 'TEKO brand gold satin ribbon (back wave)',
+  role: 'slate blue-violet ribbon (back wave)',
 });
 
 /* ------------------------------------------------------------------------- */
@@ -59,92 +89,6 @@ function canvasTexture(canvas, { srgb = false, repeatU = true } = {}) {
   return texture;
 }
 
-/**
- * Brushed stainless steel: fine streaks run ALONG the ribbon (u), neutral cool
- * silver, low-contrast albedo + roughness + bump variation.
- */
-function buildBrushedMaps(size = 512) {
-  const random = lcg(0x575e7a1);
-  const albedo = makeCanvas(size, size);
-  const roughness = makeCanvas(size, size);
-  const bump = makeCanvas(size, size);
-  const albedoCtx = albedo.getContext('2d');
-  const roughnessCtx = roughness.getContext('2d');
-  const bumpCtx = bump.getContext('2d');
-  const albedoData = albedoCtx.createImageData(size, size);
-  const roughnessData = roughnessCtx.createImageData(size, size);
-  const bumpData = bumpCtx.createImageData(size, size);
-  for (let y = 0; y < size; y += 1) {
-    const rowStreak = random() * 0.22 + random() * 0.1;
-    for (let x = 0; x < size; x += 1) {
-      const fine = random();
-      const streak = rowStreak + fine * 0.06;
-      const base = 0.6 + streak * 0.16;
-      const index = (y * size + x) * 4;
-      const albedoValue = Math.round(Math.min(1, base) * 255);
-      albedoData.data[index] = albedoValue - 3;
-      albedoData.data[index + 1] = albedoValue - 1;
-      albedoData.data[index + 2] = albedoValue + 2;
-      albedoData.data[index + 3] = 255;
-      const roughnessValue = Math.round((0.3 + streak * 0.18 + fine * 0.03) * 255);
-      roughnessData.data[index] = roughnessValue;
-      roughnessData.data[index + 1] = roughnessValue;
-      roughnessData.data[index + 2] = roughnessValue;
-      roughnessData.data[index + 3] = 255;
-      const bumpValue = Math.round((0.5 + streak * 0.35) * 255);
-      bumpData.data[index] = bumpValue;
-      bumpData.data[index + 1] = bumpValue;
-      bumpData.data[index + 2] = bumpValue;
-      bumpData.data[index + 3] = 255;
-    }
-  }
-  albedoCtx.putImageData(albedoData, 0, 0);
-  roughnessCtx.putImageData(roughnessData, 0, 0);
-  bumpCtx.putImageData(bumpData, 0, 0);
-  return {
-    map: canvasTexture(albedo, { srgb: true }),
-    roughnessMap: canvasTexture(roughness),
-    bumpMap: canvasTexture(bump),
-  };
-}
-
-/**
- * TEKO gold satin: soft, low-contrast satin sheen (no brushed streaks), a very
- * gentle mottling and a satin roughness (0.34..0.46) so it reads smooth matte
- * gold rather than mirror chrome.
- */
-function buildSatinGoldMaps(size = 512) {
-  const random = lcg(0x60d5a71);
-  const albedo = makeCanvas(size, size);
-  const roughness = makeCanvas(size, size);
-  const ctx = albedo.getContext('2d');
-  const rCtx = roughness.getContext('2d');
-  const albedoData = ctx.createImageData(size, size);
-  const roughnessData = rCtx.createImageData(size, size);
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const index = (y * size + x) * 4;
-      const mottle = (random() - 0.5) * 0.05;
-      const value = 0.72 + mottle; // neutral value: the TEKO gold colour tints it
-      albedoData.data[index] = Math.round(Math.min(1, value) * 255);
-      albedoData.data[index + 1] = Math.round(Math.min(1, value) * 255);
-      albedoData.data[index + 2] = Math.round(Math.min(1, value) * 255);
-      albedoData.data[index + 3] = 255;
-      const roughnessValue = Math.round((0.36 + random() * 0.12) * 255);
-      roughnessData.data[index] = roughnessValue;
-      roughnessData.data[index + 1] = roughnessValue;
-      roughnessData.data[index + 2] = roughnessValue;
-      roughnessData.data[index + 3] = 255;
-    }
-  }
-  ctx.putImageData(albedoData, 0, 0);
-  rCtx.putImageData(roughnessData, 0, 0);
-  return {
-    map: canvasTexture(albedo, { srgb: true }),
-    roughnessMap: canvasTexture(roughness),
-  };
-}
-
 /** Soft radial contact-shadow sprite (authored, deterministic, no blur filter). */
 function buildContactShadowTexture(size = 256) {
   const canvas = makeCanvas(size, size);
@@ -159,150 +103,139 @@ function buildContactShadowTexture(size = 256) {
   return canvas;
 }
 
-/* ------------------------------------------------------------------------- */
-/* Wave environment + geometry                                               */
-/* ------------------------------------------------------------------------- */
-
 /**
- * Neutral dark PMREM studio: a large soft overhead panel, two broad neutral
- * side panels, a dim back wall and a faint warm bounce for the gold. No floor,
- * no network assets, no clock/random.
+ * Rev21 slate blue-violet albedo for the back ribbon (refs/rev21/wave-gold-color.png):
+ * a diagonal gradient bottom-left #2a3054 -> centre #4c5482 -> top-right #7e84b2
+ * with the ref's fine dot-grid overlaid. Authored, deterministic (no randomness,
+ * no network). It is an ALBEDO map on a metalness=1 material, so the ribbon keeps
+ * its polished-metal response instead of reading as paint.
  */
-export function buildWaveEnvironment(renderer) {
-  if (!renderer) return null;
-  const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color(0x050607);
-  const resources = [];
-  const addPanel = ({ width, height, depth, x = 0, y = 0, z = 0, color, intensity }) => {
-    const geometry = new THREE.BoxGeometry(width, height, depth);
-    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), fog: false });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, y, z);
-    envScene.add(mesh);
-    resources.push({ mesh, geometry, material });
-  };
-  addPanel({ width: 26, height: 0.4, depth: 16, x: 0, y: 8.0, z: -1.0, color: 0xffffff, intensity: 1.2 });
-  addPanel({ width: 18, height: 0.3, depth: 2.5, x: 0, y: 6.4, z: 3.4, color: 0xffffff, intensity: 1.0 });
-  addPanel({ width: 0.4, height: 7.0, depth: 14, x: -8.0, y: 2.4, z: -2.4, color: 0xe3eaf2, intensity: 1.3 });
-  addPanel({ width: 0.4, height: 7.0, depth: 14, x: 8.0, y: 2.4, z: -2.4, color: 0xe3eaf2, intensity: 1.3 });
-  addPanel({ width: 24, height: 9, depth: 0.3, x: 0, y: 2.0, z: -12.0, color: 0xb8c2cc, intensity: 0.45 });
-  addPanel({ width: 12, height: 0.3, depth: 0.6, x: 0, y: -2.6, z: 4.2, color: 0xffcf6a, intensity: 0.9 });
-
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const target = pmrem.fromScene(envScene, 0.04);
-  pmrem.dispose();
-  for (const resource of resources) {
-    envScene.remove(resource.mesh);
-    resource.geometry.dispose();
-    resource.material.dispose();
+function buildSlateGradientTexture(width = 1024, height = 256) {
+  const canvas = makeCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  // diagonal bottom-left -> top-right (canvas y grows downward)
+  const gradient = ctx.createLinearGradient(0, height, width, 0);
+  gradient.addColorStop(0, '#2a3054');
+  gradient.addColorStop(0.5, '#4c5482');
+  gradient.addColorStop(1, '#7e84b2');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  // fine dot-grid: milled-panel micro texture from the reference
+  const spacing = 8;
+  for (let y = spacing / 2; y < height; y += spacing) {
+    for (let x = spacing / 2; x < width; x += spacing) {
+      const light = ((x / spacing) | 0) % 2 === ((y / spacing) | 0) % 2;
+      ctx.fillStyle = light ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
+      ctx.fillRect(x - 1, y - 1, 1.6, 1.6);
+    }
   }
-  envScene.clear();
-  return {
-    texture: target.texture,
-    renderTarget: target,
-    dispose() {
-      target.dispose();
-    },
-  };
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.anisotropy = 8;
+  texture.encoding = THREE.sRGBEncoding;
+  // UVs are world-space (u = x, v = cross-section arc length); remap the run of
+  // the ribbon onto the full gradient with a little diagonal variation across
+  // the narrow width.
+  const length = WAVE.waves.gold.length || 1;
+  const band = Math.max(1e-6, WAVE.waves.gold.width * 2.2);
+  texture.repeat.set(1 / length, 1 / band);
+  texture.offset.set(0.5, 0.5);
+  texture.needsUpdate = true;
+  return texture;
 }
 
+/* ------------------------------------------------------------------------- */
+/* Wave geometry                                                             */
+/* ------------------------------------------------------------------------- */
+
+/** Rounded-edge cross-section arc segments per long edge (Rev18: edges are circular arcs). */
+const EDGE_ARC_SEGMENTS = 10;
+
 /**
- * Ribbon geometry from the exact analytic surface: top sheet (metal material,
- * group 0), polished long-edge side walls (group 1) and underside (group 0).
- * The ribbon is a broad flat strap that undulates along X; its two long edges
- * follow the wave, so the wave reads as a wavy ribbon silhouette.
+ * Ribbon geometry from the exact analytic surface. Rev18: the strap is swept
+ * along X with a closed rounded cross-section (flat top, flat underside, and
+ * the two long edges are semicircular arcs of radius thickness/2), so the
+ * wave sides are thin and round instead of square walls. One surface, one
+ * material; UVs are world-scaled (1 unit = 1 world unit); the Rev20
+ * ribbons carry no pattern maps, UVs are kept for tooling.
  */
-function buildRibbonGeometry(wave, { xSegments = 220, zSegments = 10 } = {}) {
+function buildRibbonGeometry(wave, { xSegments = 220, zFlatSegments = 8 } = {}) {
   const positions = [];
   const normals = [];
   const uvs = [];
-  const indicesTop = [];
-  const indicesEdge = [];
+  const indices = [];
   const halfLength = wave.length / 2;
-  const zStart = wave.zStart;
-  const zSpan = wave.zEnd - wave.zStart;
-  const uRepeat = 6;
+  const r = wave.thickness / 2;
+  const zLeft = wave.zStart + r; // arc centre z (left edge)
+  const zRight = wave.zEnd - r; // arc centre z (right edge)
+  const flat = zRight - zLeft;
 
-  const pushVertex = (x, y, z, nx, ny, nz, u, v) => {
-    positions.push(x, y, z);
-    normals.push(nx, ny, nz);
-    uvs.push(u, v);
-    return positions.length / 3 - 1;
+  // closed section loop: z, dy (relative to the top surface), unit normal (sy, sz), arc length so far
+  const section = [];
+  let along = 0;
+  const addPoint = (z, dy, sy, sz) => {
+    if (section.length) {
+      const prev = section[section.length - 1];
+      along += Math.hypot(z - prev.z, dy - prev.dy);
+    }
+    section.push({ z, dy, sy, sz, along });
   };
+  // top, left -> right
+  for (let j = 0; j <= zFlatSegments; j += 1) addPoint(zLeft + (flat * j) / zFlatSegments, 0, 1, 0);
+  // right arc, from the top (+Y) around +Z to the underside (-Y)
+  for (let k = 1; k <= EDGE_ARC_SEGMENTS; k += 1) {
+    const a = (Math.PI * k) / EDGE_ARC_SEGMENTS;
+    addPoint(zRight + r * Math.sin(a), -r + r * Math.cos(a), Math.cos(a), Math.sin(a));
+  }
+  // underside, right -> left
+  for (let j = 1; j <= zFlatSegments; j += 1) addPoint(zRight - (flat * j) / zFlatSegments, -2 * r, -1, 0);
+  // left arc, from the underside (-Y) around -Z back to the top (+Y)
+  for (let k = 1; k < EDGE_ARC_SEGMENTS; k += 1) {
+    const a = Math.PI + (Math.PI * k) / EDGE_ARC_SEGMENTS;
+    addPoint(zLeft + r * Math.sin(a), -r + r * Math.cos(a), Math.cos(a), Math.sin(a));
+  }
+  const ringSize = section.length;
 
-  // top sheet
-  const topStart = positions.length / 3;
   for (let i = 0; i <= xSegments; i += 1) {
     const x = -halfLength + (wave.length * i) / xSegments;
-    const surfaceY = waveSurfaceHeight(wave.kind, x, zStart);
-    const normal = waveSurfaceNormal(wave.kind, x, zStart);
-    for (let j = 0; j <= zSegments; j += 1) {
-      const z = zStart + (zSpan * j) / zSegments;
-      pushVertex(x, surfaceY, z, normal[0], normal[1], normal[2], (i / xSegments) * uRepeat, j / zSegments);
+    const surfaceY = waveSurfaceHeight(wave.kind, x, wave.zStart);
+    const tilt = waveSurfaceNormal(wave.kind, x, wave.zStart);
+    for (let j = 0; j < ringSize; j += 1) {
+      const point = section[j];
+      // world normal: section normal with the wave's slope tilt on the vertical part
+      let nx = tilt[0] * point.sy;
+      let ny = tilt[1] * point.sy;
+      let nz = point.sz;
+      const length = Math.hypot(nx, ny, nz) || 1;
+      nx /= length;
+      ny /= length;
+      nz /= length;
+      positions.push(x, surfaceY + point.dy, point.z);
+      normals.push(nx, ny, nz);
+      uvs.push(x, point.along);
     }
   }
   for (let i = 0; i < xSegments; i += 1) {
-    for (let j = 0; j < zSegments; j += 1) {
-      const a = topStart + i * (zSegments + 1) + j;
+    for (let j = 0; j < ringSize - 1; j += 1) {
+      const a = i * ringSize + j;
       const b = a + 1;
-      const c = a + (zSegments + 1);
+      const c = (i + 1) * ringSize + j;
       const d = c + 1;
-      indicesTop.push(a, c, b, b, c, d);
+      indices.push(a, c, b, b, c, d);
     }
+    // closing quad: last section point -> first (the left arc ends at the top-left corner)
+    const a = i * ringSize + (ringSize - 1);
+    const b = i * ringSize;
+    const c = (i + 1) * ringSize + (ringSize - 1);
+    const d = (i + 1) * ringSize;
+    indices.push(a, c, b, b, c, d);
   }
-
-  // underside, opposite winding
-  const bottomStart = positions.length / 3;
-  for (let i = 0; i <= xSegments; i += 1) {
-    const x = -halfLength + (wave.length * i) / xSegments;
-    const surfaceY = waveSurfaceHeight(wave.kind, x, zStart);
-    for (let j = 0; j <= zSegments; j += 1) {
-      const z = zStart + (zSpan * j) / zSegments;
-      pushVertex(x, surfaceY - wave.thickness, z, 0, -1, 0, (i / xSegments) * uRepeat, j / zSegments);
-    }
-  }
-  for (let i = 0; i < xSegments; i += 1) {
-    for (let j = 0; j < zSegments; j += 1) {
-      const a = bottomStart + i * (zSegments + 1) + j;
-      const b = a + 1;
-      const c = a + (zSegments + 1);
-      const d = c + 1;
-      indicesTop.push(a, b, c, b, d, c);
-    }
-  }
-
-  // polished long-edge side walls (two long edges of the strap)
-  for (const edge of [
-    { z: zStart, side: -1 },
-    { z: wave.zEnd, side: 1 },
-  ]) {
-    const edgeStart = positions.length / 3;
-    const normal = [0, 0.18, edge.side];
-    const normalLength = Math.hypot(normal[0], normal[1], normal[2]);
-    const n = [normal[0] / normalLength, normal[1] / normalLength, normal[2] / normalLength];
-    for (let i = 0; i <= xSegments; i += 1) {
-      const x = -halfLength + (wave.length * i) / xSegments;
-      const surfaceY = waveSurfaceHeight(wave.kind, x, edge.z);
-      pushVertex(x, surfaceY, edge.z, n[0], n[1], n[2], (i / xSegments) * uRepeat, 1);
-      pushVertex(x, surfaceY - wave.thickness, edge.z, n[0], n[1], n[2], (i / xSegments) * uRepeat, 0);
-    }
-    for (let i = 0; i < xSegments; i += 1) {
-      const a = edgeStart + i * 2;
-      const b = a + 1;
-      const c = a + 2;
-      const d = a + 3;
-      if (edge.side > 0) indicesEdge.push(a, b, c, c, b, d);
-      else indicesEdge.push(a, c, b, b, c, d);
-    }
-  }
-
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex([...indicesTop, ...indicesEdge]);
-  geometry.addGroup(0, indicesTop.length, 0);
-  geometry.addGroup(indicesTop.length, indicesEdge.length, 1);
+  geometry.setIndex(indices);
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -312,12 +245,15 @@ function buildRibbonGeometry(wave, { xSegments = 220, zSegments = 10 } = {}) {
 /* ------------------------------------------------------------------------- */
 
 /**
- * Build the Wave scene (ribbons + studio + contact decals + lights).
- * @param {{ renderer?: THREE.WebGLRenderer, castShadow?: boolean }} [options]
+ * Build the Wave scene (ribbons + contact decals). Rev21: the scene carries no
+ * lights and never builds an environment — it reuses the page's shared room-env
+ * texture (src/env-room.js) via `options.room`, so the whole page is lit by the
+ * same photo. The page applies that environment to its own scene.
+ * @param {{ room?: object, castShadow?: boolean }} [options]
  * @returns {{
  *   group: THREE.Group,
- *   environment: { texture: THREE.Texture, dispose: () => void } | null,
- *   lights: Record<string, THREE.Light>,
+ *   environment: THREE.Texture | null,
+ *   lights: Record<string, never>,
  *   materials: Record<string, THREE.Material>,
  *   waves: Record<string, { mesh: THREE.Mesh, geometry: THREE.BufferGeometry }>,
  *   frame: () => object,
@@ -326,81 +262,75 @@ function buildRibbonGeometry(wave, { xSegments = 220, zSegments = 10 } = {}) {
  * }}
  */
 export function createWaveComposition(options = {}) {
-  const renderer = options.renderer || null;
+  const room = options.room || null;
+  const environment = room && room.texture ? room.texture : null;
+  // Rev21: kept for API compatibility — there are never any lights.
+  const lights = Object.freeze({});
   const group = new THREE.Group();
   group.name = 'coin-wave-composition';
 
-  const steelMaps = buildBrushedMaps(512);
-  const goldMaps = buildSatinGoldMaps(512);
   const contactTexture = new THREE.CanvasTexture(buildContactShadowTexture(256));
   contactTexture.encoding = THREE.LinearEncoding;
   contactTexture.needsUpdate = true;
 
+  // Rev20: both ribbons are smooth polished metal (no pattern maps): the surface
+  // is a clean mirror-like sheet that reflects the environment.
+  // Rev21: the room photo is a dark interior whose ceiling/walls are much
+  // brighter than the old panel studio for broad horizontal mirrors, so the
+  // authored envMapIntensity is lowered to keep the steel/gold from clipping.
   const steelMaterial = new THREE.MeshPhysicalMaterial({
-    map: steelMaps.map,
-    roughnessMap: steelMaps.roughnessMap,
-    bumpMap: steelMaps.bumpMap,
-    bumpScale: 0.0016,
-    color: 0xffffff,
+    color: 0xd8dde3,
     metalness: 1.0,
-    roughness: 0.38,
-    clearcoat: 0.04,
-    clearcoatRoughness: 0.35,
-    envMapIntensity: 1.0,
+    roughness: 0.46, // s59: diffuse enough to show the line light as a soft glow
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.06,
+    envMapIntensity: 1.3,
     side: THREE.DoubleSide,
   });
-  steelMaterial.name = 'wave-steel-brushed';
-  const goldMaterial = new THREE.MeshPhysicalMaterial({
-    map: goldMaps.map,
-    roughnessMap: goldMaps.roughnessMap,
-    color: 0xffd60a,
-    metalness: 0.0,
-    roughness: 0.5,
-    clearcoat: 0.0,
-    clearcoatRoughness: 1.0,
-    envMapIntensity: 0.5,
-    side: THREE.DoubleSide,
-  });
-  goldMaterial.name = 'wave-gold-satin';
-  const goldEdgeMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0xffe55c,
-    metalness: 1.0,
-    roughness: 0.24,
-    clearcoat: 0.2,
-    clearcoatRoughness: 0.18,
-    envMapIntensity: 1.15,
-    side: THREE.DoubleSide,
-  });
-  goldEdgeMaterial.name = 'wave-gold-polished-edge';
+  steelMaterial.name = 'wave-steel-polished';
   const edgeMaterial = new THREE.MeshPhysicalMaterial({
     color: 0xdfe4ea,
     metalness: 1.0,
     roughness: 0.2,
     clearcoat: 0.28,
     clearcoatRoughness: 0.12,
-    envMapIntensity: 1.1,
+    envMapIntensity: 0.6,
     side: THREE.DoubleSide,
   });
   edgeMaterial.name = 'wave-polished-edge';
-
+  // Rev21: the back ribbon is the slate blue-violet reference. Its albedo is a
+  // procedural diagonal gradient + dot-grid map, but it stays metalness 1 /
+  // low roughness, so it reads as a polished metal ribbon, not paint.
+  const slateGradientTexture = buildSlateGradientTexture(1024, 256);
   const goldRibbonMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0xffd60a,
-    metalness: 0.5,
-    roughness: 0.48,
-    clearcoat: 0.04,
-    clearcoatRoughness: 0.5,
-    envMapIntensity: 1.25,
+    // The albedo is the exact Rev21 ref gradient (+ dot-grid) via the map; the
+    // material colour stays neutral so the rendered albedo is the ref slate.
+    color: 0xffffff,
+    map: slateGradientTexture,
+    metalness: 1.0,
+    roughness: 0.2,
+    // The page-level env-room intensity (x11) multiplies every authored
+    // envMapIntensity: a mirror-like gain would wash the dark slate albedo out
+    // to silver, so the ribbon takes a moderate reflection gain.
+    envMapIntensity: 0.35,
+    // A faint own-tint emission keeps the ribbon unmistakably slate blue-violet
+    // where the room photo's dim walls leave the metal nearly black (material
+    // emission is allowed by the Rev21 lighting rules; no THREE light is added).
+    emissive: new THREE.Color(0x4c5482),
+    emissiveIntensity: 0.35,
     side: THREE.DoubleSide,
   });
-  goldRibbonMaterial.name = 'wave-gold-satin';
+  goldRibbonMaterial.name = 'wave-slate-blue-violet-polished';
   const materials = { steel: steelMaterial, gold: goldRibbonMaterial, edge: edgeMaterial };
-  const textures = [steelMaps.map, steelMaps.roughnessMap, steelMaps.bumpMap, goldMaps.map, goldMaps.roughnessMap];
   const geometries = [];
   const waves = {};
 
   for (const kind of ['steel', 'gold']) {
     const spec = WAVE.waves[kind];
     const geometry = buildRibbonGeometry(spec);
+    // s58: bank materials sample aoMap on the uv2 channel; the triplanar shader ignores the UVs
+    // but the program still needs the attribute declared.
+    if (!geometry.getAttribute('uv2') && geometry.getAttribute('uv')) geometry.setAttribute('uv2', geometry.getAttribute('uv').clone());
     geometries.push(geometry);
     // one material per ribbon so the whole wave surface reads as that metal
     const mesh = new THREE.Mesh(geometry, kind === 'steel' ? steelMaterial : goldRibbonMaterial);
@@ -432,24 +362,63 @@ export function createWaveComposition(options = {}) {
     decals.push({ decal, geometry, material });
   }
 
-  const key = new THREE.DirectionalLight(0xffffff, 0.9);
-  key.position.set(4.5, 7.5, 6.5);
-  key.castShadow = false;
-  group.add(key);
-  const fill = new THREE.DirectionalLight(0xdfe6f0, 0.35);
-  fill.position.set(-5.5, 3.5, 4.5);
-  fill.castShadow = false;
-  group.add(fill);
-  const back = new THREE.DirectionalLight(0xffffff, 0.25);
-  back.position.set(-2.5, 4.5, -6.0);
-  back.castShadow = false;
-  group.add(back);
-  const lights = { key, fill, back };
-
-  const environment = renderer ? buildWaveEnvironment(renderer) : null;
+  // Rev21: no lights and no private studio environment. The shared room photo
+  // (scene.environment, owned by the page via src/env-room.js) lights the
+  // ribbons and the page-owned coins; the composition only exposes the handle.
+  // s58: live material swap. Default materials are kept (and re-disposable);
+  // bank materials come from a lazily loaded columns bank owned by this composition.
+  const defaultMaterials = { steel: steelMaterial, gold: goldRibbonMaterial };
+  const chosen = { steel: 'default', gold: 'default' };
+  const swapToken = { steel: 0, gold: 0 };
+  const columnAssetBase = options.columnAssetBase || './assets/textures/materials';
+  let bankPromise = null;
+  let bank = null;
+  let bankCols = null;
+  let swaps = 0;
+  let disposedMaterials = 0;
+  function ensureBank() {
+    if (!bankPromise) {
+      bankPromise = loadColumnBank({ assetBase: columnAssetBase }).then((b) => {
+        bank = b;
+        bankCols = createColumns(b, { quality: 'hero', patternDivisor: WAVE_PATTERN_DIVISOR });
+        for (const id of Object.keys(WAVE_BANK_ENV)) {
+          const m = b.materials[id];
+          m.side = THREE.DoubleSide;
+          m.envMapIntensity = WAVE_BANK_ENV[id];
+          m.needsUpdate = true;
+        }
+        return b;
+      });
+    }
+    return bankPromise;
+  }
+  /**
+   * @param {'steel'|'gold'} kind
+   * @param {string} id one of WAVE_MATERIAL_CHOICES
+   * @returns {Promise<string>} the applied id (stale requests resolve to the current one)
+   */
+  async function setWaveMaterial(kind, id) {
+    if (!WAVE_MATERIAL_KINDS.includes(kind)) throw new Error('setWaveMaterial: unknown kind ' + kind);
+    if (!WAVE_MATERIAL_CHOICES.includes(id)) throw new Error('setWaveMaterial: unknown material ' + id);
+    const token = ++swapToken[kind];
+    if (id !== 'default') await ensureBank();
+    if (disposed || token !== swapToken[kind]) return chosen[kind];
+    const next = id === 'default' ? defaultMaterials[kind] : bank.materials[id];
+    const prev = materials[kind];
+    if (prev === next) { chosen[kind] = id; return id; }
+    waves[kind].mesh.material = next;
+    materials[kind] = next;
+    chosen[kind] = id;
+    swaps += 1;
+    const other = kind === 'steel' ? 'gold' : 'steel';
+    if (prev !== materials[other] && prev !== materials.edge) { prev.dispose(); disposedMaterials += 1; }
+    return id;
+  }
 
   let disposed = false;
   const composition = {
+    setWaveMaterial,
+    getWaveMaterials: () => ({ ...chosen }),
     group,
     environment,
     lights,
@@ -480,8 +449,13 @@ export function createWaveComposition(options = {}) {
           metalness: materials[keyName].metalness,
           roughness: materials[keyName].roughness,
         })),
-        lights: Object.keys(lights).map((name) => ({ name, type: lights[name].type, intensity: lights[name].intensity })),
-        environment: Boolean(environment),
+        lights: [],
+        environment: ENV_ROOM_LABEL,
+        environmentTexture: Boolean(environment),
+        waveScale: WAVE.waveScale,
+        palette: WAVE.palette,
+        goldAlbedoMap: Boolean(goldRibbonMaterial.map),
+        waveMaterials: { ...chosen, swaps, disposedMaterials, bankLoaded: Boolean(bank), patternDivisor: WAVE_PATTERN_DIVISOR, patternTileWorld: WAVE_PATTERN_TILE_WORLD },
         contactDecals: decals.length,
         coins: WAVE.count,
         spacing: WAVE.metrics.spacing,
@@ -499,15 +473,19 @@ export function createWaveComposition(options = {}) {
       for (const geometry of geometries) geometry.dispose();
       geometries.length = 0;
       for (const e of Object.values(materials)) e.dispose();
-      for (const texture of textures) texture.dispose();
+      for (const e of Object.values(defaultMaterials)) e.dispose();
+      if (bankCols) bankCols.dispose();
+      if (bank) bank.dispose();
+      swapToken.steel++; swapToken.gold++;
       contactTexture.dispose();
+      slateGradientTexture.dispose();
       for (const decal of decals) {
         decal.geometry.dispose();
         decal.material.dispose();
       }
       decals.length = 0;
-      if (environment) environment.dispose();
-      for (const light of Object.values(lights)) group.remove(light);
+      // The room environment texture is shared and owned by the page — never
+      // disposed here.
       group.removeFromParent();
       group.clear();
     },

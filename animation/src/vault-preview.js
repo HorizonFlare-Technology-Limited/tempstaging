@@ -4,12 +4,13 @@
  * Standalone collection page controller for `vault.html` (docs/vault.md,
  * revision 17): a dark product studio showing a ribbed steel safe/vault whose
  * chamfered door swings from CLOSED to OPEN while 24 thin steel-blue bars
- * reveal themselves: 12 bars stand in front of the safe on the right (stepping
- * downward from its right edge, +z) and 12 stand behind it on the left
- * (stepping upward from its left edge, -z). The reveal is ordered bottom-most
+ * reveal themselves. All bars have the same length; only their vertical
+ * position changes. 12 bars stand in front of the safe on the left and climb a
+ * helix (one full turn) up from its left edge (+z); 12 stand behind it on the
+ * right and rise from its right edge (-z). The reveal is ordered bottom-most
  * bar first; each next bar slides forward (+z) and fades in, finishing as the
- * door reaches fully open. The reflective dark floor shows a soft mirrored echo
- * of the vault + bars.
+ * door reaches fully open. Rev21: no floor reflection (env lighting only); the
+ * floor is a dark fade plane + contact shadow under the vault + bars.
  *
  * Camera: fixed three-quarter view, numerically fitted to the union of the
  * initial and final poses (closed safe, opening/full door, revealed bars) at
@@ -26,10 +27,11 @@
  * body[data-qa-*] attributes and the hidden #qa-diag JSON mirror.
  */
 import * as THREE from 'three';
-import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
+import { applyEnvRoom, ENV_ROOM } from './env-room.js';
 import * as VaultModel from './vault-model.js';
+import { TRACKBALL, arcballDelta, quatMultiply, quatNormalize, quatSlerp, quatAngle } from './trackball.js';
 
-const VERSION = '2.0.0';
+const VERSION = '3.0.0';
 
 const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -39,39 +41,20 @@ const MODEL = VaultModel;
 const CAMERA = MODEL.CAMERA_SPEC;
 const BAR_COUNT = MODEL.BAR_SPEC.count;
 
-const RENDERER = Object.freeze({ exposure: 1.02, dprMax: 2 });
-const ENVIRONMENT = Object.freeze({
-  lightScale: 0.3,
-  panelScale: 0.26,
-  softboxScale: 1.2,
-  sigma: 0.03,
-});
-const SOFTBOXES = Object.freeze([
-  Object.freeze({ position: [-14, 12, 12], lookAt: [0, 2.4, 0], scale: [8, 6], color: 0xfff0df, intensity: 9 }),
-  Object.freeze({ position: [13, 7, 9], lookAt: [0, 2.2, 0], scale: [6, 7], color: 0xa9c3e2, intensity: 5 }),
-  Object.freeze({ position: [1, 10, -15], lookAt: [0, 2.4, 0], scale: [15, 2.6], color: 0xe4edf8, intensity: 13 }),
-  Object.freeze({ position: [-15, 5, -8], lookAt: [0, 2.2, 0], scale: [8, 3.4], color: 0x6f9ddb, intensity: 3.4 }),
-  Object.freeze({ position: [14, 8, -6], lookAt: [0, 2.4, 0], scale: [6, 4], color: 0x9fb8d8, intensity: 2.0 }),
-]);
-const LIGHTS = Object.freeze({
-  key: { color: 0xfff0df, intensity: 1.35, position: [-620, 900, 760], target: [0, 240, 0] },
-  fill: { color: 0xa9c3e2, intensity: 0.7, position: [820, 420, 520], target: [0, 220, 0] },
-  rim: { color: 0xe4edf8, intensity: 2.1, position: [300, 640, -820], target: [0, 300, 0] },
-  ambient: { color: 0x33404f, intensity: 0.3 },
-});
+const RENDERER = Object.freeze({ exposure: 1.22, dprMax: 2 });
+// Rev21: the ONLY light source is the shared room photograph
+// (assets/env/modern-empty-room.jpg). `src/env-room.js` filters it once into a
+// PMREM and assigns `scene.environment`; `intensity` multiplies every material's
+// own authored envMapIntensity (r151 path) so the dark interior photo still reads
+// as a lit product studio. No THREE light objects and no procedural env studio.
+const ENVIRONMENT = Object.freeze({ intensity: 4.2 });
+const ENVIRONMENT_LABEL = ENV_ROOM.url + ' (PMREM, env-room)';
 const FLOOR = Object.freeze({
   fadeRadius: 26,
   fadeOpacity: 0.72,
   shadowWidth: 4.2,
   shadowDepth: 3.0,
   shadowOpacity: 0.82,
-});
-const REFLECTION = Object.freeze({
-  // Strengthened for the rev-1 capture pass: the darker gunmetal body needs a
-  // slightly brighter mirrored echo, while the floor fade still lets it die out.
-  colorScale: 0.52,
-  envScale: 0.45,
-  emissiveScale: 0.55,
 });
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -83,17 +66,6 @@ const round = (value, digits = 2) => {
   return Math.round(value * factor) / factor;
 };
 const easeInOutCubic = MODEL.easeInOutCubic;
-
-const srgbToLinear = (value) => (value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4));
-function srgbColor(hex) {
-  const color = new THREE.Color();
-  const r = ((hex >> 16) & 255) / 255;
-  const g = ((hex >> 8) & 255) / 255;
-  const b = (hex & 255) / 255;
-  if (THREE.ColorManagement && THREE.ColorManagement.enabled) color.setHex(hex);
-  else color.setRGB(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b));
-  return color;
-}
 
 function errorMessage(error) {
   if (!error) return 'Unknown error';
@@ -150,6 +122,7 @@ const state = {
   qaMode: urlParams.get('qa') === '1',
   playParam: urlParams.get('play'),
   timeParam: urlParams.get('t'),
+  viewParam: urlParams.get('view'),
   reducedMotion: Boolean(reducedMotionQuery && reducedMotionQuery.matches),
   autoplay: false,
   viewObserver: null,
@@ -166,6 +139,17 @@ function fixedTimeMs() {
   const value = Number(state.timeParam);
   if (!Number.isFinite(value)) return null;
   return clamp(value, 0, MODEL.ANIMATION_SPEC.totalMs);
+}
+
+/**
+ * ?view=<deg> — deterministic rig yaw for captures/QA (`?shot=1&view=38` shows
+ * the drag-rotated orientation without simulating a pointer gesture).
+ */
+function fixedViewYaw() {
+  if (state.viewParam === null || state.viewParam === '') return null;
+  const value = Number(state.viewParam);
+  if (!Number.isFinite(value)) return null;
+  return clamp(value, -180, 180);
 }
 
 function curtainProgress(ratio, label, count, title) {
@@ -209,6 +193,7 @@ function initDom() {
   dom.stageDetail = byId('stage-detail');
   dom.stageHint = byId('stage-hint');
   dom.btnReplay = byId('btn-replay');
+  dom.btnResetView = byId('btn-reset-view');
   dom.replayState = byId('replay-state');
   dom.infoFootState = byId('info-foot-state');
   dom.footerStatus = byId('footer-status');
@@ -242,6 +227,9 @@ function syncUi() {
     dom.footerStatus.textContent = state.failed ? 'Static fallback' : state.ready ? 'Ready' : 'Loading';
   }
   if (dom.btnReplay) dom.btnReplay.disabled = !state.ready || state.failed;
+  if (dom.btnResetView) {
+    dom.btnResetView.disabled = !state.ready || state.failed || !(studio && studio.motionAllowed());
+  }
   if (dom.stageHint) {
     const visible = studio && typeof studio.getBarDebug === 'function' ? studio.getBarDebug().visibleCount : 0;
     dom.stageHint.textContent = state.failed
@@ -291,6 +279,12 @@ function publishState() {
   dom.body.dataset.qaBarsVisible = bars ? String(bars.visibleCount) : '0';
   dom.body.dataset.qaTime = String(round(animation ? animation.elapsedMs : 0, 1));
   dom.body.dataset.qaBarsCount = String(BAR_COUNT);
+  if (bars && bars.helix) dom.body.dataset.qaHelix = String(round(bars.helix.radius, 3));
+  if (bars && bars.geometry) dom.body.dataset.qaBarGeometry = bars.geometry.shared ? 'shared' : 'distinct';
+  const trackball = studio && studio.trackball ? studio.trackball : null;
+  dom.body.dataset.qaTrackball = trackball
+    ? (trackball.dragging ? 'dragging' : quatAngle(trackball.current) < 1e-6 ? 'rest' : 'rotated')
+    : 'rest';
   dom.body.dataset.qaMeshCount = String(objectsDebugCount(studio));
   dom.body.dataset.qaPlaying = animation && animation.playing ? '1' : '0';
   dom.body.dataset.qaPlayedOnce = animation && animation.playedOnce ? '1' : '0';
@@ -318,21 +312,17 @@ function publishState() {
 /* ----------------------------------------------------------------- studio */
 
 class VaultStudio {
-  constructor({ canvas, stage, model, reducedMotion = false, still = false, shot = false }) {
+  constructor({ canvas, stage, model, reducedMotion = false, still = false, shot = false, deterministicView = false }) {
     this.canvas = canvas;
     this.stage = stage;
     this.model = model;
     this.renderer = null;
     this.scene = null;
     this.camera = null;
-    this.envRT = null;
+    /** Rev21 shared image-based lighting handle (src/env-room.js). */
+    this.room = null;
     this.floorFade = null;
     this.contactShadow = null;
-    this.mirrorGroup = null;
-    this.mirrorMaterials = [];
-    this.mirrorSources = [];
-    this.mirrorTargets = [];
-    this.lights = {};
     this.stageBox = { width: 0, height: 0 };
     this.cameraTarget = new THREE.Vector3(CAMERA.target[0], CAMERA.target[1], CAMERA.target[2]);
     this.cameraDirection = viewDirection(CAMERA.azimuthDeg, CAMERA.elevationDeg);
@@ -350,6 +340,22 @@ class VaultStudio {
     this.final = false;
     this.onChange = null;
     this.resizeObserver = null;
+    // Rev21 trackball: the whole vault group can be dragged (arcball, camera-space
+    // delta pre-multiplied onto a target quaternion, damped with slerp). Static /
+    // deterministic modes keep the rest orientation.
+    this.deterministicView = Boolean(deterministicView) || !this.motionAllowed();
+    this.trackball = {
+      enabled: !this.deterministicView,
+      dragging: false,
+      pointerId: null,
+      lastPoint: null,
+      current: TRACKBALL.identity.slice(),
+      target: TRACKBALL.identity.slice(),
+      dragCount: 0,
+      resetCount: 0,
+      moveCount: 0,
+    };
+    this.pointerHandlers = null;
     this.animation = {
       playing: false,
       playedOnce: false,
@@ -387,39 +393,21 @@ class VaultStudio {
     camera.name = 'vault-camera';
     this.camera = camera;
 
-    this.buildEnvironment();
-
-    const key = new THREE.DirectionalLight(LIGHTS.key.color, LIGHTS.key.intensity);
-    key.position.set(LIGHTS.key.position[0], LIGHTS.key.position[1], LIGHTS.key.position[2]);
-    key.target.position.set(LIGHTS.key.target[0], LIGHTS.key.target[1], LIGHTS.key.target[2]);
-    scene.add(key);
-    scene.add(key.target);
-    this.lights.key = key;
-
-    const fill = new THREE.DirectionalLight(LIGHTS.fill.color, LIGHTS.fill.intensity);
-    fill.position.set(LIGHTS.fill.position[0], LIGHTS.fill.position[1], LIGHTS.fill.position[2]);
-    fill.target.position.set(LIGHTS.fill.target[0], LIGHTS.fill.target[1], LIGHTS.fill.target[2]);
-    scene.add(fill);
-    scene.add(fill.target);
-    this.lights.fill = fill;
-
-    const rim = new THREE.DirectionalLight(LIGHTS.rim.color, LIGHTS.rim.intensity);
-    rim.position.set(LIGHTS.rim.position[0], LIGHTS.rim.position[1], LIGHTS.rim.position[2]);
-    rim.target.position.set(LIGHTS.rim.target[0], LIGHTS.rim.target[1], LIGHTS.rim.target[2]);
-    scene.add(rim);
-    scene.add(rim.target);
-    this.lights.rim = rim;
-
-    const ambient = new THREE.AmbientLight(LIGHTS.ambient.color, LIGHTS.ambient.intensity);
-    scene.add(ambient);
-    this.lights.ambient = ambient;
+    // Rev21: wait for the shared room photo (PMREM -> scene.environment) before
+    // anything else; the page only reports ready after this resolves.
+    this.room = await applyEnvRoom(THREE, renderer, scene, { intensity: ENVIRONMENT.intensity });
 
     this.buildFloor();
     this.buildContactShadow();
-    this.buildMirrorReflection();
 
     scene.add(this.model.root);
+    // r151: the room intensity is applied per material, so re-walk the now-built
+    // scene (vault body/door/bars).
+    this.room.refresh(scene);
     this.applyPose('initial');
+    this.wireTrackball();
+    // Deterministic captures and reduced-motion pages always start/rest upright.
+    if (this.deterministicView) this.resetView({ immediate: true });
 
     this.resizeObserver = null;
     if (typeof ResizeObserver === 'function') {
@@ -435,37 +423,7 @@ class VaultStudio {
     return this;
   }
 
-  /** Damped RoomEnvironment + HDR softbox panels -> PMREM scene environment. */
-  buildEnvironment() {
-    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const room = new RoomEnvironment();
-    room.traverse((object) => {
-      if (object.isLight && typeof object.intensity === 'number') object.intensity *= ENVIRONMENT.lightScale;
-      if (object.isMesh && object.material && object.material.isMeshBasicMaterial && object.material.color
-        && typeof object.material.color.multiplyScalar === 'function') {
-        object.material.color.multiplyScalar(ENVIRONMENT.panelScale);
-      }
-    });
-    for (const panel of SOFTBOXES) {
-      const material = new THREE.MeshBasicMaterial({
-        color: srgbColor(panel.color).multiplyScalar(panel.intensity * ENVIRONMENT.softboxScale),
-        toneMapped: false,
-      });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
-      mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-      mesh.lookAt(panel.lookAt[0], panel.lookAt[1], panel.lookAt[2]);
-      mesh.scale.set(panel.scale[0], panel.scale[1], 1);
-      room.add(mesh);
-    }
-    if (this.envRT) this.envRT.dispose();
-    this.envRT = pmremGenerator.fromScene(room, ENVIRONMENT.sigma);
-    this.scene.environment = this.envRT.texture;
-    room.dispose();
-    pmremGenerator.dispose();
-  }
-
-  /** Dark reflective-floor bed: a soft radial fade plane (the mirror lives below). */
+  /** Dark reflective-floor bed: a soft radial fade plane. */
   buildFloor() {
     const size = 512;
     const canvas = document.createElement('canvas');
@@ -549,68 +507,130 @@ class VaultStudio {
     this.contactShadow = mesh;
   }
 
-  /**
-   * Mirror the whole vault + bar field below the floor and dim it - the page's
-   * dark reflective floor (no baked reflection, no extra render target).
-   */
-  buildMirrorReflection() {
-    const mirror = this.model.root.clone(true);
-    mirror.name = 'vault-mirror';
-    mirror.scale.set(1, -1, 1);
-    mirror.position.set(0, 0, 0);
-    mirror.traverse((object) => {
-      if (object.isMesh && object.material) {
-        const originals = Array.isArray(object.material) ? object.material : [object.material];
-        const clones = originals.map((material) => {
-          const clone = material.clone();
-          clone.name = (material.name || 'vault') + '-mirror';
-          if (clone.color) clone.color.multiplyScalar(REFLECTION.colorScale);
-          if (clone.emissive) clone.emissive.multiplyScalar(REFLECTION.emissiveScale);
-          if (typeof clone.envMapIntensity === 'number') clone.envMapIntensity *= REFLECTION.envScale;
-          clone.side = THREE.DoubleSide;
-          clone.depthWrite = true;
-          this.mirrorMaterials.push(clone);
-          return clone;
-        });
-        object.material = Array.isArray(object.material) ? clones : clones[0];
-      }
-    });
-    mirror.renderOrder = 0;
-    this.scene.add(mirror);
-    this.mirrorGroup = mirror;
-    // The clone has its own meshes; keep them in the same traversal order as the
-    // source so the reflection can follow the door/bars animation every frame.
-    this.mirrorSources = [];
-    this.model.root.traverse((object) => {
-      if (object.isMesh) this.mirrorSources.push(object);
-    });
-    this.mirrorTargets = [];
-    mirror.traverse((object) => {
-      if (object.isMesh) this.mirrorTargets.push(object);
-    });
-    this.syncMirror();
+  /* ------------------------------------------------------------ trackball */
+
+  /** Normalized stage coordinates ([-1,1], y up) for a pointer event. */
+  pointerPoint(event) {
+    const rect = this.stage.getBoundingClientRect();
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
+    return [
+      clamp(((event.clientX - rect.left) / width) * 2 - 1, -1, 1),
+      clamp(-(((event.clientY - rect.top) / height) * 2 - 1), -1, 1),
+    ];
   }
 
-  /** Copy the animated pose (and bar fade) of every mesh onto its mirrored twin. */
-  syncMirror() {
-    const count = Math.min(this.mirrorSources.length, this.mirrorTargets.length);
-    for (let index = 0; index < count; index += 1) {
-      const source = this.mirrorSources[index];
-      const target = this.mirrorTargets[index];
-      target.position.copy(source.position);
-      target.quaternion.copy(source.quaternion);
-      target.scale.copy(source.scale);
-      target.visible = source.visible !== false;
-      const sourceMaterials = Array.isArray(source.material) ? source.material : [source.material];
-      const targetMaterials = Array.isArray(target.material) ? target.material : [target.material];
-      for (let slot = 0; slot < Math.min(sourceMaterials.length, targetMaterials.length); slot += 1) {
-        const from = sourceMaterials[slot];
-        const to = targetMaterials[slot];
-        if (from && to && typeof from.opacity === 'number' && typeof to.opacity === 'number') {
-          to.opacity = from.opacity;
-        }
-      }
+  /** Rotate the whole vault rig to the current quaternion. */
+  applyOrientation() {
+    const q = this.trackball.current;
+    this.model.root.quaternion.set(q[0], q[1], q[2], q[3]);
+    this.model.root.updateMatrixWorld(true);
+  }
+
+  /** Ease the current quaternion toward the target (damped slerp). */
+  updateTrackball(dtMs) {
+    const tb = this.trackball;
+    if (this.deterministicView) return;
+    const dt = clamp(dtMs / 1000, 0, 0.1);
+    const ease = tb.dragging ? TRACKBALL.dragEase : TRACKBALL.releaseEase;
+    const alpha = 1 - Math.exp(-ease * dt);
+    const next = quatSlerp(tb.current, tb.target, alpha);
+    const delta = Math.abs(next[0] - tb.current[0]) + Math.abs(next[1] - tb.current[1])
+      + Math.abs(next[2] - tb.current[2]) + Math.abs(next[3] - tb.current[3]);
+    if (delta < 1e-7) return;
+    // angle between `next` and `target` (conjugate of a unit quat is its inverse)
+    const remaining = quatAngle(quatMultiply([-next[0], -next[1], -next[2], next[3]], tb.target));
+    tb.current = remaining < TRACKBALL.snapAngle ? tb.target.slice() : next;
+    this.applyOrientation();
+    this.requestRender();
+  }
+
+  /** Deterministic rig yaw (used by ?view=<deg> for rotated evidence captures). */
+  setViewYaw(degrees) {
+    const angle = degToRad(Number(degrees) || 0);
+    const q = quatNormalize([0, Math.sin(angle / 2), 0, Math.cos(angle / 2)]);
+    this.trackball.target = q.slice();
+    this.trackball.current = q.slice();
+    this.applyOrientation();
+    this.requestRender();
+    return q;
+  }
+
+  /** Reset the view to the deterministic rest orientation. */
+  resetView({ immediate = false } = {}) {
+    const tb = this.trackball;
+    tb.target = TRACKBALL.identity.slice();
+    if (immediate || this.deterministicView) tb.current = TRACKBALL.identity.slice();
+    tb.dragging = false;
+    tb.pointerId = null;
+    tb.lastPoint = null;
+    tb.resetCount += 1;
+    this.applyOrientation();
+    this.requestRender();
+    return tb.resetCount;
+  }
+
+  wireTrackball() {
+    if (this.deterministicView) {
+      this.resetView({ immediate: true });
+      return;
     }
+    const onDown = (event) => {
+      if (!this.motionAllowed() || this.deterministicView) return;
+      if (typeof event.button === 'number' && event.button !== 0) return;
+      const tb = this.trackball;
+      tb.dragging = true;
+      tb.pointerId = typeof event.pointerId === 'number' ? event.pointerId : null;
+      tb.lastPoint = this.pointerPoint(event);
+      tb.dragCount += 1;
+      if (this.canvas && typeof this.canvas.setPointerCapture === 'function' && tb.pointerId !== null) {
+        try { this.canvas.setPointerCapture(tb.pointerId); } catch (error) { /* best effort */ }
+      }
+      this.requestRender();
+    };
+    const onMove = (event) => {
+      const tb = this.trackball;
+      if (!tb.dragging) return;
+      if (tb.pointerId !== null && typeof event.pointerId === 'number' && event.pointerId !== tb.pointerId) return;
+      const point = this.pointerPoint(event);
+      const previous = tb.lastPoint || point;
+      const delta = arcballDelta(previous[0], previous[1], point[0], point[1]);
+      tb.target = quatNormalize(quatMultiply(delta, tb.target));
+      tb.lastPoint = point;
+      tb.moveCount += 1;
+      this.requestRender();
+    };
+    const onUp = (event) => {
+      const tb = this.trackball;
+      if (!tb.dragging) return;
+      if (tb.pointerId !== null && event && typeof event.pointerId === 'number' && event.pointerId !== tb.pointerId) return;
+      tb.dragging = false;
+      tb.pointerId = null;
+      tb.lastPoint = null;
+      this.requestRender();
+    };
+    const onDoubleClick = (event) => {
+      if (!this.motionAllowed() || this.deterministicView) return;
+      if (event) event.preventDefault();
+      this.resetView({ immediate: true });
+    };
+    this.pointerHandlers = { onDown, onMove, onUp, onDoubleClick };
+    this.canvas.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    this.canvas.addEventListener('dblclick', onDoubleClick);
+  }
+
+  unwireTrackball() {
+    const handlers = this.pointerHandlers;
+    if (!handlers || !this.canvas) return;
+    this.canvas.removeEventListener('pointerdown', handlers.onDown);
+    window.removeEventListener('pointermove', handlers.onMove);
+    window.removeEventListener('pointerup', handlers.onUp);
+    window.removeEventListener('pointercancel', handlers.onUp);
+    this.canvas.removeEventListener('dblclick', handlers.onDoubleClick);
+    this.pointerHandlers = null;
   }
 
   requestRender() {
@@ -712,7 +732,7 @@ class VaultStudio {
   applyPose(mode) {
     const final = mode === 'final' || mode === 'closed';
     MODEL.applyStaticPose(this.model, final ? 'final' : 'initial');
-    this.syncMirror();
+    if (this.deterministicView) this.resetView({ immediate: true });
     this.final = final;
     this.requestRender();
   }
@@ -723,7 +743,6 @@ class VaultStudio {
     const doorProgress = MODEL.getDoorProgress(elapsed);
     const barsElapsed = Math.min(elapsed, MODEL.ANIMATION_SPEC.barTotalMs);
     MODEL.applyAnimationFrame(this.model, { doorProgress, barsElapsedMs: barsElapsed });
-    this.syncMirror();
     this.final = elapsed >= MODEL.ANIMATION_SPEC.totalMs;
     this.requestRender();
   }
@@ -778,7 +797,6 @@ class VaultStudio {
       doorProgress,
       barsElapsedMs: Math.min(elapsed, MODEL.ANIMATION_SPEC.barTotalMs),
     });
-    this.syncMirror();
     animation.progress = clamp(elapsed / (animation.total || 1), 0, 1);
     animation.phase = doorProgress < 1 ? 'opening' : 'revealing';
     if (elapsed >= MODEL.ANIMATION_SPEC.totalMs) {
@@ -800,6 +818,7 @@ class VaultStudio {
     const dt = Math.min(64, Math.max(0, now - previous));
     this.lastTime = now;
     if (this.animation.playing) this.updateAnimation(dt);
+    this.updateTrackball(dt);
     if (this.needsRender) this.renderFrame();
   }
 
@@ -875,75 +894,99 @@ class VaultStudio {
     const total = MODEL.ANIMATION_SPEC.barTotalMs;
     const elapsed = this.animation.elapsed;
     const expanded = clamp(elapsed / total, 0, 1);
-    const safeFrontZ = this.model.spec.depth / 2;
-    const safeBackZ = -this.model.spec.depth / 2;
+    const helix = MODEL.BAR_HELIX;
+    const clearance = this.model.barClearance;
+    const order = this.model.revealOrder.slice();
     const positions = this.model.bars.map((bar) => ({
       index: bar.index,
-      side: bar.side,
+      slot: bar.slot,
       order: bar.order,
-      top: round(bar.top, 3),
-      length: round(bar.length, 3),
+      thetaDeg: round(bar.thetaDeg, 4),
+      startThetaDeg: round(bar.startThetaDeg, 4),
+      radius: round(bar.radius, 4),
+      y: round(bar.final.position.y, 4),
+      top: round(bar.top, 4),
+      length: round(bar.length, 4),
       final: {
-        x: round(bar.final.position.x, 3),
-        y: round(bar.final.position.y, 3),
-        z: round(bar.final.position.z, 3),
+        x: round(bar.final.position.x, 4),
+        y: round(bar.final.position.y, 4),
+        z: round(bar.final.position.z, 4),
       },
-      startZ: round(bar.start.position.z, 3),
+      start: {
+        x: round(bar.start.position.x, 4),
+        y: round(bar.start.position.y, 4),
+        z: round(bar.start.position.z, 4),
+      },
       position: {
-        x: round(bar.mesh.position.x, 3),
-        y: round(bar.mesh.position.y, 3),
-        z: round(bar.mesh.position.z, 3),
+        x: round(bar.mesh.position.x, 4),
+        y: round(bar.mesh.position.y, 4),
+        z: round(bar.mesh.position.z, 4),
       },
       opacity: round(bar.material.opacity, 3),
       visible: bar.mesh.visible !== false,
+      geometryUuid: bar.mesh.geometry.uuid,
+      scale: [round(bar.mesh.scale.x, 4), round(bar.mesh.scale.y, 4), round(bar.mesh.scale.z, 4)],
     }));
-    const right = positions.filter((bar) => bar.side === 'right');
-    const left = positions.filter((bar) => bar.side === 'left');
-    const order = this.model.revealOrder.slice();
-    const topsByOrder = order.map((index) => this.model.bars[index].top);
-    const rightMinZ = Math.min(...right.map((bar) => bar.final.z));
-    const leftMaxZ = Math.max(...left.map((bar) => bar.final.z));
+    const thetasByOrder = order.map((index) => positions[index].thetaDeg);
+    const ysByOrder = order.map((index) => positions[index].y);
+    const deltaThetas = [];
+    const deltaYs = [];
+    for (let index = 1; index < order.length; index += 1) {
+      deltaThetas.push(round(thetasByOrder[index] - thetasByOrder[index - 1], 6));
+      deltaYs.push(round(ysByOrder[index] - ysByOrder[index - 1], 6));
+    }
+    const unique = (values) => Array.from(new Set(values));
+    const geometryUuids = unique(positions.map((bar) => bar.geometryUuid));
+    const lengths = unique(positions.map((bar) => bar.length));
+    const scales = unique(positions.map((bar) => bar.scale.join(',')));
+    const sumDeltaTheta = round(deltaThetas.reduce((sum, value) => sum + value, 0), 6);
     return {
       count: BAR_COUNT,
-      rightCount: right.length,
-      leftCount: left.length,
       expandedProgress: round(expanded, 4),
       condensedProgress: round(1 - expanded, 4),
       visibleCount: positions.filter((bar) => bar.visible).length,
       order,
       bars: positions,
-      sides: {
-        right: {
-          flank: 'front',
-          count: right.length,
-          startX: round(right[0] ? right[0].final.x : 0, 3),
-          endX: round(right[right.length - 1] ? right[right.length - 1].final.x : 0, 3),
-          zRange: [
-            round(Math.min(...right.map((bar) => bar.final.z)), 3),
-            round(Math.max(...right.map((bar) => bar.final.z)), 3),
-          ],
-          topStart: round(right[0] ? right[0].top : 0, 3),
-          topEnd: round(right[right.length - 1] ? right[right.length - 1].top : 0, 3),
-        },
-        left: {
-          flank: 'back',
-          count: left.length,
-          startX: round(left[0] ? left[0].final.x : 0, 3),
-          endX: round(left[left.length - 1] ? left[left.length - 1].final.x : 0, 3),
-          zRange: [round(Math.min(...left.map((bar) => bar.final.z)), 3), round(leftMaxZ, 3)],
-          topStart: round(left[0] ? left[0].top : 0, 3),
-          topEnd: round(left[left.length - 1] ? left[left.length - 1].top : 0, 3),
-        },
+      helix: {
+        radius: round(helix.radius, 4),
+        startAngleDeg: round(helix.startAngleDeg, 4),
+        deltaAngleDeg: round(helix.deltaAngleDeg, 6),
+        startY: round(helix.startY, 4),
+        stepY: round(helix.stepY, 4),
+        revolutions: round(MODEL.BAR_REVOLUTIONS, 6),
+        thetaStartDeg: round(thetasByOrder[0], 4),
+        thetaEndDeg: round(thetasByOrder[thetasByOrder.length - 1], 4),
+        deltaThetasDeg: deltaThetas,
+        deltaYs,
+        deltaThetaConstant: unique(deltaThetas.map((value) => value.toFixed(6))).length === 1,
+        deltaYConstant: unique(deltaYs.map((value) => value.toFixed(6))).length === 1,
+        sumDeltaThetaDeg: sumDeltaTheta,
+        yStart: round(ysByOrder[0], 4),
+        yEnd: round(ysByOrder[ysByOrder.length - 1], 4),
       },
-      layering: {
-        safeFrontZ: round(safeFrontZ, 3),
-        safeBackZ: round(safeBackZ, 3),
-        rightMinZ: round(rightMinZ, 3),
-        leftMaxZ: round(leftMaxZ, 3),
-        rightInFront: right.every((bar) => bar.final.z > safeFrontZ),
-        leftBehind: left.every((bar) => bar.final.z < safeBackZ),
-        frontGap: round(rightMinZ - safeFrontZ, 3),
-        backGap: round(safeBackZ - leftMaxZ, 3),
+      geometry: {
+        shared: geometryUuids.length === 1,
+        geometryUuid: geometryUuids[0] || null,
+        geometryCount: geometryUuids.length,
+        meshCount: positions.length,
+        lengths,
+        scales,
+        uniformScale: scales.length === 1 && scales[0] === '1,1,1',
+      },
+      clearance: {
+        barRadius: round(clearance.barRadius, 4),
+        helixRadius: round(clearance.helixRadius, 4),
+        safeMaxRadius: round(clearance.safeMaxRadius, 4),
+        doorClosedMaxRadius: round(clearance.doorClosedMaxRadius, 4),
+        doorOpenMaxRadius: round(clearance.doorOpenMaxRadius, 4),
+        maxBodyRadius: round(clearance.maxBodyRadius, 4),
+        helixClearance: round(clearance.helixClearance, 4),
+        minSafeClearance: round(clearance.minSafeClearance, 4),
+        minDoorClosedClearance: round(clearance.minDoorClosedClearance, 4),
+        minDoorOpenClearance: round(clearance.minDoorOpenClearance, 4),
+        minClearance: round(clearance.minClearance, 4),
+        allClear: clearance.allClear,
+        helixClearsBody: clearance.helixClearsBody,
       },
       reveal: {
         doorDurationMs: MODEL.ANIMATION_SPEC.doorDurationMs,
@@ -951,19 +994,20 @@ class VaultStudio {
         barStaggerMs: MODEL.ANIMATION_SPEC.barStaggerMs,
         barTotalMs: MODEL.ANIMATION_SPEC.barTotalMs,
         totalMs: MODEL.ANIMATION_SPEC.totalMs,
+        doorStartMs: 0,
+        revealStartMs: 0,
         firstBar: order[0],
         lastBar: order[order.length - 1],
-        firstBarTop: round(topsByOrder[0], 3),
-        lastBarTop: round(topsByOrder[topsByOrder.length - 1], 3),
-        bottomMostFirst: topsByOrder.every((top, index) => index === 0 || top >= topsByOrder[index - 1]),
+        firstBarY: round(ysByOrder[0], 4),
+        lastBarY: round(ysByOrder[ysByOrder.length - 1], 4),
+        bottomMostFirst: ysByOrder.every((y, index) => index === 0 || y > ysByOrder[index - 1]),
         simultaneousWithDoor: true,
       },
       tones: MODEL.BAR_TONES.map((tone) => tone.name),
       gradient: 'steel -> cobalt (procedural DataTexture, no baked reflection)',
-      advance: MODEL.BAR_SPEC.advance,
+      advance: 'previous helix slot (tangent advance)',
     };
   }
-
   getCameraDebug() {
     if (!this.camera) return null;
     const direction = new THREE.Vector3().subVectors(this.camera.position, this.cameraTarget).normalize();
@@ -987,16 +1031,16 @@ class VaultStudio {
     if (!this.camera || !this.model) return null;
     const width = this.stageBox.width || 1;
     const height = this.stageBox.height || 1;
-    const box = new THREE.Box3();
-    this.model.root.updateMatrixWorld(true);
-    box.setFromObject(this.model.root, true);
-    if (!Number.isFinite(box.min.x)) return null;
+    // Project the SAME fitted envelope the camera solve uses (the rotation-safe
+    // bounds box) so the reported rect describes the framed object volume even
+    // after a trackball rotation.
+    const bounds = this.model.bounds.all;
+    if (!bounds) return null;
     let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
     const world = new THREE.Vector3();
-    const projected = new THREE.Vector3();
-    for (const x of [box.min.x, box.max.x]) {
-      for (const y of [box.min.y, box.max.y]) {
-        for (const z of [box.min.z, box.max.z]) {
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
           world.set(x, y, z).project(this.camera);
           const px = (world.x * 0.5 + 0.5) * width;
           const py = (1 - (world.y * 0.5 + 0.5)) * height;
@@ -1012,6 +1056,12 @@ class VaultStudio {
       y: round(minY, 2),
       width: round(maxX - minX, 2),
       height: round(maxY - minY, 2),
+      left: round(minX, 2),
+      top: round(minY, 2),
+      right: round(maxX, 2),
+      bottom: round(maxY, 2),
+      stageWidth: round(width, 2),
+      stageHeight: round(height, 2),
     };
   }
 
@@ -1060,6 +1110,7 @@ class VaultStudio {
 
   dispose() {
     this.destroyed = true;
+    this.unwireTrackball();
     if (this.raf) window.cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.resizeObserver) {
@@ -1070,12 +1121,11 @@ class VaultStudio {
       this.renderer.dispose();
       this.renderer = null;
     }
-    if (this.envRT) {
-      this.envRT.dispose();
-      this.envRT = null;
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
     }
-    for (const material of this.mirrorMaterials) material.dispose();
-    this.mirrorMaterials = [];
+    if (this.scene) this.scene.environment = null;
   }
 }
 
@@ -1089,6 +1139,7 @@ function createStudio() {
     reducedMotion: state.reducedMotion,
     still: state.still,
     shot: state.shot,
+    deterministicView: isStaticMode() || state.timeParam !== null,
   });
   studio.onChange = () => {
     syncUi();
@@ -1151,17 +1202,43 @@ function buildDebug() {
       supported: Boolean(studio && studio.renderer) || Boolean(state.webgl),
       version: state.webgl || '',
     },
+    // Rev21: image-based lighting only — zero THREE light objects.
+    environment: {
+      mode: 'image-based',
+      source: ENVIRONMENT_LABEL,
+      intensity: ENVIRONMENT.intensity,
+      exposure: RENDERER.exposure,
+      lights: 0,
+    },
     safe: studio ? studio.getSafetyDebug() : null,
     bars: studio
       ? studio.getBarDebug()
       : {
           count: BAR_COUNT,
-          rightCount: MODEL.BAR_SPEC.rightCount,
-          leftCount: MODEL.BAR_SPEC.leftCount,
           expandedProgress: 0,
           condensedProgress: 1,
           visibleCount: 0,
+          helix: { radius: MODEL.BAR_HELIX.radius, deltaAngleDeg: MODEL.BAR_HELIX.deltaAngleDeg },
         },
+    trackball: studio && studio.trackball
+      ? {
+          enabled: studio.trackball.enabled,
+          deterministic: studio.deterministicView,
+          dragging: studio.trackball.dragging,
+          dragCount: studio.trackball.dragCount,
+          moveCount: studio.trackball.moveCount,
+          resetCount: studio.trackball.resetCount,
+          quaternion: studio.trackball.current.map((value) => round(value, 6)),
+          target: studio.trackball.target.map((value) => round(value, 6)),
+          angleDeg: round(radToDeg(quatAngle(studio.trackball.current)), 3),
+          rest: quatAngle(studio.trackball.current) < 1e-6,
+          // The actual rig (group) quaternion the renderer uses.
+          groupQuaternion: state.model ? state.model.root.quaternion.toArray().map((value) => round(value, 6)) : null,
+          // The deterministic rest orientation is the identity quaternion; static
+          // captures always report it.
+          restQuaternion: [0, 0, 0, 1],
+        }
+      : null,
     animation: studio
       ? studio.getAnimationDebug()
       : { playing: false, progress: 0, playedOnce: false, phase: 'intro' },
@@ -1176,9 +1253,19 @@ function buildDebug() {
           ribs: MODEL.VAULT_SPEC.finCount,
           doorDots: MODEL.VAULT_SPEC.door.dotCount,
           bars: BAR_COUNT,
-          barRight: MODEL.BAR_SPEC.rightCount,
-          barLeft: MODEL.BAR_SPEC.leftCount,
-          lights: { directional: 3, ambient: 1 },
+          barGeometry: state.model ? state.model.barGeometryShare.geometryCount : 0,
+          barGeometryShared: Boolean(state.model && state.model.barGeometryShare.sharedInstance),
+          barHelixRevolutions: round(MODEL.BAR_REVOLUTIONS, 6),
+          lights: {
+            total: 0,
+            directional: 0,
+            ambient: 0,
+            point: 0,
+            spot: 0,
+            hemisphere: 0,
+            rectArea: 0,
+            environment: ENVIRONMENT_LABEL,
+          },
           render: studio.getRenderDebug(),
         }
       : null,
@@ -1195,8 +1282,8 @@ function buildDebug() {
           },
           bars: {
             count: BAR_COUNT,
-            rightCount: MODEL.BAR_SPEC.rightCount,
-            leftCount: MODEL.BAR_SPEC.leftCount,
+            helixRadius: MODEL.BAR_HELIX.radius,
+            geometry: 'ONE shared CapsuleGeometry instance for all 24 bars',
             material: 'MeshStandardMaterial per bar, procedural DataTexture gradient, animated opacity, no baked reflection',
           },
         }
@@ -1205,6 +1292,19 @@ function buildDebug() {
       version: MODEL.MODEL_VERSION,
       spec: MODEL.VAULT_SPEC,
       barSpec: MODEL.BAR_SPEC,
+      helix: {
+        ...MODEL.BAR_HELIX,
+        revolutions: MODEL.BAR_REVOLUTIONS,
+      },
+      clearance: state.model ? state.model.barClearance : MODEL.barClearanceReport(),
+      geometryShare: state.model
+        ? {
+            shared: state.model.barGeometryShare.sharedInstance,
+            geometryCount: state.model.barGeometryShare.geometryCount,
+            meshCount: state.model.barGeometryShare.meshCount,
+            geometryUuid: state.model.barGeometry.uuid,
+          }
+        : null,
       cameraSpec: CAMERA,
       animationSpec: MODEL.ANIMATION_SPEC,
       revealOrder: state.model ? state.model.revealOrder.slice() : null,
@@ -1221,6 +1321,7 @@ function buildDebug() {
       fallback: Boolean(state.failed),
       play: state.playParam !== null ? state.playParam : 'auto',
       time: state.timeParam !== null ? fixedTimeMs() : null,
+      view: state.viewParam !== null ? fixedViewYaw() : null,
       final: Boolean(studio && studio.final),
     },
     urls: {
@@ -1270,6 +1371,15 @@ const api = {
   debug: buildDebug,
   meshes() {
     return state.studio ? state.studio.getVaultMeshDebug() : [];
+  },
+  /** Reset the trackball view to the deterministic rest orientation. */
+  resetView() {
+    if (!state.studio) return false;
+    state.studio.resetView({ immediate: true });
+    syncUi();
+    publishState();
+    announce('View reset');
+    return true;
   },
   waitForIdle() {
     if (!state.studio) return Promise.resolve(false);
@@ -1380,6 +1490,15 @@ function wireUi() {
       doReplay();
     });
   }
+  if (dom.btnResetView) {
+    dom.btnResetView.addEventListener('click', () => {
+      if (!state.studio) return;
+      state.studio.resetView({ immediate: true });
+      syncUi();
+      publishState();
+      announce('View reset');
+    });
+  }
   window.addEventListener('keydown', (event) => {
     if (event.defaultPrevented) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -1389,6 +1508,17 @@ function wireUi() {
       if (target === dom.btnReplay) return;
       event.preventDefault();
       doReplay();
+      return;
+    }
+    if (event.key === 'r' || event.key === 'R') {
+      // Reset the trackball view to the deterministic rest orientation.
+      event.preventDefault();
+      if (state.studio) {
+        state.studio.resetView({ immediate: true });
+        syncUi();
+        publishState();
+        announce('View reset');
+      }
     }
   });
   if (reducedMotionQuery) {
@@ -1528,6 +1658,9 @@ async function boot() {
     studio.animation.elapsed = 0;
     state.autoplay = true;
   }
+  // ?view=<deg>: deterministic rig yaw for rotated evidence captures.
+  const viewYaw = fixedViewYaw();
+  if (viewYaw !== null) studio.setViewYaw(viewYaw);
   syncUi();
   publishState();
 

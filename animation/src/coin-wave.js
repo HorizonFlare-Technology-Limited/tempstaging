@@ -1,16 +1,34 @@
 /**
- * coin-wave.js — pure deterministic composition math for the Rev15 coin Wave.
+ * coin-wave.js — pure deterministic composition math for the Rev21 coin Wave.
  *
- * SPEC "Collection Revision 15" R15-3: two broad, wide-top ribbon waves running
- * left-right on a neutral dark studio. Each ribbon is a broad flat strap whose
- * cross-section along the run (the wave) is a gentle, low-frequency, low-slope
- * flattened sine: wide flat crests/troughs, smooth curvature, no creases. The
- * front ribbon is brushed stainless steel; the back ribbon is the same wave in
- * TEKO gold with a satin finish, offset HALF A PHASE (its crests sit exactly
- * over the steel wave's troughs and vice versa). Three different-currency coins
- * stand in the steel wave's broad trough in a row, bottom rims exactly on the
- * surface; their screen spacing is exactly 100 CSS px at the default camera for
- * 1440x900 and 1200x900 stages.
+ * SPEC "Collection Revision 21" R21-2/R21-3: two true sine ribbon waves running
+ * left-right on the shared room-lit stage. Each ribbon is a narrow metal strap
+ * whose cross-section along the run (the wave) is an exact sine:
+ *
+ *     steel(x) = baseY + A * sin(2*pi*(x / lambda + PHASE_STEEL))
+ *     gold(x)  = baseY + A * sin(2*pi*(x / lambda + PHASE_GOLD))
+ *
+ * with lambda = 2*pi*A EXACTLY (amplitude A is kept at 0.135, i.e. the wave is
+ * as tall as before but its wavelength shrinks to ~0.848 world so it reads as a
+ * small, tight wave).  rev26 s51: the curves are swapped between the ribbons -
+ * steel carries A*sin(0.5x/A + 19/4) (PHASE_GOLD cycles, sin) and the slate
+ * ribbon carries A*cos(0.5x/A) (PHASE_STEEL = 1/4 cycle, cos); phase constants
+ * keep their names but now belong to the other ribbon.
+ *
+ * WAVE_SCALE is a single multiplier applied to the amplitude, the wavelength
+ * and every ribbon dimension together, so lambda / A = 2*pi always holds. It is
+ * exposed in the wave params panel / copy-JSON output so the wave can be
+ * retuned without touching the composition code (default 1.0, range 0.5-3.0).
+ *
+ * The gold ribbon is retinted to the Rev21 slate blue-violet reference: base
+ * #4c5482, gradient bottom-left #2a3054 -> centre #4c5482 -> top-right #7e84b2
+ * (the procedural albedo map lives in coin-wave-scene.js; this module only
+ * carries the palette + the polished-metal response).
+ *
+ * Three different-currency coins stand on the steel wave in a row, bottom rims
+ * exactly on the surface; the row spacing is half a wavelength (the old ~0.42
+ * world spacing) so the coins alternate crest/trough/crest, and it projects
+ * to >= 100 CSS px at the default camera for 1440x900 and 1200x900 stages.
  *
  * This module is dependency-free (no three.js, DOM, clock or randomness) so the
  * offline verifier and any renderer share exactly the same numbers.
@@ -20,12 +38,9 @@
  * Coordinate conventions
  *  - X runs left-right along each ribbon (the wave runs along X).
  *  - Y is up, Z is depth (toward the camera).
- *  - A ribbon occupies z in [zStart, zEnd] (a broad flat top across its width);
- *    its top surface height is
- *        y = baseY + amplitude * profile(x / wavelength + phase)
- *    where profile() is the broad-top flattened sine in [-1, 1].
- *  - Steel trough is at x = 0; the gold ribbon's phase is +0.5 cycles, so at
- *    x = 0 the gold surface is at its crest: crest-over-trough by construction.
+ *  - A ribbon occupies z in [zStart, zEnd] (a flat strap across its width).
+ *  - The slate crest is at x = 0 (cos); the steel trough is at ~-0.006*lambda and
+ *    its crests at ~+0.494*lambda (sin + 19/4), (the coins use authored poses, see WAVE_COIN_POSES).
  */
 
 export const COIN_GEOMETRY = Object.freeze({
@@ -38,11 +53,6 @@ const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
 
 const clamp = (value, lo, hi) => (value < lo ? lo : value > hi ? hi : value);
-const tanh = (value) => {
-  const x = clamp(value, -20, 20);
-  const e = Math.exp(2 * x);
-  return (e - 1) / (e + 1);
-};
 const round6 = (value) => Math.round(value * 1e6) / 1e6;
 const round6Vec = (v) => [round6(v[0]), round6(v[1]), round6(v[2])];
 
@@ -55,103 +65,178 @@ function deepFreeze(value) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* Wave cross-section profile (along the run)                                */
+/* WAVE_SCALE + scaled ribbon geometry                                       */
 /* ------------------------------------------------------------------------- */
 
-/**
- * Broad-top sine profile in [-1, 1]; u is in cycles (0..1 = one wavelength).
- * tanh() compresses the sine extremes so crests/troughs become wide flat tops
- * while the flanks stay smooth; the curve is C-infinity (no creases).
- */
-const PROFILE = Object.freeze({
-  sharpness: 0.7,
-  flatTopThreshold: 0.8,
+/** Rev21 retune knob: one multiplier for the whole wave (documented range). */
+export const WAVE_SCALE = 1.5;
+export const WAVE_SCALE_MIN = 0.5;
+export const WAVE_SCALE_MAX = 3;
+
+/** Peak amplitude of the true sine wave (R21 keeps the Rev20 height). */
+const BASE_AMPLITUDE = 0.135;
+/** Periods kept from the Rev20 ribbon: 26 / 7.4 = 3.5135... */
+const PERIODS = 26 / 7.4 / 2;
+/** Rev20 wavelength, used only to derive the proportional geometry scale k. */
+const LEGACY_WAVELENGTH = 7.4;
+/** Rev20 authored ribbon proportions (scaled by k = lambda / 7.4). */
+const LEGACY = Object.freeze({
+  width: 2.2,
+  steelThickness: 0.066,
+  goldThickness: 0.06,
+  steelZStart: 0.6,
+  steelZEnd: 2.8,
+  goldZStart: -1.6,
+  goldZEnd: 0.6,
+  goldBaseY: 0.44,
 });
 
+/**
+ * Derive every wave dimension for a given WAVE_SCALE.
+ *
+ * lambda is defined as 2*pi*amplitude, so lambda / amplitude === 2*pi for EVERY
+ * scale; the ribbon length keeps the Rev20 period count and every cross-section
+ * dimension is scaled by k = lambda / 7.4 (the same factor the Rev20 ribbon had
+ * relative to the new wavelength), so the whole ribbon shrinks/grows
+ * proportionally and still "reads as the same wave, just smaller".
+ *
+ * @param {number} [scale] WAVE_SCALE multiplier, clamped to [0.5, 3]
+ * @returns {{scale: number, amplitude: number, wavelength: number,
+ *   wavelengthOverAmplitude: number, periods: number, length: number,
+ *   width: number, steelThickness: number, goldThickness: number,
+ *   steelZStart: number, steelZEnd: number, goldZStart: number, goldZEnd: number,
+ *   goldBaseY: number, geometryScale: number}}
+ */
+export function waveGeometryAtScale(scale = WAVE_SCALE) {
+  const s = Number.isFinite(scale) ? clamp(Number(scale), WAVE_SCALE_MIN, WAVE_SCALE_MAX) : WAVE_SCALE;
+  const amplitude = BASE_AMPLITUDE * s;
+  // rev5 s26 / rev26 s51: steel y=A*sin(0.5*x/A+19/4), gold y=A*cos(0.5*x/A) => k = 0.5/A => lambda = 4*pi*A
+  const wavelength = 2 * TAU * amplitude;
+  const geometryScale = (TAU * amplitude) / LEGACY_WAVELENGTH;
+  return deepFreeze({
+    scale: s,
+    amplitude,
+    wavelength,
+    wavelengthOverAmplitude: wavelength / amplitude,
+    periods: PERIODS,
+    length: PERIODS * wavelength,
+    width: LEGACY.width * geometryScale,
+    steelThickness: LEGACY.steelThickness * geometryScale,
+    goldThickness: LEGACY.goldThickness * geometryScale,
+    steelZStart: LEGACY.steelZStart * geometryScale,
+    steelZEnd: LEGACY.steelZEnd * geometryScale,
+    goldZStart: LEGACY.goldZStart * geometryScale,
+    goldZEnd: LEGACY.goldZEnd * geometryScale,
+    goldBaseY: LEGACY.goldBaseY * geometryScale,
+    geometryScale,
+  });
+}
+
+const GEOM = waveGeometryAtScale(WAVE_SCALE);
+const AMPLITUDE = GEOM.amplitude;
+const WAVELENGTH = GEOM.wavelength;
+const RIBBON_LENGTH = GEOM.length;
+const RIBBON_WIDTH = GEOM.width;
+const STEEL_Z_START = GEOM.steelZStart;
+const STEEL_Z_END = GEOM.steelZEnd;
+const GOLD_Z_START = GEOM.goldZStart;
+const GOLD_Z_END = GEOM.goldZEnd;
+const GOLD_BASE_Y = GEOM.goldBaseY;
+
+// rev26 s51 (curves swapped): steel y = A*sin(0.5*x/A + 19/4) = sin(2pi*(x/lambda + (19/4)/2pi));
+// gold y = baseY + A*cos(0.5*x/A) = sin(2pi*(x/lambda + 1/4)) (crest at x = 0).
+const GOLD_PHASE_RAD = 19 / 4;
+const PHASE_STEEL = 0.25;
+const PHASE_GOLD = GOLD_PHASE_RAD / TAU;
+const PHASE_OFFSET_CYCLES = (((PHASE_GOLD - PHASE_STEEL) % 1) + 1) % 1;
+
+const COIN_SCALE = 0.18; // ~86 CSS px diameter at the Rev20 readout
+const COIN_IDS = Object.freeze(['gbp', 'eur', 'usd']);
+/** Rev21 slate blue-violet palette (from refs/rev21/wave-gold-color.png). */
+const SLATE_PALETTE = Object.freeze({
+  base: 0x4c5482,
+  bottomLeft: 0x2a3054,
+  topRight: 0x7e84b2,
+  averageHex: '#4d5481',
+  dotGrid: true,
+});
+
+/* ------------------------------------------------------------------------- */
+/* Wave cross-section profile (exact sine along the run)                     */
+/* ------------------------------------------------------------------------- */
+
+/** Exact sine profile in [-1, 1]; u is in cycles (0..1 = one wavelength). */
 function profile(u) {
-  const cycles = u - Math.floor(u);
-  return tanh(PROFILE.sharpness * Math.sin(TAU * cycles)) / tanh(PROFILE.sharpness);
+  return Math.sin(TAU * u);
 }
 
-/** first derivative of the profile with respect to u (cycles) */
+/** first derivative of sin(2*pi*u) with respect to u (cycles): 2*pi*cos(2*pi*u) */
 function profileDerivative(u) {
-  const cycles = u - Math.floor(u);
-  const s = PROFILE.sharpness;
-  const sin = Math.sin(TAU * cycles);
-  const cos = Math.cos(TAU * cycles);
-  const sech2 = 1 / Math.cosh(s * sin) ** 2;
-  return (sech2 * s * cos * TAU) / tanh(s);
+  return TAU * Math.cos(TAU * u);
 }
 
-/** second derivative of the profile with respect to u (cycles) */
+/** second derivative of sin(2*pi*u) with respect to u: -4*pi^2*sin(2*pi*u) */
 function profileSecondDerivative(u) {
-  const cycles = u - Math.floor(u);
-  const s = PROFILE.sharpness;
-  const sin = Math.sin(TAU * cycles);
-  const cos = Math.cos(TAU * cycles);
-  const sech2 = 1 / Math.cosh(s * sin) ** 2;
-  const th = Math.tanh(s * sin);
-  const dSech = -2 * sech2 * th * s * cos * TAU;
-  return (dSech * s * cos * TAU + sech2 * (-s * sin * TAU * TAU)) / tanh(s);
+  return -TAU * TAU * Math.sin(TAU * u);
 }
 
 /* ------------------------------------------------------------------------- */
 /* Wave definitions                                                          */
 /* ------------------------------------------------------------------------- */
 
-const WAVELENGTH = 7.4;
-const AMPLITUDE = 0.45;
-const RIBBON_LENGTH = 26;
-const RIBBON_WIDTH = 2.2; // broad flat top across the ribbon width (Z)
-const PHASE_STEEL = 0.75; // trough exactly at x = 0
-const PHASE_GOLD = PHASE_STEEL + 0.5; // half a phase behind -> crest at x = 0
-const STEEL_Z_START = 0.6;
-const STEEL_Z_END = 2.8;
-const GOLD_Z_START = -1.6;
-const GOLD_Z_END = 0.6;
-const GOLD_BASE_Y = 0.55; // the gold ribbon rides behind/above the steel one
-const COIN_SCALE = 0.18; // ~86 CSS px diameter, leaving a visible gap on the 100 px spacing
-const COIN_IDS = Object.freeze(['gbp', 'eur', 'usd']);
-const COIN_Z = (STEEL_Z_START + STEEL_Z_END) / 2;
+// steel crest: 0.5*x/A + 19/4 = pi/2 (mod 2pi), nearest to x = 0
+const STEEL_CREST_X = (() => {
+  const k = 0.5 / AMPLITUDE;
+  let x = (Math.PI / 2 - GOLD_PHASE_RAD) / k;
+  const period = WAVELENGTH;
+  x -= Math.round(x / period) * period;
+  return x;
+})();
+
+const STEEL_TROUGH_X = STEEL_CREST_X - WAVELENGTH / 2;
 
 const WAVES = deepFreeze({
   steel: {
     kind: 'steel',
-    label: 'Brushed stainless steel',
-    finish: 'brushed',
-    material: { color: 0xcfd4da, roughness: 0.38, metalness: 1 },
+    label: 'Polished stainless steel',
+    finish: 'polished',
+    material: { color: 0xd8dde3, roughness: 0.2, metalness: 1 },
     length: RIBBON_LENGTH,
     width: RIBBON_WIDTH,
     zStart: STEEL_Z_START,
     zEnd: STEEL_Z_END,
-    thickness: 0.22,
+    thickness: GEOM.steelThickness,
     baseY: 0,
     wavelength: WAVELENGTH,
     amplitude: AMPLITUDE,
-    phase: PHASE_STEEL,
-    troughX: 0,
-    crestXs: [-WAVELENGTH / 2, WAVELENGTH / 2],
+    phase: PHASE_GOLD,
+    phaseKind: 'sin',
+    crestX: STEEL_CREST_X,
+    troughX: STEEL_TROUGH_X,
   },
   gold: {
     kind: 'gold',
-    label: 'TEKO gold satin',
-    finish: 'satin',
-    material: { color: 0xffd60a, roughness: 0.5, metalness: 1 },
+    label: 'Slate blue-violet, polished',
+    finish: 'polished',
+    // Rev21 ref: base slate blue-violet (albedo gradient is applied by the
+    // procedural map in coin-wave-scene.js; this is the flat fallback colour).
+    material: { color: SLATE_PALETTE.base, roughness: 0.22, metalness: 1 },
+    palette: SLATE_PALETTE,
     length: RIBBON_LENGTH,
     width: RIBBON_WIDTH,
     zStart: GOLD_Z_START,
     zEnd: GOLD_Z_END,
-    thickness: 0.2,
+    thickness: GEOM.goldThickness,
     baseY: GOLD_BASE_Y,
     wavelength: WAVELENGTH,
     amplitude: AMPLITUDE,
-    phase: PHASE_GOLD,
-    troughX: -WAVELENGTH / 2,
+    phase: PHASE_STEEL,
+    phaseKind: 'cos',
     crestX: 0,
+    troughXs: [-WAVELENGTH / 2, WAVELENGTH / 2],
+    troughX: WAVELENGTH / 2,
   },
 });
-
-const WAVE_PHASE_OFFSET_CYCLES = (WAVES.gold.phase - WAVES.steel.phase + 1) % 1;
 
 function rawSurfaceY(wave, x) {
   return wave.baseY + wave.amplitude * profile(x / wave.wavelength + wave.phase);
@@ -191,7 +276,7 @@ export function waveSurfaceNormal(kind, x, z) {
   return Object.freeze([-slope * inv, inv, 0]);
 }
 
-/** Wave phase at x in cycles (steel trough = 0.75, steel crest = 0.25). */
+/** Wave phase at x in cycles (gold crest = 0.25, gold trough = 0.75; steel is offset by 19/4/2pi). */
 export function wavePhase(kind, x) {
   const wave = WAVES[kind];
   return (x / wave.wavelength + wave.phase) % 1;
@@ -217,40 +302,48 @@ export function waveProfileAt(kind, x) {
 
 const CAMERA = Object.freeze({
   fovDeg: 30,
-  elevationDeg: 20,
-  distance: 7,
-  target: Object.freeze([0, 0.25, 0.7]),
+  // Rev21: a slightly higher hero elevation than the Rev20 20 deg keeps the
+  // ribbon's narrow top surface visible (it now spans a small sine) and avoids
+  // grazing-angle mirror wash-out on the slate albedo.
+  elevationDeg: 27,
   stageWidth: 1440,
   stageHeight: 900,
+  fitMargin: 1.06,
 });
 
 /**
  * Default deterministic hero camera for the Wave scene. The camera distance is
  * fixed (not aspect-dependent) so the composition's pixel scale depends only on
- * the stage HEIGHT: 1440x900 and 1200x900 share exactly the same px/world
- * scale, which is what makes the 100 CSS px coin spacing hold at both.
+ * the stage HEIGHT: 1440x900 and 1200x900 share exactly the same px/world scale.
  */
 export function waveCameraPose(stageWidth = CAMERA.stageWidth, stageHeight = CAMERA.stageHeight) {
   const fov = CAMERA.fovDeg * DEG;
   const elevation = CAMERA.elevationDeg * DEG;
-  const target = Object.freeze([CAMERA.target[0], CAMERA.target[1], CAMERA.target[2]]);
+  const tanHalf = Math.tan(fov / 2);
+  const aspect = stageWidth / Math.max(1, stageHeight);
+  // Aspect-stable desktop fit (fixed distance) + a row fit so the three coins
+  // never clip on a short/phone stage (the ribbons may bleed off the sides).
+  const rowHalf = COIN_ROW_HALF;
+  const rowFitDistance = (rowHalf * CAMERA.fitMargin) / (tanHalf * Math.max(0.2, aspect));
+  const distance = round6(Math.max(CAMERA_SPEC.distance, rowFitDistance));
+  const target = Object.freeze([CAMERA_SPEC.target[0], CAMERA_SPEC.target[1], CAMERA_SPEC.target[2]]);
   const position = Object.freeze([
     target[0],
-    target[1] + CAMERA.distance * Math.sin(elevation),
-    target[2] + CAMERA.distance * Math.cos(elevation),
+    target[1] + distance * Math.sin(elevation),
+    target[2] + distance * Math.cos(elevation),
   ]);
-  const pxPerWorld = stageHeight / (2 * CAMERA.distance * Math.tan(fov / 2));
+  const pxPerWorld = stageHeight / (2 * distance * tanHalf);
   return Object.freeze({
     fovDeg: CAMERA.fovDeg,
     fov,
     elevationDeg: CAMERA.elevationDeg,
     elevation,
-    distance: CAMERA.distance,
+    distance,
     target,
     position,
     stage: Object.freeze({ width: stageWidth, height: stageHeight }),
     pxPerWorld,
-    pxPerWorldAt900: round6(900 / (2 * CAMERA.distance * Math.tan(fov / 2))),
+    pxPerWorldAt900: round6(900 / (2 * distance * tanHalf)),
   });
 }
 
@@ -280,41 +373,107 @@ export function waveProjectPoint(worldPoint, camera = waveCameraPose()) {
 /* Coin placements in the steel trough                                       */
 /* ------------------------------------------------------------------------- */
 
-function buildCoins() {
-  const camera = waveCameraPose();
-  const surfaceYAt = (x) => rawSurfaceY(WAVES.steel, x);
-  // solve the world spacing that projects to exactly 100 CSS px at the default
-  // 1440x900 camera; coin centres share z and sit r above the local surface
-  const projectAt = (x) => waveProjectPoint([x, surfaceYAt(x) + COIN_SCALE, COIN_Z], camera);
-  let spacingWorld = 0.4;
-  for (let iteration = 0; iteration < 60; iteration += 1) {
-    const p0 = projectAt(0);
-    const p1 = projectAt(spacingWorld);
-    const pixels = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
-    const error = 100 / pixels;
-    spacingWorld *= error;
-    if (Math.abs(error - 1) < 1e-14) break;
+/**
+ * s57: the three coin poses are AUTHORED (tuned in the page and pasted back from
+ * the QA "copy JSON" readout) at WAVE_SCALE 1.5. Positions scale with
+ * WAVE_SCALE / 1.5 (the same factor the wave geometry uses); quaternion
+ * ([x, y, z, w]) and the coin scale (0.18) are scale independent. There is no
+ * alternation / gap-0 placement logic any more: the contact gap / penetration is
+ * a reported metric (waveCoinContact), not an invariant.
+ */
+export const WAVE_AUTHORED_SCALE = 1.5;
+export const WAVE_COIN_POSES = deepFreeze([
+  { id: 'gbp', position: [-0.412771, 0.077551, 0.300082], quaternion: [-0.307844, 0.626903, 0.654562, -0.289436], rotationDeg: [-87.821, -49.987, 179.37], scale: 0.18 },
+  { id: 'eur', position: [0.265906, 0.035762, 0.296766], quaternion: [-0.423975, -0.548418, -0.615496, -0.37503], rotationDeg: [-83.772, 68.948, -179.462], scale: 0.18 },
+  { id: 'usd', position: [0.001566, -0.025502, 0.356595], quaternion: [0.717749, 0.027354, 0.027717, 0.695212], rotationDeg: [91.829, 4.463, -0.042], scale: 0.18 },
+]);
+const POSE_FACTOR = WAVE_SCALE / WAVE_AUTHORED_SCALE;
+const COIN_ROW_HALF = WAVE_COIN_POSES.reduce((max, pose) => Math.max(max, Math.abs(pose.position[0] * POSE_FACTOR) + pose.scale), 0);
+
+/**
+ * s59 + Rev32: the orange-red LINE light of the Wave mode. Baked into the equirect
+ * by src/env-room.js (room.setLineLight) before PMREM, i.e. an emissive strip that
+ * exists only inside the environment map (no THREE light). Same schema as
+ * LINE_LIGHT_SPEC in stacked-coins-model.js: linear `color`, HDR `intensity`,
+ * angles in radians. Set on entering the Wave mode, reset to null on leaving.
+ *
+ * Rev32 position: the source sits ABOVE the coins - the strip is a narrow cap at
+ * the zenith of the environment (elevation 1.40..1.55 rad, i.e. ~80..89 deg), so
+ * the orange-red light comes down from directly overhead and the metal wave and
+ * the coin rims reflect it through their own materials.
+ */
+export const WAVE_LINE_LIGHT = deepFreeze({
+  name: 'wave-line-light',
+  kind: 'env-baked-line',
+  color: [0.42, 0.045, 0.004],
+  hex: '#ff4a14',
+  intensity: 9,
+  azimuth: 0,
+  halfWidth: 0.3,
+  elevMin: 1.4,
+  elevMax: 1.55,
+  soft: 0.12,
+  tilt: 0,
+});
+
+/**
+ * Contact of one coin disc against a wave surface: the disc rim (circle of
+ * radius `scale` in the plane perpendicular to the coin axis, local +Y rotated by
+ * the quaternion) is sampled and compared with the surface height below each
+ * point. `clearance` = min over the rim of (rimY - surfaceY): > 0 floating,
+ * < 0 penetrating. Reported only; nothing asserts it is 0.
+ */
+export function waveCoinContact(kind, position, quaternion, scale = COIN_SCALE, samples = 720) {
+  const [qx, qy, qz, qw] = quaternion;
+  const rot = (v) => {
+    const [vx, vy, vz] = v;
+    return [
+      2 * (vx * (0.5 - qy * qy - qz * qz) + vy * (qx * qy - qw * qz) + vz * (qx * qz + qw * qy)),
+      2 * (vx * (qx * qy + qw * qz) + vy * (0.5 - qx * qx - qz * qz) + vz * (qy * qz - qw * qx)),
+      2 * (vx * (qx * qz - qw * qy) + vy * (qy * qz + qw * qx) + vz * (0.5 - qx * qx - qy * qy)),
+    ];
+  };
+  const u = rot([1, 0, 0]);
+  const v = rot([0, 0, 1]);
+  let clearance = Infinity;
+  let at = [position[0], position[1], position[2]];
+  for (let i = 0; i < samples; i += 1) {
+    const t = (i / samples) * TAU;
+    const c = Math.cos(t) * scale;
+    const s = Math.sin(t) * scale;
+    const x = position[0] + u[0] * c + v[0] * s;
+    const y = position[1] + u[1] * c + v[1] * s;
+    const z = position[2] + u[2] * c + v[2] * s;
+    const gap = y - waveSurfaceHeight(kind, x, z);
+    if (gap < clearance) {
+      clearance = gap;
+      at = [x, y, z];
+    }
   }
-  const half = Math.SQRT1_2;
-  const quaternion = Object.freeze([half, 0, 0, half]); // Rx(pi/2): face +Z, symbol up +Y
-  return COIN_IDS.map((id, index) => {
-    const x = (index - (COIN_IDS.length - 1) / 2) * spacingWorld;
-    const surface = surfaceYAt(x);
-    return deepFreeze({
+  return { clearance, rim: at };
+}
+
+function buildCoins() {
+  return deepFreeze(COIN_IDS.map((id, index) => {
+    const pose = WAVE_COIN_POSES.find((entry) => entry.id === id);
+    const position = round6Vec(pose.position.map((value) => value * POSE_FACTOR));
+    const { clearance, rim } = waveCoinContact('steel', position, pose.quaternion, pose.scale);
+    return {
       id,
       index,
       surface: 'steel',
-      radius: COIN_SCALE,
-      scale: COIN_SCALE,
-      position: round6Vec([x, surface + COIN_SCALE, COIN_Z]),
-      quaternion,
-      contact: round6Vec([x, surface, COIN_Z]),
-      gap: 0,
-      penetration: 0,
-      facing: '+Z',
-      screenSpacingPx: 100,
-    });
-  });
+      radius: pose.scale,
+      scale: pose.scale,
+      position,
+      quaternion: pose.quaternion.slice(),
+      rotationDeg: pose.rotationDeg.slice(),
+      contact: round6Vec([rim[0], waveSurfaceHeight('steel', rim[0], rim[2]), rim[2]]),
+      clearance: round6(clearance),
+      gap: round6(Math.max(0, clearance)),
+      penetration: round6(Math.max(0, -clearance)),
+      facing: 'authored',
+    };
+  }));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -354,37 +513,44 @@ function buildBounds() {
 function buildMetrics() {
   let maxSlope = 0;
   let maxCurvature = 0;
-  let flatSamples = 0;
-  let totalSamples = 0;
-  const slopeSteps = [];
+  let maxSlopeJump = 0;
   for (const kind of ['steel', 'gold']) {
     const wave = WAVES[kind];
+    const slopeSteps = [];
     for (let i = 0; i < 1440; i += 1) {
       const x = -wave.wavelength / 2 + (i / 1440) * wave.wavelength;
       maxSlope = Math.max(maxSlope, Math.abs(rawSlope(wave, x)));
       maxCurvature = Math.max(maxCurvature, Math.abs(rawCurvature(wave, x)));
-      if (Math.abs(profile(x / wave.wavelength + wave.phase)) >= PROFILE.flatTopThreshold) flatSamples += 1;
-      totalSamples += 1;
       slopeSteps.push(rawSlope(wave, x));
     }
+    for (let i = 1; i < slopeSteps.length; i += 1) maxSlopeJump = Math.max(maxSlopeJump, Math.abs(slopeSteps[i] - slopeSteps[i - 1]));
   }
-  let maxSlopeJump = 0;
-  for (let i = 1; i < slopeSteps.length; i += 1) maxSlopeJump = Math.max(maxSlopeJump, Math.abs(slopeSteps[i] - slopeSteps[i - 1]));
-  const flatTopFraction = flatSamples / totalSamples;
-  // anti-phase proof: gold(x) - goldBaseY === -(steel(x) - steelBaseY)
-  let maxAntiPhaseError = 0;
+  // rev26 s51 proof: steel == A*sin(0.5x/A + 19/4), gold - baseY == A*cos(0.5x/A)
+  let maxQuadratureError = 0;
   for (let i = 0; i < 720; i += 1) {
     const x = -WAVELENGTH / 2 + (i / 720) * WAVELENGTH;
-    const steelOffset = rawSurfaceY(WAVES.steel, x) - WAVES.steel.baseY;
-    const goldOffset = rawSurfaceY(WAVES.gold, x) - WAVES.gold.baseY;
-    maxAntiPhaseError = Math.max(maxAntiPhaseError, Math.abs(steelOffset + goldOffset));
+    const k = 0.5 / AMPLITUDE;
+    const steelErr = Math.abs(rawSurfaceY(WAVES.steel, x) - AMPLITUDE * Math.sin(k * x + GOLD_PHASE_RAD));
+    const goldErr = Math.abs(rawSurfaceY(WAVES.gold, x) - WAVES.gold.baseY - AMPLITUDE * Math.cos(k * x));
+    maxQuadratureError = Math.max(maxQuadratureError, steelErr, goldErr);
   }
-  // crest/trough alignment at x = 0 (steel trough, gold crest)
-  const steelTroughY = rawSurfaceY(WAVES.steel, 0);
-  const goldCrestY = rawSurfaceY(WAVES.gold, 0);
-  const steelCrestY = rawSurfaceY(WAVES.steel, WAVELENGTH / 2);
-  const goldTroughY = rawSurfaceY(WAVES.gold, WAVELENGTH / 2);
-  const spacingWorld = COINS[1].position[0] - COINS[0].position[0];
+  const steelTroughY = rawSurfaceY(WAVES.steel, WAVES.steel.troughX);
+  const steelCrestY = rawSurfaceY(WAVES.steel, WAVES.steel.crestX);
+  const goldMidY = rawSurfaceY(WAVES.gold, WAVELENGTH / 4);
+  const goldCrestY = rawSurfaceY(WAVES.gold, WAVES.gold.crestX);
+  const goldTroughY = rawSurfaceY(WAVES.gold, WAVES.gold.troughX);
+  // s57: the authored row is irregular. spacing = the NEAREST pair of coin centres
+  // in X (reported only; no 100 px rule is asserted any more).
+  const byX = COINS.slice().sort((a, b) => a.position[0] - b.position[0]);
+  let pairA = byX[0];
+  let pairB = byX[1] || byX[0];
+  for (let i = 0; i < byX.length - 1; i += 1) {
+    if (byX[i + 1].position[0] - byX[i].position[0] < pairB.position[0] - pairA.position[0]) {
+      pairA = byX[i];
+      pairB = byX[i + 1];
+    }
+  }
+  const spacingWorld = pairB.position[0] - pairA.position[0];
   const camera1440 = waveCameraPose(1440, 900);
   const camera1200 = waveCameraPose(1200, 900);
   const camera390 = waveCameraPose(390, 844);
@@ -396,85 +562,96 @@ function buildMetrics() {
   let maxContactGap = 0;
   let maxPenetration = 0;
   for (const coin of COINS) {
-    const surface = waveSurfaceHeight(coin.surface, coin.position[0], coin.position[2]);
-    const rimY = coin.position[1] - coin.radius;
-    const gap = rimY - surface;
-    maxContactGap = Math.max(maxContactGap, Math.abs(gap));
-    maxPenetration = Math.max(maxPenetration, Math.max(0, -gap));
+    maxContactGap = Math.max(maxContactGap, coin.gap);
+    maxPenetration = Math.max(maxPenetration, coin.penetration);
   }
   return deepFreeze({
-    bounds: buildBounds(),
+    bounds: BOUNDS,
     minCoinClearance: round6(spacingWorld - 2 * COIN_SCALE),
-    clearancePair: ['gbp', 'eur'],
-    contact: { authoredSink: 0, maxGap: round6(maxContactGap), maxPenetration: round6(maxPenetration), contactPoints: COINS.map((coin) => coin.contact) },
+    clearancePair: [pairA.id, pairB.id],
+    contact: {
+      authoredSink: 0,
+      reported: true,
+      method: 'rim circle vs steel surface (min of rimY - surfaceY)',
+      maxGap: round6(maxContactGap),
+      maxPenetration: round6(maxPenetration),
+      perCoin: COINS.map((coin) => ({ id: coin.id, clearance: coin.clearance, gap: coin.gap, penetration: coin.penetration })),
+      contactPoints: COINS.map((coin) => coin.contact),
+    },
     coinCount: COINS.length,
+    waveScale: WAVE_SCALE,
     spacing: {
       world: round6(spacingWorld),
-      pixels1440: round6(pxProject(camera1440, COINS[0], COINS[1])),
-      pixels1200: round6(pxProject(camera1200, COINS[0], COINS[1])),
-      pixels390: round6(pxProject(camera390, COINS[0], COINS[1])),
+      halfWavelength: round6(WAVELENGTH / 2),
+      pair: [pairA.id, pairB.id],
+      pixels1440: round6(pxProject(camera1440, pairA, pairB)),
+      pixels1200: round6(pxProject(camera1200, pairA, pairB)),
+      pixels390: round6(pxProject(camera390, pairA, pairB)),
+      minPixels: null,
+      rule: 'reported-only (authored poses)',
     },
     phase: {
-      offsetCycles: round6(WAVE_PHASE_OFFSET_CYCLES),
-      offsetDegrees: round6(WAVE_PHASE_OFFSET_CYCLES * 360),
-      maxAntiPhaseError: round6(maxAntiPhaseError),
-      steelTroughX: WAVES.steel.troughX,
+      offsetCycles: round6(PHASE_OFFSET_CYCLES),
+      offsetDegrees: round6(PHASE_OFFSET_CYCLES * 360),
+      quadrature: false,
+      formulas: { steel: 'A*sin(0.5*x/A+19/4)', gold: 'A*cos(0.5*x/A)' },
+      maxQuadratureError: round6(maxQuadratureError),
+      steelPhase: round6(PHASE_GOLD),
+      goldPhase: PHASE_STEEL,
+      steelKind: 'sin',
+      goldKind: 'cos',
+      steelTroughX: round6(WAVES.steel.troughX),
       steelTroughY: round6(steelTroughY),
-      goldCrestX: WAVES.gold.crestX,
-      goldCrestY: round6(goldCrestY),
-      steelCrestX: WAVELENGTH / 2,
+      steelCrestX: round6(WAVES.steel.crestX),
       steelCrestY: round6(steelCrestY),
-      goldTroughX: WAVELENGTH / 2,
+      goldCrestX: round6(WAVES.gold.crestX),
+      goldCrestY: round6(goldCrestY),
+      goldTroughX: round6(WAVES.gold.troughX),
+      goldMidY: round6(goldMidY),
       goldTroughY: round6(goldTroughY),
     },
     profile: {
-      sharpness: PROFILE.sharpness,
-      wavelength: WAVELENGTH,
-      amplitude: AMPLITUDE,
+      form: 'sine',
+      k: round6(0.5 / AMPLITUDE),
+      scale: WAVE_SCALE,
+      wavelength: round6(WAVELENGTH),
+      amplitude: round6(AMPLITUDE),
+      wavelengthOverAmplitude: round6(WAVELENGTH / AMPLITUDE),
+      periods: round6(PERIODS),
+      geometryScale: round6(GEOM.geometryScale),
       maxSlope: round6(maxSlope),
       maxSlopeDegrees: round6((Math.atan(maxSlope) * 180) / Math.PI),
       maxCurvature: round6(maxCurvature),
       maxSlopeJump: round6(maxSlopeJump),
-      flatTopThreshold: PROFILE.flatTopThreshold,
-      flatTopFraction: round6(flatTopFraction),
-      troughFlatWidth: round6(flatWidthFor(WAVES.steel)),
+      coinPlacement: 'authored',
     },
     layers: {
-      steelZ: [STEEL_Z_START, STEEL_Z_END],
-      goldZ: [GOLD_Z_START, GOLD_Z_END],
-      goldBaseY: GOLD_BASE_Y,
-      layers: 'steel front, gold behind and half a phase along X',
+      steelZ: [round6(STEEL_Z_START), round6(STEEL_Z_END)],
+      goldZ: [round6(GOLD_Z_START), round6(GOLD_Z_END)],
+      goldBaseY: round6(GOLD_BASE_Y),
+      layers: 'steel front (sin + 19/4), slate blue-violet ribbon behind (cos)',
     },
   });
 }
 
-/** world width of the broad flat part of the steel trough (where the coins sit) */
-function flatWidthFor(wave) {
-  // scan the trough side of one period: |profile| >= flatTopThreshold
-  let count = 0;
-  const samples = 4096;
-  for (let i = 0; i < samples; i += 1) {
-    const x = (i / samples) * wave.wavelength - wave.wavelength / 2;
-    if (Math.abs(profile(x / wave.wavelength + wave.phase)) >= PROFILE.flatTopThreshold) count += 1;
-  }
-  void count;
-  // trough flat region alone: sample around x = troughX
-  let lo = 0;
-  let hi = 0;
-  for (let i = 0; i < 4096; i += 1) {
-    const x = (i / 4096) * (wave.wavelength / 2);
-    const value = profile(x / wave.wavelength + wave.phase);
-    if (value <= -PROFILE.flatTopThreshold) {
-      lo = Math.min(lo, x);
-      hi = Math.max(hi, x);
-    }
-  }
-  return hi - lo;
+const COINS = buildCoins();
+const BOUNDS = buildBounds();
+
+function buildCameraSpec() {
+  const tanHalf = Math.tan((CAMERA.fovDeg * DEG) / 2);
+  const designAspect = CAMERA.stageWidth / CAMERA.stageHeight;
+  const halfSpan = (RIBBON_LENGTH / 2) * CAMERA.fitMargin;
+  const distanceWidth = halfSpan / (tanHalf * designAspect);
+  const targetY = round6((BOUNDS.min[1] + BOUNDS.max[1]) / 2);
+  const targetZ = round6((GOLD_Z_START + STEEL_Z_END) / 2);
+  const target = Object.freeze([0, targetY, targetZ]);
+  const distance = round6(Math.max(1.6, distanceWidth + 0.12));
+  return Object.freeze({ target, distance, fitMargin: CAMERA.fitMargin, distanceWidth: round6(distanceWidth), fovDeg: CAMERA.fovDeg, elevationDeg: CAMERA.elevationDeg });
 }
 
-const COINS = buildCoins();
-const METRICS = buildMetrics();
+const CAMERA_SPEC = buildCameraSpec();
 const CAMERA_METRICS = waveCameraPose();
+const METRICS = buildMetrics();
 
 /**
  * Frozen Wave composition (public contract).
@@ -485,34 +662,51 @@ export const WAVE = deepFreeze({
   count: COINS.length,
   coinScale: COIN_SCALE,
   faceSize: 512,
+  scale: WAVE_SCALE,
+  waveScale: WAVE_SCALE,
+  waveScaleRange: [WAVE_SCALE_MIN, WAVE_SCALE_MAX],
+  palette: SLATE_PALETTE,
   camera: {
     fovDeg: CAMERA.fovDeg,
     fov: CAMERA.fovDeg * DEG,
     elevationDeg: CAMERA.elevationDeg,
     elevationRad: round6(CAMERA.elevationDeg * DEG),
-    distance: CAMERA.distance,
-    targetY: CAMERA.target[1],
-    target: [CAMERA.target[0], CAMERA.target[1], CAMERA.target[2]],
+    distance: CAMERA_SPEC.distance,
+    targetY: CAMERA_SPEC.target[1],
+    target: [CAMERA_SPEC.target[0], CAMERA_SPEC.target[1], CAMERA_SPEC.target[2]],
     position: CAMERA_METRICS.position.slice(),
     stage: { width: CAMERA.stageWidth, height: CAMERA.stageHeight },
-    fitMargin: 1.0,
-    fitMode: 'height',
+    fitMargin: CAMERA.fitMargin,
+    fitMode: 'bounds-fit',
+    distanceWidth: CAMERA_SPEC.distanceWidth,
     pxPerWorld: round6(CAMERA_METRICS.pxPerWorld),
-    baseDistance: round6(CAMERA.distance),
+    baseDistance: round6(CAMERA_SPEC.distance),
   },
   layout: {
     design: 'two-ribbon-waves',
-    coinRow: 'steel-trough-flat',
+    coinRow: 'authored-poses',
     coinScale: COIN_SCALE,
+    poseFactor: round6(POSE_FACTOR),
+    authoredScale: WAVE_AUTHORED_SCALE,
     coins: COINS.map((coin) => ({ ...coin })),
   },
   waves: {
-    steel: { ...WAVES.steel, profile: { ...PROFILE, wavelength: WAVELENGTH, amplitude: AMPLITUDE } },
-    gold: { ...WAVES.gold, profile: { ...PROFILE, wavelength: WAVELENGTH, amplitude: AMPLITUDE } },
+    steel: { ...WAVES.steel, profile: { form: 'sine', wavelength: round6(WAVELENGTH), amplitude: round6(AMPLITUDE), scale: WAVE_SCALE } },
+    gold: { ...WAVES.gold, profile: { form: 'cosine', wavelength: round6(WAVELENGTH), amplitude: round6(AMPLITUDE), scale: WAVE_SCALE } },
   },
   ribbon: {
-    metrics: { length: RIBBON_LENGTH, width: RIBBON_WIDTH, steelThickness: 0.22, goldThickness: 0.2 },
-    section: { materials: ['brushed-steel', 'gold-satin', 'polished-edge'] },
+    metrics: {
+      length: round6(RIBBON_LENGTH),
+      width: round6(RIBBON_WIDTH),
+      steelThickness: round6(GEOM.steelThickness),
+      goldThickness: round6(GEOM.goldThickness),
+      periods: round6(PERIODS),
+      wavelength: round6(WAVELENGTH),
+      amplitude: round6(AMPLITUDE),
+      geometryScale: round6(GEOM.geometryScale),
+      scale: WAVE_SCALE,
+    },
+    section: { materials: ['polished-steel', 'slate-blue-violet', 'polished-edge'] },
   },
   coins: COINS,
   entries: COINS,

@@ -7,7 +7,8 @@
  * polyhedron and a V-section fuselage column with a V groove cut along its spine —
  * surfaced with seeded blue speckles. The model comes from ./paperplane-model.js
  * (geometry and procedural maps); this file owns the renderer, the fixed playful
- * three-quarter camera with a slight roll, the light-studio environment, the
+ * three-quarter camera with a slight roll, the env-room photograph (the only
+ * light source: no THREE lights, no studio box), the
  * gentle idle float/rock, the drag-to-orbit controls, the QA hooks and the
  * fallback.
  *
@@ -25,6 +26,7 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
+import { applyEnvRoom } from './env-room.js';
 import {
   CAMERA_SPEC,
   IDLE_SPEC,
@@ -45,37 +47,15 @@ const CAMERA = CAMERA_SPEC;
 
 /* ------------------------------------------------------------ render tuning */
 
-const RENDERER = Object.freeze({ exposure: 0.6, dprMax: 2 });
+const RENDERER = Object.freeze({ exposure: 1.0, dprMax: 2 });
 
-// A hand-built high-contrast studio box instead of a bright RoomEnvironment:
-// the silver sheet needs dark walls and hot softboxes in its reflections, or it
-// flattens into white plastic. Values are linear radiance.
-const ENVIRONMENT = Object.freeze({ sigma: 0.022 });
-const ENV_ROOM = Object.freeze({
-  size: [36, 24, 36],
-  wall: [0.1, 0.115, 0.135],
-  floor: [0.018, 0.021, 0.026],
-  ceiling: [0.44, 0.48, 0.54],
-});
-const ENV_PANELS = Object.freeze([
-  // Warm key softbox, upper front-left.
-  Object.freeze({ position: [-11, 8.5, 9.5], size: [8, 5], color: [1.0, 0.94, 0.86], intensity: 3.1 }),
-  // Cool fill, front-right.
-  Object.freeze({ position: [9.5, 6.5, 8.5], size: [5.2, 5.6], color: [0.78, 0.88, 1.0], intensity: 1.4 }),
-  // Long bright rim strip behind and above.
-  Object.freeze({ position: [0, 9.6, -12.5], size: [13, 2.4], color: [1.0, 1.0, 1.0], intensity: 3.4 }),
-  // Cool low bounce, rear-right.
-  Object.freeze({ position: [8.5, 2.2, -8.5], size: [4.5, 3.4], color: [0.55, 0.68, 0.85], intensity: 0.65 }),
-  // Dark card, rear-left, gives the V groove a dark reflection to fall into.
-  Object.freeze({ position: [-8.5, 3.6, -9.5], size: [6.5, 6], color: [0.02, 0.025, 0.03], intensity: 1.0 }),
-]);
-
-const LIGHTS = Object.freeze({
-  key: { color: 0xfff3e4, intensity: 0.7, position: [-5.5, 6.5, 6] },
-  fill: { color: 0xcfe0ff, intensity: 0.3, position: [6.5, 3.5, 4.5] },
-  rim: { color: 0xeaf3ff, intensity: 0.55, position: [2.5, 5, -7] },
-  hemi: { sky: 0xe8eef6, ground: 0x59636d, intensity: 0.1 },
-  ambient: { color: 0xdfe7f0, intensity: 0.06 },
+// Rev21 lighting contract: the page has no THREE lights and no procedural studio
+// box. `assets/env/modern-empty-room.jpg` is PMREM-filtered by ./env-room.js and
+// becomes the scene's only environment; the retired studio box was much brighter
+// than this room photo, so the intensity multiplier stays high.
+const ROOM = Object.freeze({
+  intensity: 3.8,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
 });
 
 const SHADOW = Object.freeze({ width: 3.3, depth: 2.5, opacity: 0.27, y: -0.44 });
@@ -269,7 +249,7 @@ class PaperPlaneStudio {
     this.scene = null;
     this.camera = null;
     this.controls = null;
-    this.envRT = null;
+    this.room = null;
     this.shadow = null;
     this.stageBox = { width: 0, height: 0 };
     this.cameraTarget = new THREE.Vector3();
@@ -294,7 +274,7 @@ class PaperPlaneStudio {
     return !this.still && !this.shot && !this.reducedMotion;
   }
 
-  init() {
+  async init() {
     const scene = new THREE.Scene();
     scene.name = 'paperplane-studio';
     this.scene = scene;
@@ -306,27 +286,15 @@ class PaperPlaneStudio {
     camera.up.copy(this.viewBasis().rolledUp);
     this.camera = camera;
 
-    this.buildEnvironment();
-
-    const key = new THREE.DirectionalLight(LIGHTS.key.color, LIGHTS.key.intensity);
-    key.position.set(...LIGHTS.key.position);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(LIGHTS.fill.color, LIGHTS.fill.intensity);
-    fill.position.set(...LIGHTS.fill.position);
-    scene.add(fill);
-    const rim = new THREE.DirectionalLight(LIGHTS.rim.color, LIGHTS.rim.intensity);
-    rim.position.set(...LIGHTS.rim.position);
-    scene.add(rim);
-    const hemi = new THREE.HemisphereLight(LIGHTS.hemi.sky, LIGHTS.hemi.ground, LIGHTS.hemi.intensity);
-    scene.add(hemi);
-    const ambient = new THREE.AmbientLight(LIGHTS.ambient.color, LIGHTS.ambient.intensity);
-    scene.add(ambient);
-    this.lights = { key, fill, rim, hemi, ambient };
+    // Rev21: the room photograph is the only light source (PMREM via env-room).
+    this.room = await applyEnvRoom(THREE, this.renderer, scene, { intensity: ROOM.intensity });
 
     this.buildShadow();
     scene.add(this.model.root);
     this.model.root.position.set(0, 0, 0);
     this.model.root.rotation.set(0, 0, 0);
+    // r151: materials added above need the intensity walked over them.
+    this.room.refresh(scene);
 
     const controls = new OrbitControls(camera, this.canvas);
     controls.enableDamping = true;
@@ -348,48 +316,6 @@ class PaperPlaneStudio {
     this.loop = this.loop.bind(this);
     if (!this.shot) this.raf = window.requestAnimationFrame(this.loop);
     return this;
-  }
-
-  buildEnvironment() {
-    const envScene = new THREE.Scene();
-    envScene.name = 'paperplane-env-studio';
-    const panelMaterial = (rgb, intensity) => new THREE.MeshBasicMaterial({
-      color: new THREE.Color(rgb[0] * intensity, rgb[1] * intensity, rgb[2] * intensity),
-      toneMapped: false,
-      side: THREE.DoubleSide,
-    });
-    const width = ENV_ROOM.size[0];
-    const height = ENV_ROOM.size[1];
-    const depth = ENV_ROOM.size[2];
-    const shell = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), panelMaterial(ENV_ROOM.wall, 1));
-    shell.material.side = THREE.BackSide;
-    envScene.add(shell);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), panelMaterial(ENV_ROOM.floor, 1));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -height / 2 + 0.05;
-    envScene.add(floor);
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), panelMaterial(ENV_ROOM.ceiling, 1));
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = height / 2 - 0.05;
-    envScene.add(ceiling);
-    for (const panel of ENV_PANELS) {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(panel.size[0], panel.size[1]), panelMaterial(panel.color, panel.intensity));
-      mesh.name = 'env-softbox';
-      mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-      mesh.lookAt(0, 0, 0);
-      envScene.add(mesh);
-    }
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    pmrem.compileEquirectangularShader();
-    this.envRT = pmrem.fromScene(envScene, ENVIRONMENT.sigma);
-    this.scene.environment = this.envRT.texture;
-    envScene.traverse((object) => {
-      if (object.isMesh) {
-        object.geometry.dispose();
-        object.material.dispose();
-      }
-    });
-    pmrem.dispose();
   }
 
   buildShadow() {
@@ -727,16 +653,12 @@ class PaperPlaneStudio {
         envMapIntensity: fuselageMaterial.envMapIntensity,
         transmission: round(fuselageMaterial.transmission, 3),
       },
-      edgeGlow: {
-        material: 'LineBasicMaterial additive gold',
-        color: this.model.edgeMaterial ? '#' + this.model.edgeMaterial.color.getHexString() : null,
-        opacity: this.model.edgeMaterial ? round(this.model.edgeMaterial.opacity, 3) : 0,
-        additive: this.model.edgeMaterial ? this.model.edgeMaterial.blending === THREE.AdditiveBlending : false,
-      },
-      backlight: this.model.backlight ? {
-        color: '#' + this.model.backlight.color.getHexString(),
-        intensity: round(this.model.backlight.intensity, 3),
-        distance: round(this.model.backlight.distance, 3),
+      edgeGlow: null, // Rev21 s18: gold edge removed
+      glow: this.model.glow ? {
+        kind: 'additive gold halo sprite (material emission, no light)',
+        color: '#' + this.model.glow.material.color.getHexString(),
+        opacity: round(this.model.glow.material.opacity, 3),
+        additive: this.model.glow.material.blending === THREE.AdditiveBlending,
       } : null,
       textures: null,
       speckles: 0,
@@ -784,9 +706,9 @@ class PaperPlaneStudio {
       this.shadow.material.dispose();
       this.shadow = null;
     }
-    if (this.envRT) {
-      this.envRT.dispose();
-      this.envRT = null;
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
     }
     if (this.scene) {
       this.scene.remove(this.model.root);
@@ -932,6 +854,8 @@ function buildDebug() {
     errors: qa.errors.slice(),
     warnings: qa.warnings.slice(),
     webgl: { supported: Boolean(state.webgl), version: state.webgl || '' },
+    lights: [],
+    environment: ROOM.label,
     flags: {
       still: Boolean(state.still),
       shot: Boolean(state.shot),
@@ -947,6 +871,8 @@ function buildDebug() {
           folded: Boolean(state.model.folded),
           panels: state.model.panels,
           creases: state.model.creases,
+          keelProfile: keelProfile(state.model),
+          goldEdgeMeshes: 0,
           material: {
             type: 'MeshPhysicalMaterial',
             color: '#' + state.model.material.color.getHexString(),
@@ -1083,7 +1009,7 @@ async function boot() {
       still: state.still,
       shot: state.shot,
     });
-    state.studio.init();
+    await state.studio.init();
   } catch (error) {
     if (state.studio) {
       try {
@@ -1227,3 +1153,28 @@ window.addEventListener('unhandledrejection', (event) => {
 if (IS_BROWSER) main();
 
 export { VERSION, PaperPlaneStudio };
+
+/** Rev21 s18: keel (bottom triangle) vertical thickness at its nose end vs tail end. */
+function keelProfile(model) {
+  const position = model.keel.geometry.attributes.position;
+  const ys = [];
+  const zs = [];
+  for (let i = 0; i < position.count; i += 1) {
+    ys.push(position.getY(i));
+    zs.push(position.getZ(i));
+  }
+  const zMin = Math.min(...zs);
+  const zMax = Math.max(...zs);
+  const band = (zMax - zMin) * 0.12;
+  const thick = (lo, hi) => {
+    const sel = ys.filter((_, i) => zs[i] >= lo && zs[i] <= hi);
+    return sel.length ? Math.max(...sel) - Math.min(...sel) : 0;
+  };
+  // vertex-based: the nose tip is a single vertex (thickness 0), the rear has the full depth
+  return {
+    noseZ: round(zMax, 3),
+    tailZ: round(zMin, 3),
+    noseThickness: round(thick(zMax - 1e-6, zMax), 3),
+    tailThickness: round(thick(zMin, zMin + band * 2.5), 3),
+  };
+}

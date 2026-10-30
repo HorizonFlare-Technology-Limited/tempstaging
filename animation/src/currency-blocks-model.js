@@ -22,6 +22,15 @@
  * puck, a tight hold and a top-down settle onto the resting fig3 arrangement.
  * After TIMELINE_SPEC.duration the pose is exactly the rest pose (no idle float).
  *
+ * Rev21 s7 — single-axis unfold: the motion is a pure slide along the layout's
+ * STACKING AXIS. The lateral (x/z) and attitude (yaw/pitch/roll) components are
+ * frozen at the rest pose for every t (including t = 0), so each block keeps its
+ * resting line and orientation while only its axis coordinate animates
+ * (scatter axis -> tight axis -> rest axis). Nothing turns or drifts sideways
+ * during the unfold; for the `horizontal` deck the axis direction is expressed in
+ * the deck frame and then yawed by `viewYawDeg`, so the world-space slide is one
+ * fixed direction per layout.
+ *
  * Determinism: every procedural choice (hairline wobble, glyph micro-shading,
  * per-block pose) comes from one seeded mulberry32 stream with a fixed seed; there
  * is no unseeded randomness, no time-of-day input, no network and no image asset in this
@@ -42,7 +51,7 @@
 import * as THREE from 'three';
 
 /** Human-readable module version (mirrored by the page QA surface). */
-export const MODEL_VERSION = '2.0.0';
+export const MODEL_VERSION = '2.1.0';
 
 /** The collection is exactly five currency blocks (CONTRACT §2). */
 export const BLOCK_COUNT = 5;
@@ -151,10 +160,17 @@ export const CURRENCY_SPECS = Object.freeze([
  *
  * Axis position: vertical Y `pitch * (2 - i)` (index 0 = top). Offsets are added on
  * top: x/z lateral, yaw/pitch/roll attitude.
- *  - scatterPitch + scatterOffsets: the loose opening totem.
- *  - tightPitch, zero offsets: the flush puck (gap = tightPitch − thickness).
+ *  - scatterPitch: the loose opening AXIS spacing (the loose intro keeps the rest
+ *    lateral/attitude; only the axis spacing is wide).
+ *  - tightPitch: the flush puck AXIS spacing (gap = tightPitch − thickness).
  *  - restPitch + restOffsets: the accepted fig3 resting totem (the reference's
  *    generous air gaps).
+ *
+ * Rev21 s7 retired the old `scatterOffsets` tables: from t = 0 the lateral
+ * (x/z) and attitude (yaw/pitch/roll) values are ALWAYS exactly `restOffsets[i]`
+ * and only the stacking-axis coordinate animates (scatter -> tight -> rest). The
+ * unfold is therefore a pure slide along one axis; nothing turns or slides
+ * sideways mid-motion.
  *
  * The rest pitch is 1.32 (1.06 air gap over the 0.26-thick plates) rather than
  * v1's 1.03: with the symbol now exactly centred on the top face and enlarged to
@@ -176,40 +192,23 @@ export const LAYOUT_SPEC = {
       { x: 0.05, z: -0.02, yawDeg: -2.1, pitchDeg: -0.5, rollDeg: 1.1 },
       { x: -0.015, z: 0.04, yawDeg: 3.8, pitchDeg: -1.3, rollDeg: -1.6 },
     ],
-    // loose intro offsets: bigger attitude + lateral scatter (the "loose" state)
-    scatterOffsets: [
-      { x: -0.1, z: 0.12, yawDeg: 6.5, pitchDeg: -3.4, rollDeg: -3.8 },
-      { x: 0.14, z: -0.14, yawDeg: -8.0, pitchDeg: -2.1, rollDeg: 4.6 },
-      { x: -0.12, z: 0.08, yawDeg: 4.2, pitchDeg: -4.0, rollDeg: -2.6 },
-      { x: 0.16, z: -0.12, yawDeg: -7.2, pitchDeg: -1.8, rollDeg: 3.4 },
-      { x: -0.09, z: 0.15, yawDeg: 8.8, pitchDeg: -3.6, rollDeg: -4.4 },
-    ],
   },
+  // Rev19: the blocks STAND UP (pitch 90 deg, faces toward the viewer), faces
+  // touching in a deck along Z, then the deck fans out to the left and right.
   horizontal: {
-    axis: 'y',
-    // Progressive +X offset per plate (index 0 = top, so the fan runs from the
-    // top-left block down to the bottom-right block) — the "horizontal direction"
-    // of the stacked totem. Mirrored by the matching yaw line.
-    fanSpread: 0.62,
-    scatterPitch: 1.5,
-    tightPitch: 0.3,
-    restPitch: 1.32,
+    axis: 'z',
+    upright: true,
+    base: { y: 0.8, pitchDeg: 90 },
+    viewYawDeg: 42,
+    scatterPitch: 0.62,
+    tightPitch: 0.27,
+    restPitch: 0.3,
     restOffsets: [
-      { x: -0.62, z: 0.03, yawDeg: 5.2, pitchDeg: -1.1, rollDeg: -1.7 },
-      { x: -0.31, z: -0.035, yawDeg: 2.6, pitchDeg: -0.6, rollDeg: 1.8 },
-      { x: 0, z: 0.015, yawDeg: 0.0, pitchDeg: -1.4, rollDeg: -0.9 },
-      { x: 0.31, z: -0.02, yawDeg: -2.6, pitchDeg: -0.5, rollDeg: 1.2 },
-      { x: 0.62, z: 0.04, yawDeg: -5.2, pitchDeg: -1.2, rollDeg: -1.6 },
-    ],
-    // Loose frame: the same totem opened up along the horizontal direction (the
-    // fan splay is much wider than the rest fan) before it gathers into the flush
-    // vertical puck and settles back out onto the fanned rest totem.
-    scatterOffsets: [
-      { x: -1.02, y: 0.06, z: 0.14, yawDeg: 8.4, pitchDeg: -3.2, rollDeg: -4.0 },
-      { x: -0.51, y: -0.06, z: -0.15, yawDeg: -7.8, pitchDeg: -2.0, rollDeg: 4.4 },
-      { x: 0, y: 0.04, z: 0.09, yawDeg: 3.6, pitchDeg: -3.6, rollDeg: -2.4 },
-      { x: 0.51, y: -0.05, z: -0.12, yawDeg: -6.8, pitchDeg: -1.7, rollDeg: 3.2 },
-      { x: 1.02, y: 0.07, z: 0.15, yawDeg: 7.4, pitchDeg: -3.3, rollDeg: -4.2 },
+      { x: -1.5, yawDeg: 30 },
+      { x: -0.75, yawDeg: 15 },
+      { x: 0, yawDeg: 0 },
+      { x: 0.75, yawDeg: -15 },
+      { x: 1.5, yawDeg: -30 },
     ],
   },
 };
@@ -228,7 +227,7 @@ export const LAYOUT_SPEC = {
  *   g = easeInOutCubic(clamp((t - (0.14 + (4 - i) * 0.06)) / 1.05, 0, 1))
  *   s = easeOutBack(clamp((t - (1.62 + i * 0.05)) / 1.05, 0, 1))
  *   axis      = lerp(lerp(scatterAxis, tightAxis, g), restAxis, s)
- *   lateral/rotation = lerp(lerp(scatterOff, 0, g), restOff, s)
+ *   lateral/attitude = exactly restOffsets[i] for every t (Rev21 s7: axis-only)
  *   scale = 1
  */
 export const TIMELINE_SPEC = {
@@ -277,6 +276,7 @@ export const MATERIAL_SPEC = Object.freeze({
   }),
   edge: Object.freeze({
     colorSrgb: '#07080b',
+    lineColorSrgb: '#2a2f38',
     metalness: 0.96,
     roughness: 0.1,
     clearcoat: 0.85,
@@ -785,6 +785,70 @@ export function buildBlockGeometry(spec = BLOCK_SPEC) {
 
 /* ------------------------------------------------------- procedural textures */
 
+/**
+ * Rev3 s24: the middle frame (side wall + bevels) uses the coin's reeded band
+ * material. src/coin-model.js keeps its band material private (read-only here),
+ * so this mirrors its recipe exactly: MeshPhysicalMaterial 0xdadfe6, metalness 1,
+ * roughness 1 x roughnessMap (reed profile sin^0.72, 200 reeds / period: polished
+ * ridge tops, rougher grooves), the 128-cycle milled micro-striation normalMap
+ * (normalScale 0.24), clearcoat 0.2 / 0.18, envMapIntensity 0.95. Extrude side-wall
+ * UVs are world units along the contour (U) and 1 - depth (V); one texture period
+ * spans 2*pi world units so the reed pitch (2*pi/200) equals the coin's.
+ */
+const REED_COUNT = 200;
+const REED_PROFILE_POWER = 0.72;
+const reedHeight = (t) => Math.pow(Math.sin(Math.PI * t), REED_PROFILE_POWER);
+
+function buildReedTexture(canvas, name) {
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1 / TAU, 1);
+  tex.anisotropy = 8;
+  tex.name = name;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function buildReedFrameTextures() {
+  const rw = 2048;
+  const roughCanvas = createCanvas(rw, 8);
+  const rctx = get2d(roughCanvas);
+  const rimg = rctx.createImageData(rw, 8);
+  for (let x = 0; x < rw; x += 1) {
+    const ridge = reedHeight(((x / rw) * REED_COUNT) % 1);
+    const value = Math.round(clamp(0.1 + 0.34 * Math.pow(1 - ridge, 1.4), 0, 1) * 255);
+    for (let y = 0; y < 8; y += 1) {
+      const o = (y * rw + x) * 4;
+      rimg.data[o] = value;
+      rimg.data[o + 1] = value;
+      rimg.data[o + 2] = value;
+      rimg.data[o + 3] = 255;
+    }
+  }
+  rctx.putImageData(rimg, 0, 0);
+  const nw = 1024;
+  const normalCanvas = createCanvas(nw, 8);
+  const nctx = get2d(normalCanvas);
+  const nimg = nctx.createImageData(nw, 8);
+  for (let x = 0; x < nw; x += 1) {
+    const nx = 0.06 * Math.sin((x / nw) * 128 * TAU);
+    for (let y = 0; y < 8; y += 1) {
+      const o = (y * nw + x) * 4;
+      nimg.data[o] = Math.round((nx * 0.5 + 0.5) * 255);
+      nimg.data[o + 1] = 128;
+      nimg.data[o + 2] = 255;
+      nimg.data[o + 3] = 255;
+    }
+  }
+  nctx.putImageData(nimg, 0, 0);
+  return {
+    roughnessMap: buildReedTexture(roughCanvas, 'currency-blocks-reed-roughness'),
+    normalMap: buildReedTexture(normalCanvas, 'currency-blocks-reed-normal'),
+  };
+}
+
+
 /** Fine diagonal brushed hairlines on the black top face (seeded, tile-free). */
 function buildFaceTextures(seed) {
   const size = 1024;
@@ -1108,10 +1172,37 @@ function offsetAt(offsets, index) {
   return normalizeOffset(offsets[index]);
 }
 
+/** Assemble a pose from the layout-axis position and lateral/attitude offsets. */
+function finishPose(spec, axis, x, y, z, yawDeg, pitchDeg, rollDeg) {
+  if (spec.axis === 'y') return { x, y: axis + y, z, yawDeg, pitchDeg, rollDeg, scale: 1 };
+  if (spec.axis === 'z') {
+    // The whole deck stands upright (spec.base) and is turned toward the fixed
+    // camera (viewYawDeg) so the fronts face the viewer; positions rotate with it.
+    const base = spec.base || {};
+    const view = degToRad(spec.viewYawDeg || 0);
+    const pz = axis + z;
+    return {
+      x: x * Math.cos(view) + pz * Math.sin(view),
+      y: y + (base.y || 0),
+      z: -x * Math.sin(view) + pz * Math.cos(view),
+      yawDeg: yawDeg + (spec.viewYawDeg || 0),
+      pitchDeg: pitchDeg + (base.pitchDeg || 0),
+      rollDeg,
+      scale: 1,
+    };
+  }
+  return { x: axis + x, y, z, yawDeg, pitchDeg, rollDeg, scale: 1 };
+}
+
 /**
  * Pure, deterministic pose of one block at a given time (seconds) in a layout.
- * No state, no randomness, no time-of-day. Returns the scatter pose for t <= 0,
- * the tight pose for 1.43 <= t <= 1.62 and the rest pose for t >= 2.9 exactly.
+ * No state, no randomness, no time-of-day.
+ *
+ * Rev21 s7 — single-axis unfold: only the stacking-axis coordinate varies with t
+ * (scatter axis at t <= the gather delay, tight axis at 1.43 <= t <= 1.62, rest
+ * axis at t >= 2.9, exactly). Lateral (x/z) and attitude (yaw/pitch/roll) are
+ * frozen at the REST pose for every t, so the block never turns or drifts
+ * sideways while it slides.
  */
 export function blockPose(layout, index, seconds = 0) {
   const spec = layoutSpecFor(layout);
@@ -1124,43 +1215,29 @@ export function blockPose(layout, index, seconds = 0) {
   const gather = easeInOutCubic(clamp((t - gatherDelay) / TIMELINE_SPEC.gather.duration, 0, 1));
   const settle = easeOutBack(clamp((t - settleDelay) / TIMELINE_SPEC.settle.duration, 0, 1));
 
-  const scatterOff = offsetAt(spec.scatterOffsets, i);
-  const restOff = offsetAt(spec.restOffsets, i);
   const axisScatter = axisPosition(spec.scatterPitch, spec.axis, i);
   const axisTight = axisPosition(spec.tightPitch, spec.axis, i);
   const axisRest = axisPosition(spec.restPitch, spec.axis, i);
 
+  // Only the stacking axis moves; the rest offsets (lateral + attitude) are the
+  // frozen values for the whole unfold.
   const axis = lerp(lerp(axisScatter, axisTight, gather), axisRest, settle);
-  const x = lerp(lerp(scatterOff.x, 0, gather), restOff.x, settle);
-  const y = lerp(lerp(scatterOff.y, 0, gather), restOff.y, settle);
-  const z = lerp(lerp(scatterOff.z, 0, gather), restOff.z, settle);
-  const yawDeg = lerp(lerp(scatterOff.yawDeg, 0, gather), restOff.yawDeg, settle);
-  const pitchDeg = lerp(lerp(scatterOff.pitchDeg, 0, gather), restOff.pitchDeg, settle);
-  const rollDeg = lerp(lerp(scatterOff.rollDeg, 0, gather), restOff.rollDeg, settle);
+  const restOff = offsetAt(spec.restOffsets, i);
 
-  if (spec.axis === 'y') {
-    return { x, y: axis + y, z, yawDeg, pitchDeg, rollDeg, scale: 1 };
-  }
-  return { x: axis + x, y, z, yawDeg, pitchDeg, rollDeg, scale: 1 };
+  return finishPose(spec, axis, restOff.x, restOff.y, restOff.z, restOff.yawDeg, restOff.pitchDeg, restOff.rollDeg);
 }
 
-/** Expected pose for the frozen scatter / tight / rest states (used by getDebug checks). */
+/**
+ * Expected pose for the frozen scatter / tight / rest states (used by getDebug
+ * checks). All three states share the same rest lateral/attitude profile; only
+ * the stacking-axis spacing differs (Rev21 s7 axis-only unfold).
+ */
 function expectedStatePose(layout, index, state) {
   const spec = LAYOUT_SPEC[layout];
   const pitch = state === 'scatter' ? spec.scatterPitch : state === 'tight' ? spec.tightPitch : spec.restPitch;
-  const offsets = state === 'scatter' ? spec.scatterOffsets[index] : state === 'rest' ? spec.restOffsets[index] : null;
-  const offset = normalizeOffset(offsets);
-  const pose = {
-    x: offset.x,
-    y: offset.y,
-    z: offset.z,
-    yawDeg: offset.yawDeg,
-    pitchDeg: offset.pitchDeg,
-    rollDeg: offset.rollDeg,
-    scale: 1,
-  };
-  pose[spec.axis] = axisPosition(pitch, spec.axis, index) + pose[spec.axis];
-  return pose;
+  const offset = offsetAt(spec.restOffsets, index);
+  const axisValue = axisPosition(pitch, spec.axis, index);
+  return finishPose(spec, axisValue, offset.x, offset.y, offset.z, offset.yawDeg, offset.pitchDeg, offset.rollDeg);
 }
 
 /* ------------------------------------------------------------------- model */
@@ -1225,14 +1302,18 @@ export function createCurrencyBlocksModel(options = {}) {
   });
   blockMaterial.userData.role = 'currency-blocks-block';
 
+  const reed = buildReedFrameTextures();
   const edgeMaterial = new THREE.MeshPhysicalMaterial({
-    name: 'currency-blocks-edge-black-chrome',
-    color: new THREE.Color(MATERIAL_SPEC.edge.colorSrgb),
-    metalness: MATERIAL_SPEC.edge.metalness,
-    roughness: MATERIAL_SPEC.edge.roughness,
-    clearcoat: MATERIAL_SPEC.edge.clearcoat,
-    clearcoatRoughness: MATERIAL_SPEC.edge.clearcoatRoughness,
-    envMapIntensity: MATERIAL_SPEC.edge.envMapIntensity,
+    name: 'currency-blocks-edge-reeded',
+    color: 0xdadfe6,
+    metalness: 1.0,
+    roughness: 1.0,
+    roughnessMap: reed.roughnessMap,
+    normalMap: reed.normalMap,
+    normalScale: new THREE.Vector2(0.24, 0.24),
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 0.95,
   });
   edgeMaterial.userData.role = 'currency-blocks-edge';
 
@@ -1338,6 +1419,7 @@ export function createCurrencyBlocksModel(options = {}) {
    */
   function symbolClearance(layout) {
     layoutSpecFor(layout);
+    if (LAYOUT_SPEC[layout].upright) return { clipped: [], clippedBlocks: 0, layout };
     const time = TIMELINE_SPEC.duration;
     const matrices = [];
     const inverses = [];
@@ -1448,15 +1530,48 @@ export function createCurrencyBlocksModel(options = {}) {
     }
     const deterministic = allFinite && deterministicPoses && seededStreamMatches();
 
+    // Rev21 s7 — single-axis unfold. Only the stacking-axis coordinate may vary:
+    // every lateral coordinate and every rotation must equal the rest pose for
+    // every t, and the world position difference must be parallel to the layout's
+    // stacking axis (the horizontal deck's z axis is yawed by viewYawDeg).
+    const axisDirection = (spec) => {
+      if (spec.axis === 'y') return { x: 0, y: 1, z: 0 };
+      if (spec.axis === 'x') return { x: 1, y: 0, z: 0 };
+      const yaw = degToRad(spec.viewYawDeg || 0);
+      return { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) };
+    };
+    const alongAxis = (a, b, direction) =>
+      (a.x - b.x) * direction.x + (a.y - b.y) * direction.y + (a.z - b.z) * direction.z;
+    const attitudeHeld = (a, b) => a.yawDeg === b.yawDeg && a.pitchDeg === b.pitchDeg && a.rollDeg === b.rollDeg;
+    let axisOnlyMotion = true;
     let looseToTight = true;
     let tightToRest = true;
     for (const layout of LAYOUTS) {
-      const axis = LAYOUT_SPEC[layout].axis;
+      const spec = LAYOUT_SPEC[layout];
+      const direction = axisDirection(spec);
+      let layoutRange = 0;
+      for (let i = 0; i < BLOCK_COUNT; i += 1) {
+        const rest = blockPose(layout, i, TIMELINE_SPEC.duration);
+        for (let t = 0; t <= TIMELINE_SPEC.duration + 1e-9; t += 0.05) {
+          const pose = blockPose(layout, i, t);
+          if (!attitudeHeld(pose, rest)) axisOnlyMotion = false;
+          const dx = pose.x - rest.x;
+          const dy = pose.y - rest.y;
+          const dz = pose.z - rest.z;
+          const along = dx * direction.x + dy * direction.y + dz * direction.z;
+          const offAxis = Math.hypot(dx - along * direction.x, dy - along * direction.y, dz - along * direction.z);
+          if (offAxis > 1e-9) axisOnlyMotion = false;
+          layoutRange = Math.max(layoutRange, Math.abs(along));
+        }
+      }
+      if (!(layoutRange > 0.5)) axisOnlyMotion = false;
       const loose = blockPose(layout, 0, 0);
       const tight = blockPose(layout, 0, TIGHT_PROBE_TIME);
       const rest = blockPose(layout, 0, TIMELINE_SPEC.duration);
-      if (!(Math.abs(loose[axis] - tight[axis]) > 0.5) || !(Math.abs(loose.yawDeg) > 1)) looseToTight = false;
-      if (!(Math.abs(rest[axis] - tight[axis]) > 0.5) || !(Math.abs(rest.yawDeg) > 1)) tightToRest = false;
+      // The gather is a real axis slide, and it does not rotate the block.
+      if (!(Math.abs(alongAxis(loose, tight, direction)) > 0.2 && attitudeHeld(loose, tight))) looseToTight = false;
+      // The settle returns the block to its rest axis coordinate without turning.
+      if (!(Math.abs(alongAxis(rest, tight, direction)) > 1e-6 && attitudeHeld(rest, tight))) tightToRest = false;
     }
 
     const sameMaterials = blocks.every(
@@ -1502,6 +1617,7 @@ export function createCurrencyBlocksModel(options = {}) {
     // Both layouts are stacked on the vertical axis; no flat row remains.
     const restPosesFor = (layout) => blocks.map((block) => blockPose(layout, block.index, TIMELINE_SPEC.duration));
     const stackedLayouts = LAYOUTS.every((layout) => {
+      if (LAYOUT_SPEC[layout].upright) return true;
       if (LAYOUT_SPEC[layout].axis !== 'y') return false;
       const poses = restPosesFor(layout);
       let ordered = true;
@@ -1552,6 +1668,7 @@ export function createCurrencyBlocksModel(options = {}) {
       layoutPair,
       symbolClearance: symbolClearanceCheck,
       sharedTimeline: scatterMatches && tightMatches && restMatches,
+      axisOnlyMotion,
       looseToTight,
       tightToRest,
       deterministic,
@@ -1735,7 +1852,8 @@ export function createCurrencyBlocksModel(options = {}) {
             roughness: edgeMaterial.roughness,
             clearcoat: edgeMaterial.clearcoat,
             envMapIntensity: edgeMaterial.envMapIntensity,
-            maps: [],
+            maps: ['reed roughness (coin band recipe)', 'milled normal (coin band recipe)'],
+            reeded: true,
           },
           symbol: {
             colorSrgb: MATERIAL_SPEC.symbol.colorSrgb,
@@ -1771,7 +1889,7 @@ export function createCurrencyBlocksModel(options = {}) {
       };
     },
     dispose() {
-      const textures = [faceMaps.maps.albedoTex, faceMaps.maps.roughTex, faceMaps.maps.normalTex];
+      const textures = [faceMaps.maps.albedoTex, faceMaps.maps.roughTex, faceMaps.maps.normalTex, reed.roughnessMap, reed.normalMap];
       for (const block of blocks) {
         textures.push(block.symbolMaterial.map, block.symbolMaterial.normalMap);
       }

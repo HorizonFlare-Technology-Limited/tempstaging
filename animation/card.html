@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="TEKO Sleek Metal Card — an interactive three.js payment-card duo. Two sleek-steel cards with reconstructed engraved backs: the dark card has a black metal mirror middle frame, the light card keeps its chrome frame, both flush with the card edge. Composed like a card stack, viewed from a 45-degree three-quarter angle, lit by one switchable key light set to the right of the camera; drag to rotate.">
-<title>TEKO — Sleek Metal Card</title>
+<meta name="description" content="TEKO Metal Card — an interactive three.js payment-card duo. Two metal cards with reconstructed engraved backs: the dark card has a black metal mirror middle frame, the light card keeps its chrome frame, both flush with the card edge. Composed like a card stack, viewed from a 45-degree three-quarter angle, lit only by one room-photo environment image (image-based lighting, no scene lights); drag to rotate.">
+<title>TEKO — Metal Card</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='8' width='26' height='17' rx='3.4' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.6'/%3E%3Cpath d='M3.4 13.6h25.2' stroke='%23c9d6e6' stroke-width='1.2'/%3E%3Cpath d='M8 19.2h6.4' stroke='%23c9d6e6' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="./src/card-styles.css">
+<link rel="stylesheet" href="./src/site-nav.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body data-card="" data-variant="duo" data-mode="hero" data-qa-ready="0" data-qa-errors="0" data-qa-cards="" data-qa-pose="0,0" data-qa-composition="duo" data-qa-reflection="1" data-qa-light="1" data-light="on" data-fallback="0">
@@ -29,7 +30,21 @@
         <span class="brand-product">Metal Card</span>
       </a>
       <div class="header-side">
-        <p class="header-note">Black-mirror + chrome duo <span class="header-dot" aria-hidden="true"></span> 45° key light right <span class="header-dot" aria-hidden="true"></span> <a href="./columns.html">Columns</a> <span class="header-dot" aria-hidden="true"></span> <a href="./billing.html">Billing</a> <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a></p>
+        <nav class="site-nav" aria-label="Collections">
+          <a href="./">Coin</a>
+          <span class="site-nav-current" aria-current="page">Metal Card</span>
+          <a href="./columns.html">Columns</a>
+          <a href="./phone.html">iPhone 15</a>
+          <a href="./billing.html">Billing</a>
+          <a href="./shield.html">Shield</a>
+          <a href="./currency-blocks.html">Currency Blocks</a>
+          <a href="./vault.html">Vault</a>
+          <a href="./paperplane.html">Plane</a>
+          <a href="./connection.html">Connection</a>
+          <a href="./logo-blocks.html">Logo Blocks</a>
+          <a href="./stacked-panel.html">Stacked Panel</a>
+        </nav>
+        <p class="header-note">Black-mirror + chrome duo <span class="header-dot" aria-hidden="true"></span> 45° &middot; room-photo light</p>
         <a class="header-link" href="./index.html">
           <span>Currency Coin</span>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -44,12 +59,12 @@
 
         <div class="stage" id="stage">
           <div class="stage-aura" aria-hidden="true"></div>
-          <canvas id="stage-canvas" aria-label="Interactive 3D metal payment cards — a light sleek-steel card in front and a dark sleek-steel card behind, each with a per-card reconstructed engraved back design. The dark card's thin middle frame is a black metal mirror, the light card's frame is chrome, both flush with the card edge. The pair is viewed from a 45-degree three-quarter angle and lit by a single key PointLight from the camera's right. Drag to rotate the pair; press R to reset the view, F to swap the cards, S to toggle auto-rotate, E to toggle the glass-table reflection and L to toggle the key light. Double-click the canvas to reset."></canvas>
+          <canvas id="stage-canvas" aria-label="Interactive 3D metal payment cards — a light metal card in front and a dark metal card behind, each with a per-card reconstructed engraved back design. The dark card's thin middle frame is a black metal mirror, the light card's frame is chrome, both flush with the card edge. The pair is viewed from a 45-degree three-quarter angle and lit only by one room-photo environment image (image-based lighting, no scene lights). Drag to rotate the pair; press R to reset the view, F to swap the cards, S to toggle auto-rotate, E to toggle the glass-table reflection and L to switch the room-environment level between full and dimmed. Double-click the canvas to reset."></canvas>
 
           <div class="stage-overlay" aria-hidden="true">
             <div class="stage-eyebrow">
               <span class="stage-dot"></span>
-              <span id="stage-eyebrow-text">Sleek studio</span>
+              <span id="stage-eyebrow-text">Room studio</span>
             </div>
             <div class="stage-index"><span id="stage-index">02</span><span class="stage-index-slash">/</span><span class="stage-index-total">02</span></div>
           </div>
@@ -60,7 +75,7 @@
             <span class="stage-caption-name" id="stage-name">Dark + Light</span>
           </div>
 
-          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to rotate · L light</p>
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to rotate · L room light</p>
 
           <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
         </div>
@@ -104,12 +119,21 @@
             <kbd>E</kbd>
           </button>
 
-          <button class="btn btn-ghost" id="btn-light" type="button" aria-pressed="true" aria-keyshortcuts="L">
+          <button class="btn btn-ghost" id="btn-cardset" type="button" aria-pressed="false" aria-keyshortcuts="G">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2.4" y="5.6" width="2.6" height="9" rx="0.6"></rect><rect x="6" y="5.6" width="2.6" height="9" rx="0.6"></rect>
+              <rect x="9.6" y="3.4" width="2.6" height="9" rx="0.6"></rect><rect x="13.2" y="5.6" width="2.6" height="9" rx="0.6"></rect>
+            </svg>
+            <span>Card set</span>
+            <kbd>G</kbd>
+          </button>
+
+          <button class="btn btn-ghost" id="btn-light" type="button" aria-pressed="true" aria-keyshortcuts="L" hidden>
             <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="10" cy="10" r="3.4"></circle>
               <path d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2M4.5 4.5l1.4 1.4M14.1 14.1l1.4 1.4M15.5 4.5l-1.4 1.4M5.9 14.1l-1.4 1.4"></path>
             </svg>
-            <span id="btn-light-label">Light ON</span>
+            <span id="btn-light-label">Room light ON</span>
             <kbd>L</kbd>
           </button>
         </div>
@@ -144,7 +168,7 @@
             <div class="spec-row"><dt>Dark face</dt><dd id="spec-dark">novocard-default-dark.png</dd></div>
             <div class="spec-row"><dt>Light face</dt><dd id="spec-light">novocard-default-light.png</dd></div>
             <div class="spec-row"><dt>Backs</dt><dd id="spec-backs">per-card &middot; 2048&times;1402</dd></div>
-            <div class="spec-row"><dt>Material</dt><dd>Sleek steel + black mirror</dd></div>
+            <div class="spec-row"><dt>Material</dt><dd>Satin steel + black mirror</dd></div>
             <div class="spec-row"><dt>Finish</dt><dd>Black mirror + chrome</dd></div>
             <div class="spec-row"><dt>Bezel metalness</dt><dd id="spec-metalness">1.00</dd></div>
             <div class="spec-row"><dt>Bezel clearcoat</dt><dd id="spec-clearcoat">0.42</dd></div>
@@ -160,7 +184,7 @@
               <span class="asset-tag asset-tag--dark">back-dark-albedo.png</span>
               <span class="asset-tag asset-tag--light">back-light-albedo.png</span>
             </div>
-            <p class="asset-note" id="asset-note">Sources: novocard-default-*.png &middot; teko2-21/23 &middot; sleek.jpg</p>
+            <p class="asset-note" id="asset-note">Sources: novocard-default-*.png &middot; teko2-21/23</p>
           </div>
 
           <div class="info-foot">
@@ -173,15 +197,15 @@
           <div class="info-notes">
             <div class="note">
               <span class="note-kicker">Lighting</span>
-              <p class="note-body">One key light set to the right of the default 45° camera: the metal highlight reads across the right of each card and the soft shadow falls to the left. The dark card's middle frame is a black metal mirror; the light card keeps its chrome frame. The rig is dimmed so the print, mirror edges and engraved backs stay legible.</p>
+              <p class="note-body">One equirect room photograph (<span class="mono">assets/env/modern-empty-room.jpg</span>) is filtered into the scene environment and is the only light source: the metal catches the room's bright ceiling strip across the right of each card and the soft shadow falls to the left. The dark card's middle frame is a black metal mirror; the light card keeps its chrome frame. The room exposure is dimmed so the print, mirror edges and engraved backs stay legible.</p>
             </div>
             <div class="note">
               <span class="note-kicker">Interaction</span>
-              <p class="note-body">Drag to rotate; double-click or <kbd>R</kbd> resets, <kbd>F</kbd> swaps, <kbd>S</kbd> toggles the showcase rotation, <kbd>E</kbd> toggles the glass-table reflection, <kbd>L</kbd> toggles the direct key light.</p>
+              <p class="note-body">Drag to rotate; double-click or <kbd>R</kbd> resets, <kbd>F</kbd> swaps, <kbd>S</kbd> toggles the showcase rotation, <kbd>E</kbd> toggles the glass-table reflection, <kbd>L</kbd> switches the room-environment level between full and dimmed.</p>
             </div>
             <div class="note">
               <span class="note-kicker">Provenance</span>
-              <p class="note-body">Faces from <span class="mono">tekoTransferWeb/public/app</span>, backs from <span class="mono">teko2-21/23</span>, gloss from <span class="mono">sleek.jpg</span>; derived in-project.</p>
+              <p class="note-body">Faces from <span class="mono">tekoTransferWeb/public/app</span>, backs from <span class="mono">teko2-21/23</span>; derived in-project.</p>
             </div>
           </div>
           <ul class="legend" aria-label="Keyboard shortcuts">
@@ -191,7 +215,7 @@
             <li><kbd class="legend-key">F</kbd><span>Swap cards</span></li>
             <li><kbd class="legend-key">S</kbd><span>Auto-rotate</span></li>
             <li><kbd class="legend-key">E</kbd><span>Reflection</span></li>
-            <li><kbd class="legend-key">L</kbd><span>Key light</span></li>
+            <li><kbd class="legend-key">L</kbd><span>Room light</span></li>
           </ul>
         </div>
       </aside>
@@ -213,8 +237,8 @@
           </span>
           <span class="variant-chip variant-chip--meta">
             <span class="variant-swatch variant-swatch--metal" aria-hidden="true"></span>
-            <span class="variant-name">Sleek layer</span>
-            <span class="variant-file">sleek.jpg</span>
+            <span class="variant-name">Engraved backs</span>
+            <span class="variant-file">back-*-albedo.png</span>
           </span>
         </div>
       </div>
@@ -234,20 +258,19 @@
       <div class="fallback-duo" id="fallback-duo">
         <figure class="fallback-face fallback-face--back">
           <span class="fallback-sheen" aria-hidden="true"></span>
-          <img src="./assets/textures/card/source/novocard-default-dark.png" alt="Dark novocard source artwork — Teko arrow mark, gold chip and Mastercard mark on a glossy sleek dark card." width="929" height="638" draggable="false">
+          <img src="./assets/textures/card/source/novocard-default-dark.png" alt="Dark novocard source artwork — Teko arrow mark, gold chip and Mastercard mark on a dark metal card." width="929" height="638" draggable="false">
         </figure>
         <figure class="fallback-face fallback-face--front">
           <span class="fallback-sheen" aria-hidden="true"></span>
-          <img src="./assets/textures/card/source/novocard-default-light.png" alt="Light novocard source artwork — Teko arrow mark, gold chip and Mastercard mark on a glossy sleek light card." width="929" height="638" draggable="false">
+          <img src="./assets/textures/card/source/novocard-default-light.png" alt="Light novocard source artwork — Teko arrow mark, gold chip and Mastercard mark on a light metal card." width="929" height="638" draggable="false">
         </figure>
       </div>
 
-      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The mirror bezel, metal layer and lighting are skipped in this static view; the card artwork shown above is hosted locally in the project and comes from <span class="mono">assets/textures/card/source/</span>.</p>
+      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The mirror bezel and lighting are skipped in this static view; the card artwork shown above is hosted locally in the project and comes from <span class="mono">assets/textures/card/source/</span>.</p>
 
       <ul class="fallback-files" aria-label="Source files">
         <li><span class="fallback-file-role">Dark face</span><span class="mono">novocard-default-dark.png</span></li>
         <li><span class="fallback-file-role">Light face</span><span class="mono">novocard-default-light.png</span></li>
-        <li><span class="fallback-file-role">Sleek layer</span><span class="mono">sleek.jpg</span></li>
       </ul>
     </div>
   </section>
@@ -274,7 +297,7 @@
         </span>
         <span class="curtain-wordmark">TEKO</span>
       </div>
-      <p class="curtain-title" id="loading-title">Preparing the sleek studio</p>
+      <p class="curtain-title" id="loading-title">Preparing the studio</p>
       <div class="curtain-track"><div class="curtain-bar" id="loading-bar"></div></div>
       <div class="curtain-meta"><span id="loading-label">Loading 3D engine</span><span id="loading-count">0 / 0</span></div>
     </div>
@@ -289,7 +312,7 @@
       <div class="fallback-inner">
         <p class="info-kicker">Static preview</p>
         <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
-        <p class="fallback-message">This page renders the metal card pair with JavaScript and WebGL. Below are the two original source card faces; enable JavaScript to see the glossy sleek-metal model.</p>
+        <p class="fallback-message">This page renders the metal card pair with JavaScript and WebGL. Below are the two original source card faces; enable JavaScript to see the metal card model.</p>
         <div class="fallback-duo">
           <figure class="fallback-face fallback-face--back">
             <span class="fallback-sheen" aria-hidden="true"></span>

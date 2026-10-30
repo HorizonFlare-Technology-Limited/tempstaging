@@ -13,14 +13,14 @@
       "workspacePath": "plaster.png",
       "sheetLayout": "user reference figure 1 (unchanged source): a small render crop of a fine-speckled, matte, light warm-grey micro-cement/plaster inside corner. Perspective and studio lighting are baked into the pixels. Revision 9 uses it ONLY to calibrate the flat deployed mean colour (the evenly-lit top-face speckle patch); no speckle or source pixel is deployed."
     },
-    "limestone": {
-      "file": "source/limestone.png",
+    "reeded-metal": {
+      "file": "source/reeded-metal.png",
       "sha256": "4e9d0f6805eac0f036603acbdc46fec7da89d5ca0aa96c711e749294afe30659",
       "width": 431,
       "height": 170,
       "kind": "reference",
       "workspacePath": "refs/round5/limestone-dark.png",
-      "sheetLayout": "round-5 user reference: a dark charcoal rough-limestone surface crop (431x170) with a baked diagonal studio-lighting gradient + vignette; the texture is fine pitted stone grain. Revision 9 flat-fields the lighting out to MEASURE the grain statistics, then SYNTHESISES the seamless albedo from those statistics, so no source pixel (and therefore no baked highlight or specular pixel) is copied into the deliverable."
+      "sheetLayout": "round-5 user reference: a dark charcoal rough-reeded-metal surface crop (431x170) with a baked diagonal studio-lighting gradient + vignette; the texture is fine pitted stone grain. Revision 9 flat-fields the lighting out to MEASURE the grain statistics, then SYNTHESISES the seamless albedo from those statistics, so no source pixel (and therefore no baked highlight or specular pixel) is copied into the deliverable."
     },
     "satin": {
       "file": "source/satin.png",
@@ -348,15 +348,15 @@
         "deployedGrain": false
       }
     },
-    "limestone": {
-      "label": "Limestone",
+    "reeded-metal": {
+      "label": "Reeded Metal",
       "tilePx": 480,
-      "tilePxNote": "kept at 480 world px per tile: the round-5 stone crop is 431 px across, so one tile spans approximately the reference's visible stone width and the synthesised grain keeps the reference's physical grain density; 480 also keeps limestone between plaster (420) and satin (260)",
+      "tilePxNote": "kept at 480 world px per tile: the round-5 stone crop is 431 px across, so one tile spans approximately the reference's visible stone width and the synthesised grain keeps the reference's physical grain density; 480 also keeps reeded-metal between plaster (420) and satin (260)",
       "normalConvention": "opengl",
       "derivationKind": "reference-derived",
       "derivationMode": "albedo-grain",
       "grainMode": "albedo-only-chromatic",
-      "derivation": "reference-derived, SYNTHESISED albedo-only grain: the round-5 dark limestone crop refs/round5/limestone-dark.png is flat-fielded (factors 4,16) to remove the baked diagonal studio lighting + vignette, and the residual grain statistics are measured: flat-fielded mean RGB ~ (44.3, 45.1, 49.0) (dark charcoal family, mean luma ~45.3), luma std ~6.8 levels, high-pass chroma std R-G ~1.0 / G-B ~1.5, grain spectral centroid ~142 cycles per reference width with the measured grain energy 10 / 49 / 36 percent in the 43-86 / 86-151 / 151-216 cycles-per-width bands. The deployed 1024 albedo is then built deterministically as integer-frequency plane waves (exactly periodic, so seamless): a luma field plus TWO independent chroma fields (R-G, G-B; different fixed seeds and different frequency bands), recombined to RGB, with the luma amplitude calibrated to reproduce the measured reference luma std and the chroma amplitudes lifted modestly to a clearly measurable ~2.4/2.8 sRGB levels (reference-measured and deployed values, the lift factor and the measured R-G vs G-B high-pass decorrelation are all published), after the SPEC rev4 x0.60 detail compression (the pre-compression field is pre-scaled by 1/0.60). No source pixel is copied, therefore no baked highlight/specular pixel exists (published highlight cap 96 luma, 0 pixels above it). Normal + height are flat (model normalMap null / bumpScale 0), roughness is a flat matte 0.90 with NO grain modulation, metalness is 0 and ao is flat white.",
+      "derivation": "reference-derived, SYNTHESISED albedo-only grain: the round-5 dark reeded-metal crop refs/round5/limestone-dark.png is flat-fielded (factors 4,16) to remove the baked diagonal studio lighting + vignette, and the residual grain statistics are measured: flat-fielded mean RGB ~ (44.3, 45.1, 49.0) (dark charcoal family, mean luma ~45.3), luma std ~6.8 levels, high-pass chroma std R-G ~1.0 / G-B ~1.5, grain spectral centroid ~142 cycles per reference width with the measured grain energy 10 / 49 / 36 percent in the 43-86 / 86-151 / 151-216 cycles-per-width bands. The deployed 1024 albedo is then built deterministically as integer-frequency plane waves (exactly periodic, so seamless): a luma field plus TWO independent chroma fields (R-G, G-B; different fixed seeds and different frequency bands), recombined to RGB, with the luma amplitude calibrated to reproduce the measured reference luma std and the chroma amplitudes lifted modestly to a clearly measurable ~2.4/2.8 sRGB levels (reference-measured and deployed values, the lift factor and the measured R-G vs G-B high-pass decorrelation are all published), after the SPEC rev4 x0.60 detail compression (the pre-compression field is pre-scaled by 1/0.60). No source pixel is copied, therefore no baked highlight/specular pixel exists (published highlight cap 96 luma, 0 pixels above it). Normal + height are flat (model normalMap null / bumpScale 0), roughness is a flat matte 0.90 with NO grain modulation, metalness is 0 and ao is flat white.",
       "detail": {
         "albedoContrast": 0.6,
         "roughnessContrast": 0.75,
@@ -364,7 +364,7 @@
       },
       "channels": {
         "albedo": {
-          "file": "limestone/albedo.png",
+          "file": "reeded-metal/albedo.png",
           "width": 1024,
           "height": 1024,
           "colorSpace": "srgb",
@@ -375,7 +375,7 @@
             "synthesised chromatic grain",
             "resample-free 1024 tile"
           ],
-          "derivation": "reference-derived, SYNTHESISED albedo-only grain: the round-5 dark limestone crop refs/round5/limestone-dark.png is flat-fielded (factors 4,16) to remove the baked diagonal studio lighting + vignette, and the residual grain statistics are measured: flat-fielded mean RGB ~ (44.3, 45.1, 49.0) (dark charcoal family, mean luma ~45.3), luma std ~6.8 levels, high-pass chroma std R-G ~1.0 / G-B ~1.5, grain spectral centroid ~142 cycles per reference width with the measured grain energy 10 / 49 / 36 percent in the 43-86 / 86-151 / 151-216 cycles-per-width bands. The deployed 1024 albedo is then built deterministically as integer-frequency plane waves (exactly periodic, so seamless): a luma field plus TWO independent chroma fields (R-G, G-B; different fixed seeds and different frequency bands), recombined to RGB, with the luma amplitude calibrated to reproduce the measured reference luma std and the chroma amplitudes lifted modestly to a clearly measurable ~2.4/2.8 sRGB levels (reference-measured and deployed values, the lift factor and the measured R-G vs G-B high-pass decorrelation are all published), after the SPEC rev4 x0.60 detail compression (the pre-compression field is pre-scaled by 1/0.60). No source pixel is copied, therefore no baked highlight/specular pixel exists (published highlight cap 96 luma, 0 pixels above it). Normal + height are flat (model normalMap null / bumpScale 0), roughness is a flat matte 0.90 with NO grain modulation, metalness is 0 and ao is flat white.",
+          "derivation": "reference-derived, SYNTHESISED albedo-only grain: the round-5 dark reeded-metal crop refs/round5/limestone-dark.png is flat-fielded (factors 4,16) to remove the baked diagonal studio lighting + vignette, and the residual grain statistics are measured: flat-fielded mean RGB ~ (44.3, 45.1, 49.0) (dark charcoal family, mean luma ~45.3), luma std ~6.8 levels, high-pass chroma std R-G ~1.0 / G-B ~1.5, grain spectral centroid ~142 cycles per reference width with the measured grain energy 10 / 49 / 36 percent in the 43-86 / 86-151 / 151-216 cycles-per-width bands. The deployed 1024 albedo is then built deterministically as integer-frequency plane waves (exactly periodic, so seamless): a luma field plus TWO independent chroma fields (R-G, G-B; different fixed seeds and different frequency bands), recombined to RGB, with the luma amplitude calibrated to reproduce the measured reference luma std and the chroma amplitudes lifted modestly to a clearly measurable ~2.4/2.8 sRGB levels (reference-measured and deployed values, the lift factor and the measured R-G vs G-B high-pass decorrelation are all published), after the SPEC rev4 x0.60 detail compression (the pre-compression field is pre-scaled by 1/0.60). No source pixel is copied, therefore no baked highlight/specular pixel exists (published highlight cap 96 luma, 0 pixels above it). Normal + height are flat (model normalMap null / bumpScale 0), roughness is a flat matte 0.90 with NO grain modulation, metalness is 0 and ao is flat white.",
           "region": [
             "x",
             "y",
@@ -427,7 +427,7 @@
           }
         },
         "normal": {
-          "file": "limestone/normal.png",
+          "file": "reeded-metal/normal.png",
           "width": 512,
           "height": 512,
           "colorSpace": "linear",
@@ -435,7 +435,7 @@
           "processing": [
             "constant-fill (flat map)"
           ],
-          "derivation": "flat tangent-space normal: the limestone grain is albedo-only, so the surface has no normal/bump relief (model normalMap null, normalScale [0,0], bumpScale 0)",
+          "derivation": "flat tangent-space normal: the reeded-metal grain is albedo-only, so the surface has no normal/bump relief (model normalMap null, normalScale [0,0], bumpScale 0)",
           "flat": true,
           "constantRgb": [
             128,
@@ -447,7 +447,7 @@
           "stdLevels": 0.0
         },
         "roughness": {
-          "file": "limestone/roughness.png",
+          "file": "reeded-metal/roughness.png",
           "width": 512,
           "height": 512,
           "colorSpace": "linear",
@@ -471,7 +471,7 @@
           }
         },
         "metalness": {
-          "file": "limestone/metalness.png",
+          "file": "reeded-metal/metalness.png",
           "width": 512,
           "height": 512,
           "colorSpace": "linear",
@@ -479,14 +479,14 @@
           "processing": [
             "constant-fill (flat map)"
           ],
-          "derivation": "dielectric dark limestone: flat metalness 0",
+          "derivation": "dielectric dark reeded-metal: flat metalness 0",
           "flat": true,
           "deployedMean": 0.0,
           "constantLevel": 0,
           "stdLevels": 0.0
         },
         "ao": {
-          "file": "limestone/ao.png",
+          "file": "reeded-metal/ao.png",
           "width": 512,
           "height": 512,
           "colorSpace": "linear",
@@ -501,7 +501,7 @@
           "stdLevels": 0.0
         },
         "height": {
-          "file": "limestone/height.png",
+          "file": "reeded-metal/height.png",
           "width": 512,
           "height": 512,
           "colorSpace": "linear",
@@ -1583,18 +1583,18 @@
   },
   "pipeline": {
     "revision": 9,
-    "revisionSummary": "Revision 9: plaster is perfectly flat (zero grain); limestone is re-sourced from refs/round5/limestone-dark.png and its rough grain is carried ONLY by chromatic/albedo colour noise (flat normal/height, flat matte roughness 0.90); satin is re-sourced from refs/round5/satin-grey.png and loses all grain while keeping the revision-8 reflection levels (roughness map 0.30, metalness map 0.85).",
+    "revisionSummary": "Revision 9: plaster is perfectly flat (zero grain); reeded-metal is re-sourced from refs/round5/limestone-dark.png and its rough grain is carried ONLY by chromatic/albedo colour noise (flat normal/height, flat matte roughness 0.90); satin is re-sourced from refs/round5/satin-grey.png and loses all grain while keeping the revision-8 reflection levels (roughness map 0.30, metalness map 0.85).",
     "deterministic": true,
     "resampler": "Pillow Lanczos (evidence thumbnails only) + integer-frequency plane-wave synthesis",
-    "materialSetNote": "SPEC Revision 5: three groups (plaster index 0, limestone index 1, satin index 2). The Revision 4 concrete and metal groups, their maps and their source copies were removed from the tree.",
+    "materialSetNote": "SPEC Revision 5: three groups (plaster index 0, reeded-metal index 1, satin index 2). The Revision 4 concrete and metal groups, their maps and their source copies were removed from the tree.",
     "referenceDerivationNote": "Revision 9 sources are user reference images, not flat PBR sheets: plaster.png (unchanged) calibrates the flat plaster mean colour; refs/round5/limestone-dark.png and refs/round5/satin-grey.png are flat-fielded to MEASURE grain/tone/chroma statistics (multi-scale low-frequency illumination removal, mean preserving). No reference pixel is copied into any deployed map, so no baked highlight, specular pixel, label or lighting gradient can survive.",
-    "seamHealing": "no healed crops in revision 9: plaster is a constant fill, limestone is a sum of integer-frequency plane waves (exactly periodic on the tile) and satin is a 1-3 cycle/tile periodic field, so every deployed albedo is seamless by construction with identical wrap edges and no derivative jump; the uniform data maps are trivially seamless. Every map still publishes measured wrap/internal deltas in materials.*.tileability.",
-    "normalConventionNote": "all tangent-space normal maps are OpenGL (green = +Y, three.js r151 contract). Revision 9 deploys a perfectly flat (128,128,255) normal for every material: the limestone grain is albedo-only colour noise and the satin is smooth, so the model samples no normalMap (normalScale [0,0]) and no bumpMap (bumpScale 0).",
+    "seamHealing": "no healed crops in revision 9: plaster is a constant fill, reeded-metal is a sum of integer-frequency plane waves (exactly periodic on the tile) and satin is a 1-3 cycle/tile periodic field, so every deployed albedo is seamless by construction with identical wrap edges and no derivative jump; the uniform data maps are trivially seamless. Every map still publishes measured wrap/internal deltas in materials.*.tileability.",
+    "normalConventionNote": "all tangent-space normal maps are OpenGL (green = +Y, three.js r151 contract). Revision 9 deploys a perfectly flat (128,128,255) normal for every material: the reeded-metal grain is albedo-only colour noise and the satin is smooth, so the model samples no normalMap (normalScale [0,0]) and no bumpMap (bumpScale 0).",
     "colourSpaceNote": "albedo PNGs are sRGB encoded; normal/roughness/metalness/ao/height PNGs are linear data maps.",
-    "mapLevelNote": "revision-9 map levels: plaster albedo flat 168/165/160 sRGB, roughness 0.9216, metalness 0, ao 1.0, height 0.502, normal (128,128,255); limestone roughness 0.9020, metalness 0, ao 1.0, height 0.502; satin roughness 0.3020, metalness 0.8510, ao 0.9686, height 0.502. The satin roughness/metalness means are identical to revision 8, so the blurred mirror reflection response is unchanged.",
-    "detailCompressionNote": "SPEC Revision 4 section 4.2-A is still applied: after derivation, albedo / roughness / height deviations from their calibrated means are compressed by 0.60 / 0.75 / 0.70 (means preserved within 0.5 level); factors are published in materials.<id>.detail and measured per channel in the channel detailCompression block. Flat maps are unaffected; the limestone albedo grain is pre-scaled by 1/0.60 so the DEPLOYED map reproduces the measured reference grain (both pre- and post-compression statistics are published in materials.limestone.grain).",
-    "albedoGrainNote": "limestone (revision 9): the visible rough grain is albedo-only per-point chromatic colour noise - one correlated luma plane-wave field plus two independent chroma fields (R-G, G-B; different fixed seeds AND different frequency bands) recombined to RGB, exactly periodic (seamless). The luma std is reference-calibrated (~6.8); the chroma std is deliberately lifted from the reference-measured ~1.0/1.5 to ~2.4/2.8 sRGB levels so the colour grain is clearly measurable, and the deployed R-G vs G-B high-pass decorrelation is published. The normal/height maps are flat and carry no grain; roughness/metalness/ao are flat.",
-    "grainModeNote": "per-material grain declaration for documentation/model QA: materials.<id>.grainMode is 'albedo-only-chromatic' for limestone (grain present, albedo-only, no normal/height/roughness grain) and 'none' for plaster and satin (no surface grain anywhere). Each material also publishes materials.<id>.grain with present/mode/albedoOnly flags and the per-channel grain evidence.",
+    "mapLevelNote": "revision-9 map levels: plaster albedo flat 168/165/160 sRGB, roughness 0.9216, metalness 0, ao 1.0, height 0.502, normal (128,128,255); reeded-metal roughness 0.9020, metalness 0, ao 1.0, height 0.502; satin roughness 0.3020, metalness 0.8510, ao 0.9686, height 0.502. The satin roughness/metalness means are identical to revision 8, so the blurred mirror reflection response is unchanged.",
+    "detailCompressionNote": "SPEC Revision 4 section 4.2-A is still applied: after derivation, albedo / roughness / height deviations from their calibrated means are compressed by 0.60 / 0.75 / 0.70 (means preserved within 0.5 level); factors are published in materials.<id>.detail and measured per channel in the channel detailCompression block. Flat maps are unaffected; the reeded-metal albedo grain is pre-scaled by 1/0.60 so the DEPLOYED map reproduces the measured reference grain (both pre- and post-compression statistics are published in materials.reeded-metal.grain).",
+    "albedoGrainNote": "reeded-metal (revision 9): the visible rough grain is albedo-only per-point chromatic colour noise - one correlated luma plane-wave field plus two independent chroma fields (R-G, G-B; different fixed seeds AND different frequency bands) recombined to RGB, exactly periodic (seamless). The luma std is reference-calibrated (~6.8); the chroma std is deliberately lifted from the reference-measured ~1.0/1.5 to ~2.4/2.8 sRGB levels so the colour grain is clearly measurable, and the deployed R-G vs G-B high-pass decorrelation is published. The normal/height maps are flat and carry no grain; roughness/metalness/ao are flat.",
+    "grainModeNote": "per-material grain declaration for documentation/model QA: materials.<id>.grainMode is 'albedo-only-chromatic' for reeded-metal (grain present, albedo-only, no normal/height/roughness grain) and 'none' for plaster and satin (no surface grain anywhere). Each material also publishes materials.<id>.grain with present/mode/albedoOnly flags and the per-channel grain evidence.",
     "flatnessNote": "plaster (revision 9): every map is perfectly uniform - albedo std 0 (no speckle/grain), ao 255 std 0, normal (128,128,255) with encoded mean slope 0.0055 (the 8-bit flat-normal floor), roughness 0.9216 std 0, metalness 0, height 128 std 0. The reflective kit is model/preview-side and untouched.",
     "smoothnessNote": "satin (revision 9 / 9.1): the albedo keeps the round-5 reference's neutral, slightly-cool chroma (R-G ~-1.9, G-B ~-4.0) but its BASE tone is 125 sRGB - the top of the measured reference tonal range (p99 = 125.9) - because the albedo is the metal F0 for metalness 0.85 and the reference's central 87.6 tone double-darkened the render (Lead page review); it carries only a very soft 1-3 cycles/tile tonal mottle (deployed luma std ~2 levels, zero fine grain). normal/height are flat, roughness is flat 0.30 with NO grain modulation and metalness is flat 0.85, i.e. the revision-8 reflection levels with the grain removed. The reference tonal range, target tone and the flat-map proof are published in materials.satin.smoothness."
   }

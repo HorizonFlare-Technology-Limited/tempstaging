@@ -3,7 +3,7 @@
  *
  * Silver-white studio: six rounded-hexagon terraces rise from a flat plate, our
  * real card model settles low on the top terrace, and six amount tags fan out
- * from the card in three waves of two.
+ * from the card in Rev19: one panel every 4.5 s.
  *
  * The deterministic composition/timing comes from the modeler-owned
  * ./stacked-panel-model.js (config, layout, pose(t), camera fit); this module
@@ -23,6 +23,7 @@ import {
   projectPoint,
 } from './stacked-panel-model.js';
 import { CARD_METRICS, loadCardBank } from './card-model.js';
+import { applyEnvRoom } from './env-room.js';
 
 const VERSION = '1.0.0';
 const MODEL = PANEL_CONFIG;
@@ -30,6 +31,19 @@ const DURATION = MODEL.durationSeconds;
 const DEFAULT_VARIANT = MODEL.defaultVariant;
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
+
+/* Rev21 — image-based lighting only.
+   The whole studio (terraces, flat plate, floor, card) is lit by the shared
+   room photograph through ./env-room.js. There are NO THREE lights and no
+   procedural studio / softbox PMREM anymore: the photo's PMREM is
+   `scene.environment`, and its own ceiling downlights do the key-light work.
+   r151 has no scene-level `environmentIntensity`, so env-room multiplies each
+   material's authored envMapIntensity by ENV.intensity — materials created
+   after boot are picked up by refreshRoomEnv(). */
+const ENV = Object.freeze({
+  intensity: 4,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
+});
 
 /* ---------------------------------------------------------------- dom refs */
 
@@ -86,7 +100,7 @@ const state = {
   camera: null,
   renderer: null,
   root: null,
-  studio: null,
+  room: null,
   panels: [],
   plane: null,
   floor: null,
@@ -159,49 +173,21 @@ function createRenderer() {
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.86;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x000000, 0);
   return renderer;
 }
 
-function createEnvironment(renderer) {
-  const scene = new THREE.Scene();
-  const geometry = new THREE.PlaneGeometry(6, 6);
-  const addPanel = (color, intensity, position, rotation, size) => {
-    const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-    material.color.multiplyScalar(intensity);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.fromArray(position);
-    mesh.rotation.fromArray(rotation);
-    mesh.scale.set(size[0], size[1], 1);
-    scene.add(mesh);
-    return material;
-  };
-  const materials = [];
-  materials.push(addPanel(0xffffff, 1.25, [0, 3.4, 0], [Math.PI / 2, 0, 0], [3.2, 3.2]));
-  materials.push(addPanel(0xf4f7fa, 0.9, [-3.4, 1.4, 0.6], [0, Math.PI / 2, 0], [3.0, 2.4]));
-  materials.push(addPanel(0xeef2f6, 1.0, [3.4, 1.2, 0.2], [0, -Math.PI / 2, 0], [3.0, 2.4]));
-  materials.push(addPanel(0xffffff, 0.7, [0, 1.0, 3.8], [0, 0, 0], [3.4, 2.4]));
-  materials.push(addPanel(0xdde3ea, 0.4, [0, 0.1, -3.6], [0, Math.PI, 0], [3.4, 2.2]));
-  materials.push(addPanel(0xffffff, 0.22, [0, -3.0, 0], [-Math.PI / 2, 0, 0], [4.0, 4.0]));
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const target = pmrem.fromScene(scene, 0.035);
-  pmrem.dispose();
-  setBusy(false);
-  for (const material of materials) material.dispose();
-  geometry.dispose();
-  return target;
-}
-
-function disposeEnvironment(environment) {
-  if (!environment) return;
-  try { environment.dispose(); } catch (error) { /* best effort */ }
+/* Rev21: re-apply the room environment's intensity to the current scene graph.
+   r151 only knows per-material envMapIntensity, so every material the page adds
+   or re-authors after boot goes through here (idempotent: env-room keeps each
+   material's authored base value). */
+function refreshRoomEnv() {
+  if (state.room) state.room.refresh(state.scene);
 }
 
 /* --------------------------------------------------------------- studio */
 
-function buildStudio() {
+async function buildStudio() {
   const renderer = createRenderer();
   state.renderer = renderer;
   state.scene = new THREE.Scene();
@@ -210,30 +196,9 @@ function buildStudio() {
   state.scene.add(state.root);
   state.camera = new THREE.PerspectiveCamera(MODEL.camera.fovDeg, 1, MODEL.camera.near, MODEL.camera.far);
 
-  state.studio = createEnvironment(renderer);
-  state.scene.environment = state.studio.texture;
-
-  const ambient = new THREE.AmbientLight(0xf7f9fc, 0.12);
-  state.scene.add(ambient);
-  const hemisphere = new THREE.HemisphereLight(0xffffff, 0xbfc6d0, 0.22);
-  state.scene.add(hemisphere);
-
-  const key = new THREE.DirectionalLight(0xfff8ee, 1.6);
-  key.position.set(3.6, 6.4, 4.2);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.near = 0.5;
-  key.shadow.camera.far = 24;
-  key.shadow.camera.left = -5.2;
-  key.shadow.camera.right = 5.2;
-  key.shadow.camera.top = 5.2;
-  key.shadow.camera.bottom = -5.2;
-  key.shadow.bias = -0.0006;
-  key.shadow.normalBias = 0.02;
-  key.target.position.set(0, 0.4, 0);
-  state.scene.add(key, key.target);
-  state.scene.add(createFillLight());
-  state.lights = { ambient, hemisphere, key };
+  // Rev21: the room photo is the ONLY light source, and it must be in place
+  // before anything is shaded (boot does not report ready before this awaits).
+  state.room = await applyEnvRoom(THREE, renderer, state.scene, { intensity: ENV.intensity, toggleContainer: () => document.getElementById('stage'), toggleClass: 'env-toggle--stage' });
 
   state.floor = createFloor();
   state.scene.add(state.floor);
@@ -248,12 +213,6 @@ function buildStudio() {
   resize();
 }
 
-function createFillLight() {
-  const fill = new THREE.DirectionalLight(0xeaf0f6, 0.55);
-  fill.position.set(-4.2, 2.6, 2.4);
-  return fill;
-}
-
 function createFloor() {
   const geometry = new THREE.CircleGeometry(26, 96);
   geometry.rotateX(-Math.PI / 2);
@@ -263,7 +222,9 @@ function createFloor() {
     roughness: 0.38,
     clearcoat: 0.35,
     clearcoatRoughness: 0.32,
-    envMapIntensity: 1.1,
+    // Rev21: authored base -- env-room multiplies it by ENV.intensity (the room
+    // photo is dark, so the floor needs a strong IBL gain to stay readable).
+    envMapIntensity: 2.4,
   });
   material.name = 'studio-floor';
   const floor = new THREE.Mesh(geometry, material);
@@ -275,8 +236,8 @@ function createFloor() {
 function createPlane() {
   const layout = PANEL_LAYOUT.terraces;
   const plane = layout.plane;
-  const bodyGeometry = roundedHexGeometry(plane.radius, plane.thickness, layout.cornerRadiusFraction, layout.sides * 2);
-  const capGeometry = capShapeGeometry(plane.radius, layout.cornerRadiusFraction, layout.sides * 2, plane.thickness);
+  const bodyGeometry = roundedHexGeometry(plane.radius, plane.thickness, layout.cornerRadiusFraction, 12, plane.sides);
+  const capGeometry = capShapeGeometry(plane.radius, layout.cornerRadiusFraction, 12, plane.thickness, plane.sides);
   const capMaterial = makeCapMaterial(0xe9edf2);
   const edgeMaterial = new THREE.MeshPhysicalMaterial({
     color: 0x8f9aa7,
@@ -284,10 +245,8 @@ function createPlane() {
     roughness: 0.24,
     clearcoat: 0.2,
     clearcoatRoughness: 0.18,
-    envMapIntensity: 1.05,
+    envMapIntensity: 0.35,
   });
-  capMaterial.envMapIntensity = 0.55;
-  edgeMaterial.envMapIntensity = 0.8;
   capMaterial.name = 'stacked-panel-plane-top';
   edgeMaterial.name = 'stacked-panel-plane-edge';
   edgeMaterial.side = THREE.DoubleSide;
@@ -299,7 +258,7 @@ function createPlane() {
   cap.receiveShadow = true;
   const group = new THREE.Group();
   group.name = 'stacked-panel-plane';
-  const shadowRing = makeStepShadow(plane.radius, layout.cornerRadiusFraction, layout.sides * 2, plane.thickness + 0.004);
+  const shadowRing = makeStepShadow(plane.radius, layout.cornerRadiusFraction, 12, plane.thickness + 0.004, plane.sides);
   group.add(body, cap, shadowRing);
   group.userData = { materials: { cap: capMaterial, edge: edgeMaterial }, body, cap, shadowRing };
   return group;
@@ -324,9 +283,9 @@ function makeCapGradientTexture() {
   return texture;
 }
 
-function makeStepShadow(radius, cornerFraction, samples, y) {
-  const outer = roundedPolygonPoints(LAYOUT_SIDES, radius * 1.02, cornerFraction, Math.max(6, Math.round(samples || 6)));
-  const inner = roundedPolygonPoints(LAYOUT_SIDES, radius * 0.965, cornerFraction, Math.max(6, Math.round(samples || 6)));
+function makeStepShadowGeometry(radius, cornerFraction, samples, y, sides = LAYOUT_SIDES) {
+  const outer = roundedPolygonPoints(sides, radius * 1.02, cornerFraction, Math.max(6, Math.round(samples || 6)));
+  const inner = roundedPolygonPoints(sides, radius * 0.965, cornerFraction, Math.max(6, Math.round(samples || 6)));
   const shape = new THREE.Shape();
   outer.forEach((point, index) => { if (index === 0) shape.moveTo(point[0], point[1]); else shape.lineTo(point[0], point[1]); });
   shape.closePath();
@@ -337,8 +296,15 @@ function makeStepShadow(radius, cornerFraction, samples, y) {
   const geometry = new THREE.ShapeGeometry(shape, 1);
   geometry.rotateX(-Math.PI / 2);
   geometry.translate(0, y, 0);
-  const material = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.09, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(geometry, material);
+  return geometry;
+}
+
+function makeStepShadowMaterial() {
+  return new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.09, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+}
+
+function makeStepShadow(radius, cornerFraction, samples, y, sides = LAYOUT_SIDES) {
+  const mesh = new THREE.Mesh(makeStepShadowGeometry(radius, cornerFraction, samples, y, sides), makeStepShadowMaterial());
   mesh.name = 'step-shadow';
   mesh.renderOrder = 2;
   return mesh;
@@ -349,7 +315,6 @@ function makeCapMaterial(color) {
     color: 0x000000,
     emissive: new THREE.Color(color),
     emissiveIntensity: 1,
-    envMapIntensity: 0,
     reflectivity: 0,
     side: THREE.DoubleSide,
     toneMapped: false,
@@ -358,8 +323,8 @@ function makeCapMaterial(color) {
   return material;
 }
 
-function roundedHexGeometry(radius, thickness, cornerFraction, sides) {
-  const points = roundedPolygonPoints(LAYOUT_SIDES, radius, cornerFraction, Math.max(6, Math.round(sides || 6)));
+function roundedHexGeometry(radius, thickness, cornerFraction, samples, sides = LAYOUT_SIDES) {
+  const points = roundedPolygonPoints(sides, radius, cornerFraction, Math.max(6, Math.round(samples || 6)));
   const shape = new THREE.Shape();
   points.forEach((point, index) => {
     if (index === 0) shape.moveTo(point[0], point[1]);
@@ -382,8 +347,8 @@ function roundedHexGeometry(radius, thickness, cornerFraction, sides) {
   return geometry;
 }
 
-function capShapeGeometry(radius, cornerFraction, samples, y) {
-  const points = roundedPolygonPoints(LAYOUT_SIDES, radius * 0.998, cornerFraction, Math.max(6, Math.round(samples || 6)));
+function capShapeGeometry(radius, cornerFraction, samples, y, sides = LAYOUT_SIDES) {
+  const points = roundedPolygonPoints(sides, radius * 0.998, cornerFraction, Math.max(6, Math.round(samples || 6)));
   const shape = new THREE.Shape();
   points.forEach((point, index) => {
     if (index === 0) shape.moveTo(point[0], point[1]);
@@ -412,10 +377,20 @@ const LAYOUT_SIDES = PANEL_LAYOUT.terraces.sides;
 
 function buildPanels() {
   const terraces = PANEL_LAYOUT.terraces;
+  /* Rev21 s9: ONE base shape. All six terraces are built from this single
+     geometry set (the biggest terrace) and each panel mesh is uniformly scaled
+     by terraces.scaleFactors[i] -- every panel is base * s_i, so outline,
+     corner-radius ratio and aspect are identical, and the thickness/y of each
+     terrace scales with its footprint. */
+  const baseRadius = terraces.baseRadius;
+  const baseThickness = terraces.baseThickness;
+  const baseBodyGeometry = roundedHexGeometry(baseRadius, baseThickness, terraces.cornerRadiusFraction, 10);
+  const baseCapGeometry = capShapeGeometry(baseRadius, terraces.cornerRadiusFraction, 10, baseThickness);
+  const baseOutlineGeometry = new THREE.EdgesGeometry(baseCapGeometry, 28);
+  const baseShadowGeometry = makeStepShadowGeometry(baseRadius, terraces.cornerRadiusFraction, 10, baseThickness + 0.004);
   for (let index = 0; index < terraces.count; index += 1) {
-    const radius = terraces.radiiBottomToTop[index];
-    const bodyGeometry = roundedHexGeometry(radius, terraces.thickness, terraces.cornerRadiusFraction, 10);
-    const capGeometry = capShapeGeometry(radius, terraces.cornerRadiusFraction, 10, terraces.thickness);
+    const scale = terraces.scaleFactors[index];
+    const thickness = baseThickness * scale;
     const capMaterial = makeCapMaterial(0xdfe3e8);
     capMaterial.transparent = true;
     capMaterial.opacity = 0;
@@ -425,40 +400,51 @@ function buildPanels() {
       roughness: 0.22,
       clearcoat: 0.16,
       clearcoatRoughness: 0.2,
-      envMapIntensity: 1.1,
+      envMapIntensity: 0.35,
       transparent: true,
       opacity: 0,
     });
-    capMaterial.envMapIntensity = 0.55;
-    edgeMaterial.envMapIntensity = 0.8;
     capMaterial.name = 'stacked-panel-terrace-' + index + '-top';
     edgeMaterial.name = 'stacked-panel-terrace-' + index + '-edge';
     edgeMaterial.side = THREE.DoubleSide;
-    const body = new THREE.Mesh(bodyGeometry, edgeMaterial);
+    const body = new THREE.Mesh(baseBodyGeometry, edgeMaterial);
     body.name = 'stacked-panel-terrace-' + index + '-body';
     body.castShadow = true;
     body.receiveShadow = true;
-    const cap = new THREE.Mesh(capGeometry, capMaterial);
+    const cap = new THREE.Mesh(baseCapGeometry, capMaterial);
     cap.name = 'stacked-panel-terrace-' + index + '-cap';
     cap.castShadow = true;
     cap.receiveShadow = true;
-    const outlineGeometry = new THREE.EdgesGeometry(capGeometry, 28);
     const outlineMaterial = new THREE.LineBasicMaterial({
       color: new THREE.Color('#4f5a66').convertSRGBToLinear(),
       transparent: true,
       opacity: 0.55,
       depthWrite: false,
     });
-    const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
+    const outline = new THREE.LineSegments(baseOutlineGeometry, outlineMaterial);
     outline.name = 'stacked-panel-terrace-' + index + '-outline';
     outline.visible = false;
-    const shadowRing = makeStepShadow(radius, terraces.cornerRadiusFraction, 10, terraces.thickness + 0.004);
+    const shadowRing = new THREE.Mesh(baseShadowGeometry, makeStepShadowMaterial());
+    shadowRing.name = 'step-shadow';
+    shadowRing.renderOrder = 2;
     shadowRing.visible = false;
     const mesh = new THREE.Group();
     mesh.name = 'stacked-panel-terrace-' + index;
     mesh.add(body, cap, shadowRing, outline);
     mesh.rotation.y = terraces.yawDeg[index] * DEG;
-    mesh.userData = { index, materials: { cap: capMaterial, edge: edgeMaterial }, outline, body, cap, shadowRing };
+    mesh.scale.setScalar(scale);
+    mesh.userData = {
+      index,
+      scale,
+      radius: terraces.radiiBottomToTop[index],
+      baseRadius,
+      thickness,
+      materials: { cap: capMaterial, edge: edgeMaterial },
+      outline,
+      body,
+      cap,
+      shadowRing,
+    };
     state.panels.push(mesh);
     state.root.add(mesh);
   }
@@ -502,8 +488,8 @@ function applyVariantPalette(variant) {
   const copyBody = document.querySelector('.copy-body');
   if (copyBody) {
     copyBody.textContent = palette.id === 'b'
-      ? 'Six deep silver-grey terraces rise out of a flat plate, one layer at a time. The white card settles low, then six amounts fan out in three waves — +100 to +2k.'
-      : 'Six silver terraces rise out of a flat plate, one layer at a time. The card settles low, then six amounts fan out in three waves — +100 to +2k.';
+      ? 'Six deep silver-grey terraces rise out of a flat plate, one layer at a time. The white card settles low, then six amounts appear at random spots — +100 to +2k.'
+      : 'Six silver terraces rise out of a flat plate, one layer at a time. The card settles low, then six amounts appear at random spots — +100 to +2k.';
   }
 
   const isB = palette.id === 'b';
@@ -515,7 +501,6 @@ function applyVariantPalette(variant) {
   if (state.floor && state.floor.material) {
     state.floor.material.color.set(palette.studio.floor).convertSRGBToLinear();
     state.floor.material.metalness = palette.id === 'b' ? 0.15 : 0.3;
-    state.floor.material.envMapIntensity = palette.id === 'b' ? 0.15 : 0.4;
     state.floor.material.roughness = palette.id === 'b' ? 0.62 : 0.48;
   }
   if (state.plane) {
@@ -523,20 +508,14 @@ function applyVariantPalette(variant) {
     materials.cap.emissive.set(planeCapColor).convertSRGBToLinear();
     materials.edge.color.set(planeEdgeColor).convertSRGBToLinear();
     materials.edge.metalness = isB ? 0.85 : 0.6;
-    materials.edge.roughness = isB ? 0.24 : 0.32;
-    materials.edge.envMapIntensity = isB ? 0.55 : 0.45;
     materials.edge.roughness = 0.3;
-    materials.edge.envMapIntensity = 0.35;
   }
   for (const panel of state.panels) {
     const materials = panel.userData.materials;
     materials.cap.emissive.set(capColor).convertSRGBToLinear();
     materials.edge.color.set(edgeColor).convertSRGBToLinear();
     materials.edge.metalness = isB ? 0.85 : 0.6;
-    materials.edge.roughness = isB ? 0.22 : 0.3;
-    materials.edge.envMapIntensity = isB ? 0.55 : 0.45;
-    materials.edge.roughness = 0.28;
-    materials.edge.envMapIntensity = 0.35;
+    materials.edge.roughness = isB ? 0.22 : 0.28;
   }
   // background/atmosphere
   dom.body.dataset.variant = palette.id;
@@ -545,13 +524,11 @@ function applyVariantPalette(variant) {
   dom.body.style.setProperty('--tag-border', palette.tag.border);
   dom.body.style.setProperty('--tag-accent', palette.tag.accent);
   if (state.renderer) {
-    state.renderer.toneMappingExposure = palette.id === 'b' ? 0.66 : 0.8;
+    state.renderer.toneMappingExposure = palette.id === 'b' ? 0.78 : 0.9;
   }
-  if (state.lights) {
-    state.lights.key.intensity = palette.id === 'b' ? 0.95 : 1.3;
-    state.lights.ambient.intensity = palette.id === 'b' ? 0.08 : 0.12;
-    state.lights.hemisphere.intensity = palette.id === 'b' ? 0.14 : 0.2;
-  }
+  // Rev21: floor / plate / terraces were just re-authored -> re-apply the room
+  // environment intensity (r151 scales every material's own envMapIntensity).
+  refreshRoomEnv();
   updateVariantButtons();
   applyPose(state.time);
   paintFrame();
@@ -605,10 +582,12 @@ async function loadCardForVariant(variant) {
       material.transparent = true;
       material.opacity = 0;
       if (part === 'front' || part === 'back') {
-        // A black/white printed card face in a bright silver studio: keep the
-        // real albedo/metalness/roughness maps but dial the environment
-        // reflection right down so the face stays its authored colour.
-        material.envMapIntensity = 0.03;
+        // Rev21: the face is now lit ONLY by the room photo's diffuse IBL, so
+        // its environment gain is raised (the old 0.03 cancelled the studio
+        // lights and would leave the white variant card black). Keep the real
+        // albedo / metalness / roughness maps (the authored card colour still
+        // wins), just soften the direct environment specular.
+        material.envMapIntensity = 2.0;
         material.metalness = Math.min(material.metalness === undefined ? 1 : material.metalness, 0.22);
         material.roughness = Math.max(0.68, material.roughness || 0.5);
         material.clearcoat = 0;
@@ -626,6 +605,8 @@ async function loadCardForVariant(variant) {
   state.cardGroup = group;
   state.cardMaterialInfo = state.cardMaterialInfo || [];
   state.root.add(group);
+  // Rev21: the card materials are new objects -> pick up the room intensity.
+  refreshRoomEnv();
   return card;
 }
 
@@ -674,6 +655,8 @@ function applyPose(time) {
     if (!panelPose) continue;
     panel.position.set(panelPose.position[0], panelPose.position[1], panelPose.position[2]);
     panel.rotation.y = panelPose.yawDeg * DEG;
+    // Rev21 s9: every panel is the same base shape uniformly scaled by s_i.
+    panel.scale.setScalar(panelPose.scale);
     panel.visible = panelPose.opacity > 0.001;
     const materials = panel.userData.materials;
     const opacity = clamp01(panelPose.opacity);
@@ -743,9 +726,9 @@ function applyPose(time) {
     el.dataset.ease = String(tagPose.ease);
     el.style.opacity = String(clamp01(tagPose.opacity));
     let screen = projectTag([tagPose.position[0], tagPose.position[1] + (state.cardLift || 0), tagPose.position[2]]);
-    // lift the two nearest waves slightly so the pills sit above the card
-    // artwork instead of covering the TEKO arrow / chip.
-    screen = [screen[0], screen[1] - (tagPose.wave === 0 ? 72 : tagPose.wave === 1 ? 28 : 0)];
+    // Rev19: tags sit at their own random (seeded) layout positions; just clear the
+    // card artwork a little.
+    screen = [screen[0], screen[1] - 24];
     if (state.stageRect.width < 620 && state.cardGroup) {
       const cardRect = cardScreenRect();
       if (cardRect) {
@@ -754,12 +737,18 @@ function applyPose(time) {
         const cx = (cardRect[0] + cardRect[2]) / 2;
         const offset = Math.min(w * 0.3, Math.max(70, (cardRect[2] - cardRect[0]) / 2 + 46));
         const clampX = (value) => Math.min(w - 40, Math.max(40, value));
-        const rowY = [
-          Math.max(46, cardRect[1] - 62),
-          Math.max(72, cardRect[1] - 27),
-          Math.min(h - 26, cardRect[3] + 24),
-        ];
-        screen = [clampX(tagPose.side === 'left' ? cx - offset : cx + offset), rowY[tagPose.wave] || rowY[2]];
+        // Rev19: no mirrored rows. Each side stacks its own tags (in appear order)
+        // through four rows, so the narrow layout is uneven but never overlaps.
+        const r0 = Math.max(40, cardRect[1] - 62);
+        const r1 = Math.max(r0 + 30, cardRect[1] - 27);
+        const r2 = Math.min(h - 26, cardRect[3] + 24);
+        const r3 = (cardRect[1] + cardRect[3]) / 2;
+        const rows = [r0, r1, r3, r2];
+        const sameSide = pose.tags.filter((other) => other.side === tagPose.side);
+        const slot = sameSide.findIndex((other) => other.id === tagPose.id);
+        const rowShift = tagPose.side === 'left' ? 0 : 1;
+        const jitter = (slot % 2 ? 0 : 1) * Math.min(14, w * 0.035); // outward only: never into the card
+        screen = [clampX(tagPose.side === 'left' ? cx - offset - jitter : cx + offset + jitter), rows[(slot + rowShift) % rows.length]];
       }
     }
     el.dataset.screenX = String(round(screen[0], 2));
@@ -947,6 +936,19 @@ async function loadBank() {
   return bank;
 }
 
+/* Rev21 s9: the page shell ships a static "31.9 s deterministic" copy line and an
+   initial timeline readout; both must follow the model's recomputed total. */
+function syncStaticDurationText() {
+  const meta = document.querySelector('.copy-meta');
+  if (meta) {
+    const spans = meta.querySelectorAll('span');
+    const last = spans.length ? spans[spans.length - 1] : null;
+    if (last && /s deterministic/i.test(last.textContent)) last.textContent = DURATION.toFixed(1) + ' s deterministic';
+  }
+  if (dom.timelineReadout) dom.timelineReadout.innerHTML = '0.0 s <span aria-hidden="true">/</span> ' + DURATION.toFixed(1) + ' s';
+  if (dom.timelineFill) dom.timelineFill.style.width = '0%';
+}
+
 function setupInitialState() {
   state.reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   dom.body.dataset.reducedMotion = state.reducedMotion ? '1' : '0';
@@ -957,6 +959,7 @@ function setupInitialState() {
   else if (state.shot) state.time = DURATION;
   state.variant = params.get('variant') === 'b' ? 'b' : DEFAULT_VARIANT;
   state.playing = !state.shot && !state.reducedMotion;
+  syncStaticDurationText();
 }
 
 function startLoop() {
@@ -987,7 +990,9 @@ async function boot() {
   try {
     setBusy(true, 'Building studio');
     if (dom.stage) dom.stage.classList.remove('is-hidden');
-    buildStudio();
+    // Rev21: buildStudio awaits the room environment, so nothing is shaded (and
+    // the page never reports ready) before the photo-based IBL is in place.
+    await buildStudio();
     state.renderer.render(state.scene, state.camera);
     await loadBank();
     await loadCardForVariant(state.variant);
@@ -1047,17 +1052,52 @@ function buildDebug() {
       ease: tag.ease,
       scale: tag.scale,
       position: tag.position.slice(),
-      screen: projectTag(tag.position).map((value) => round(value, 2)),
+      screen: (() => {
+        const el = state.tagEls.get(tag.id);
+        const x = el ? Number(el.dataset.screenX) : NaN;
+        const y = el ? Number(el.dataset.screenY) : NaN;
+        return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : projectTag(tag.position).map((value) => round(value, 2));
+      })(),
     })) : [],
     panels: pose ? pose.panels.map((panel) => ({
       index: panel.index,
       radius: panel.radius,
+      baseRadius: panel.baseRadius,
+      scale: panel.scale,
+      thickness: panel.thickness,
+      cornerRadiusFraction: panel.cornerRadiusFraction,
+      startTime: panel.startTime,
+      endTime: panel.endTime,
+      riseDuration: panel.riseDuration,
       position: panel.position.slice(),
+      yawDeg: panel.yawDeg,
       rise: panel.rise,
       opacity: panel.opacity,
       visible: panel.visible,
       outline: Boolean(state.panels[panel.index] && state.panels[panel.index].userData.outline && state.panels[panel.index].userData.outline.visible),
     })) : [],
+    // Rev21 s9: prove the panels share ONE base geometry and differ only by the
+    // uniform per-index scale factor.
+    terraceGeometry: (() => {
+      const bodySet = new Set();
+      const capSet = new Set();
+      const outlineSet = new Set();
+      for (const panel of state.panels) {
+        const data = panel.userData || {};
+        if (data.body) bodySet.add(data.body.geometry);
+        if (data.cap) capSet.add(data.cap.geometry);
+        if (data.outline) outlineSet.add(data.outline.geometry);
+      }
+      return {
+        shared: bodySet.size === 1 && capSet.size === 1 && outlineSet.size === 1,
+        bodyGeometries: bodySet.size,
+        capGeometries: capSet.size,
+        outlineGeometries: outlineSet.size,
+        baseRadius: PANEL_LAYOUT.terraces.baseRadius,
+        baseThickness: PANEL_LAYOUT.terraces.baseThickness,
+        scaleFactors: PANEL_LAYOUT.terraces.scaleFactors.slice(),
+      };
+    })(),
     card: pose ? {
       visible: Boolean(state.card),
       id: state.card ? state.card.id : null,
@@ -1094,7 +1134,14 @@ function buildDebug() {
       plane: state.plane ? { cap: '#' + state.plane.userData.materials.cap.emissive.getHexString(), capType: state.plane.userData.materials.cap.type, capToneMapped: state.plane.userData.materials.cap.toneMapped, edge: '#' + state.plane.userData.materials.edge.color.getHexString(), edgeType: state.plane.userData.materials.edge.type } : null,
       terrace: state.panels.length ? { cap: '#' + state.panels[0].userData.materials.cap.emissive.getHexString(), capType: state.panels[0].userData.materials.cap.type, capToneMapped: state.panels[0].userData.materials.cap.toneMapped, edge: '#' + state.panels[0].userData.materials.edge.color.getHexString(), edgeType: state.panels[0].userData.materials.edge.type } : null,
       floor: state.floor ? '#' + state.floor.material.color.getHexString() : null,
-      lights: state.lights ? { key: state.lights.key.intensity, ambient: state.lights.ambient.intensity, hemisphere: state.lights.hemisphere.intensity } : null,
+      // Rev21: no THREE lights exist any more -- the only light is the room
+      // photo's PMREM assigned to scene.environment by ./env-room.js.
+      lights: {
+        count: 0,
+        environment: ENV.label,
+        intensity: ENV.intensity,
+        appliedIntensity: state.room ? state.room.intensity : null,
+      },
       exposure: state.renderer ? state.renderer.toneMappingExposure : null,
     },
     domTags: Array.from(state.tagEls.values()).map((el) => ({ id: el.dataset.tagId, visible: el.classList.contains('is-visible'), screenX: Number(el.dataset.screenX || 0), screenY: Number(el.dataset.screenY || 0) })),
@@ -1210,7 +1257,7 @@ function dispose() {
   if (state.resizeObserver) state.resizeObserver.disconnect();
   if (state.card) { try { state.card.dispose(); } catch (error) { /* ignore */ } }
   if (state.bank) { try { state.bank.dispose(); } catch (error) { /* ignore */ } }
-  disposeEnvironment(state.studio);
+  if (state.room) { try { state.room.dispose(); } catch (error) { /* best effort */ } state.room = null; }
   const disposeGroup = (group) => {
     group.traverse((object) => {
       if (object.geometry) object.geometry.dispose();

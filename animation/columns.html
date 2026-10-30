@@ -4,14 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="TEKO Material Columns ??27 long cuboids in three materials (plaster, limestone, satin) and nine exact dimensions: 140/80/40 px footprints by 600/550/500 px heights, one world unit per source pixel.">
+<meta name="description" content="TEKO Material Columns ??45 long cuboids in five materials (plaster, reeded-metal, satin, natural grain metal, titanium alloy) and nine exact dimensions: 140/80/40 px footprints by 600/550/500 px heights, 200 world units per source pixel (COLUMN_WORLD_SCALE 200).">
 <title>TEKO ??Material Columns</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='26' height='24' rx='4' fill='%2315191f' stroke='%23c9d6e6' stroke-width='1.6'/%3E%3Cpath d='M10 24V15M16 24V9M22 24v-6' stroke='%23c9d6e6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="./src/columns-styles.css">
+<link rel="stylesheet" href="./src/site-nav.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
-<body data-columns="" data-material="all" data-view="hero" data-spin="0" data-count="27" data-qa-ready="0" data-qa-errors="0" data-fallback="0">
+<body data-columns="" data-material="all" data-view="hero" data-spin="0" data-count="45" data-qa-ready="0" data-qa-errors="0" data-fallback="0">
 
   <div class="page" id="page">
 
@@ -29,7 +30,21 @@
         <span class="brand-product">Material Columns</span>
       </a>
       <div class="header-side">
-        <p class="header-note">27 long cuboids <span class="header-dot" aria-hidden="true"></span> 3 materials &times; 9 dimensions <span class="header-dot" aria-hidden="true"></span> <a href="./shield.html">Shield</a> <span class="header-dot" aria-hidden="true"></span> <a href="./currency-blocks.html">Currency Blocks</a> <span class="header-dot" aria-hidden="true"></span> <a href="./vault.html">Vault</a> <span class="header-dot" aria-hidden="true"></span> <a href="./paperplane.html">Plane</a></p>
+        <nav class="site-nav" aria-label="Collections">
+          <a href="./">Coin</a>
+          <a href="./card.html">Metal Card</a>
+          <span class="site-nav-current" aria-current="page">Columns</span>
+          <a href="./phone.html">iPhone 15</a>
+          <a href="./billing.html">Billing</a>
+          <a href="./shield.html">Shield</a>
+          <a href="./currency-blocks.html">Currency Blocks</a>
+          <a href="./vault.html">Vault</a>
+          <a href="./paperplane.html">Plane</a>
+          <a href="./connection.html">Connection</a>
+          <a href="./logo-blocks.html">Logo Blocks</a>
+          <a href="./stacked-panel.html">Stacked Panel</a>
+        </nav>
+        <p class="header-note">45 long cuboids <span class="header-dot" aria-hidden="true"></span> 5 materials &times; 9 dimensions</p>
         <div class="header-links">
           <a class="header-link" href="./index.html">
             <span>Coin</span>
@@ -53,37 +68,39 @@
       </div>
     </header>
 
-    <h1 class="sr-only">TEKO ??Material Columns: 27 long cuboids in plaster, limestone and satin, nine exact dimensions</h1>
+    <h1 class="sr-only">TEKO ??Material Columns: 45 long cuboids in five metal and plaster materials, nine exact dimensions</h1>
 
     <main class="studio" id="studio">
       <section class="stage-column" aria-label="Material columns preview">
 
         <div class="stage" id="stage">
           <div class="stage-aura" aria-hidden="true"></div>
-          <canvas id="stage-canvas" aria-label="Interactive 3D preview of 27 long cuboid columns: nine plaster, nine limestone and nine satin, in three footprints (140, 80 and 40 pixels) and three heights (600, 550 and 500 pixels). Drag to orbit, scroll to zoom, click a column to focus it."></canvas>
+          <canvas id="stage-canvas" aria-label="Interactive 3D preview of 45 long cuboid columns: nine each of plaster, reeded-metal, satin, natural grain metal and titanium alloy, in three footprints (140, 80 and 40 pixels) and three heights (600, 550 and 500 pixels). Drag to orbit, scroll to zoom, click a column to focus it."></canvas>
 
           <div class="stage-overlay" aria-hidden="true">
             <div class="stage-eyebrow">
               <span class="stage-dot"></span>
               <span id="stage-eyebrow-text">Material studio</span>
             </div>
-            <div class="stage-index"><span id="stage-index">27</span><span class="stage-index-slash">/</span><span class="stage-index-total">27</span></div>
+            <div class="stage-index"><span id="stage-index">45</span><span class="stage-index-slash">/</span><span class="stage-index-total">45</span></div>
           </div>
 
           <div class="group-labels" id="group-labels" aria-hidden="true">
             <span class="group-label" data-group-label="plaster"><span class="group-label-dot"></span><span class="group-label-name">Plaster</span></span>
-            <span class="group-label" data-group-label="limestone"><span class="group-label-dot"></span><span class="group-label-name">Limestone</span></span>
+            <span class="group-label" data-group-label="reeded-metal"><span class="group-label-dot"></span><span class="group-label-name">Reeded Metal</span></span>
             <span class="group-label" data-group-label="satin"><span class="group-label-dot"></span><span class="group-label-name">Satin</span></span>
+            <span class="group-label" data-group-label="grain-metal"><span class="group-label-dot"></span><span class="group-label-name">Natural Grain Metal</span></span>
+            <span class="group-label" data-group-label="titanium"><span class="group-label-dot"></span><span class="group-label-name">Titanium Alloy</span></span>
           </div>
 
           <div class="stage-caption" id="stage-caption" aria-live="polite">
-            <span class="stage-caption-code" id="stage-code">27</span>
+            <span class="stage-caption-code" id="stage-code">45</span>
             <span class="stage-caption-rule" aria-hidden="true"></span>
-            <span class="stage-caption-name" id="stage-name">long cuboids &middot; 3 materials &times; 9 dimensions</span>
+            <span class="stage-caption-name" id="stage-name">long cuboids &middot; 5 materials &times; 9 dimensions</span>
             <span class="stage-caption-detail" id="stage-detail"></span>
           </div>
 
-          <p class="stage-unit" id="stage-unit">1 px = 1 world unit</p>
+          <p class="stage-unit" id="stage-unit">1 px = 200 world units</p>
           <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to orbit &middot; click a column to focus</p>
 
           <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
@@ -115,7 +132,7 @@
         <section class="info-card" id="info-card">
           <div class="info-topline">
             <span class="info-kicker">Material groups</span>
-            <span class="info-index" id="info-index">27 / 27</span>
+            <span class="info-index" id="info-index">45 / 45</span>
           </div>
 
           <div class="material-selector" id="material-selector" role="tablist" aria-label="Material">
@@ -123,8 +140,10 @@
               <span class="material-tab-label">All</span><kbd>0</kbd>
             </button>
             <button class="material-tab" data-material="plaster" type="button" data-key="1" role="tab" aria-selected="false" aria-keyshortcuts="1"><span class="material-tab-label">Plaster</span><kbd>1</kbd></button>
-            <button class="material-tab" data-material="limestone" type="button" data-key="2" role="tab" aria-selected="false" aria-keyshortcuts="2"><span class="material-tab-label">Limestone</span><kbd>2</kbd></button>
+            <button class="material-tab" data-material="reeded-metal" type="button" data-key="2" role="tab" aria-selected="false" aria-keyshortcuts="2"><span class="material-tab-label">Reeded Metal</span><kbd>2</kbd></button>
             <button class="material-tab" data-material="satin" type="button" data-key="3" role="tab" aria-selected="false" aria-keyshortcuts="3"><span class="material-tab-label">Satin</span><kbd>3</kbd></button>
+            <button class="material-tab" data-material="grain-metal" type="button" data-key="4" role="tab" aria-selected="false" aria-keyshortcuts="4"><span class="material-tab-label">Natural Grain Metal</span><kbd>4</kbd></button>
+            <button class="material-tab" data-material="titanium" type="button" data-key="5" role="tab" aria-selected="false" aria-keyshortcuts="5"><span class="material-tab-label">Titanium Alloy</span><kbd>5</kbd></button>
           </div>
 
           <div class="rule"></div>
@@ -134,9 +153,9 @@
               <span class="info-kicker">Selection</span>
               <span class="readout-state" id="readout-state">Hover a column</span>
             </div>
-            <p class="readout-name" id="readout-name">All 27 columns</p>
+            <p class="readout-name" id="readout-name">All 45 columns</p>
             <p class="readout-dims" id="readout-dims">140 / 80 / 40 px footprints &middot; 600 / 550 / 500 px heights</p>
-            <p class="readout-id" id="readout-id">3 materials &times; 9 dimensions</p>
+            <p class="readout-id" id="readout-id">5 materials &times; 9 dimensions</p>
           </div>
 
           <div class="rule"></div>
@@ -167,14 +186,14 @@
           <div class="rule"></div>
 
           <dl class="info-specs">
-            <div class="spec-row"><dt>Count</dt><dd>27 long cuboids</dd></div>
-            <div class="spec-row"><dt>Groups</dt><dd>Plaster / Limestone / Satin</dd></div>
+            <div class="spec-row"><dt>Count</dt><dd>45 long cuboids</dd></div>
+            <div class="spec-row"><dt>Groups</dt><dd>Plaster / Reeded Metal / Satin / Natural Grain Metal / Titanium Alloy</dd></div>
             <div class="spec-row"><dt>Footprints</dt><dd>140 / 80 / 40 px</dd></div>
             <div class="spec-row"><dt>Heights</dt><dd>600 / 550 / 500 px</dd></div>
-            <div class="spec-row"><dt>Unit</dt><dd>1 px = 1 world unit</dd></div>
-            <div class="spec-row"><dt>Extent</dt><dd id="spec-extent">1850 &times; 500 &times; 600 px</dd></div>
-            <div class="spec-row"><dt>Edges</dt><dd>3 / 5 / 10 px radius (small / medium / large)</dd></div>
-            <div class="spec-row"><dt>Sources</dt><dd>plaster.png &middot; limestone.png &middot; satin.png</dd></div>
+            <div class="spec-row"><dt>Unit</dt><dd>1 px = 200 world units</dd></div>
+            <div class="spec-row"><dt>Extent</dt><dd id="spec-extent">3250 &times; 500 &times; 600 px</dd></div>
+            <div class="spec-row"><dt>Edges</dt><dd>1 / 1.6 / 2.8 px radius (small / medium / large)</dd></div>
+            <div class="spec-row"><dt>Sources</dt><dd>plaster.png &middot; reeded-metal.png &middot; satin.png &middot; grain / titanium: procedural (in-model)</dd></div>
           </dl>
 
           <div class="info-foot">
@@ -187,21 +206,21 @@
           <div class="info-notes">
             <div class="note">
               <span class="note-kicker">Model</span>
-              <p class="note-body">27 real box meshes, no instancing, no runtime scaling: one source pixel is one world unit.</p>
+              <p class="note-body">45 real box meshes, no instancing, no runtime scaling: one source pixel is 200 world units (50x; the fine pattern keeps its physical size) (uniform COLUMN_WORLD_SCALE).</p>
             </div>
             <div class="note">
               <span class="note-kicker">Materials</span>
-              <p class="note-body">Every column is a real rounded box: its edges are bevelled with a <strong>3 / 5 / 10 px radius</strong> for the small / medium / large footprint (exact footprints, heights and layout unchanged). Plaster is a <strong>perfectly smooth liquid-metal mirror</strong> with no grain at all. Limestone is the dark rough stone of the reference, its grain carried only by per-point <strong>chromatic albedo variation</strong>. Satin is a smooth neutral-grey surface with a soft tonal gradient and its blurred reflection.</p>
+              <p class="note-body">Every column is a real rounded box: its edges are bevelled with a <strong>1 / 1.6 / 2.8 px radius</strong> for the small / medium / large footprint (exact footprints, heights and layout unchanged). Plaster is a <strong>perfectly smooth liquid-metal mirror</strong> with no grain at all. Reeded Metal is the dark rough stone of the reference, its grain carried only by per-point <strong>chromatic albedo variation</strong>. Satin is a smooth neutral-grey surface with a soft tonal gradient and its blurred reflection.</p>
             </div>
             <div class="note">
               <span class="note-kicker">Studio</span>
-              <p class="note-body">PMREM room environment with key, fill and rim lights; a neutral floor catches the soft shadows.</p>
+              <p class="note-body">One room photograph (<span class="mono">assets/env/modern-empty-room.jpg</span>, PMREM image-based environment) lights every column &mdash; no scene lights; a neutral floor catches the soft shadows.</p>
             </div>
           </div>
           <ul class="legend" aria-label="Keyboard shortcuts">
             <li><kbd class="legend-key">Drag</kbd><span>Orbit</span></li>
             <li><kbd class="legend-key">Scroll</kbd><span>Zoom</span></li>
-            <li><kbd class="legend-key">1</kbd><kbd class="legend-key">2</kbd><kbd class="legend-key">3</kbd><span>Material</span></li>
+            <li><kbd class="legend-key">1</kbd><kbd class="legend-key">2</kbd><kbd class="legend-key">3</kbd><kbd class="legend-key">4</kbd><kbd class="legend-key">5</kbd><kbd class="legend-key">6</kbd><span>Material</span></li>
             <li><kbd class="legend-key">0</kbd><kbd class="legend-key">A</kbd><span>All</span></li>
             <li><kbd class="legend-key">R</kbd><span>Reset view</span></li>
             <li><kbd class="legend-key">Space</kbd><span>Auto-rotate</span></li>
@@ -217,14 +236,16 @@
           <button class="material-chip material-chip--all" data-material-chip="all" type="button">
             <span class="material-swatch material-swatch--all" aria-hidden="true"></span>
             <span class="chip-name">All</span>
-            <span class="chip-file">27 columns</span>
+            <span class="chip-file">45 columns</span>
           </button>
           <button class="material-chip" data-material-chip="plaster" type="button"><span class="material-swatch material-swatch--plaster" aria-hidden="true"></span><span class="chip-name">Plaster</span><span class="chip-file">plaster.png</span></button>
-          <button class="material-chip" data-material-chip="limestone" type="button"><span class="material-swatch material-swatch--limestone" aria-hidden="true"></span><span class="chip-name">Limestone</span><span class="chip-file">limestone.png</span></button>
+          <button class="material-chip" data-material-chip="reeded-metal" type="button"><span class="material-swatch material-swatch--reeded-metal" aria-hidden="true"></span><span class="chip-name">Reeded Metal</span><span class="chip-file">reeded-metal.png</span></button>
           <button class="material-chip" data-material-chip="satin" type="button"><span class="material-swatch material-swatch--satin" aria-hidden="true"></span><span class="chip-name">Satin</span><span class="chip-file">satin.png</span></button>
+          <button class="material-chip" data-material-chip="grain-metal" type="button"><span class="material-swatch material-swatch--grain-metal" aria-hidden="true"></span><span class="chip-name">Natural Grain Metal</span><span class="chip-file">procedural</span></button>
+          <button class="material-chip" data-material-chip="titanium" type="button"><span class="material-swatch material-swatch--titanium" aria-hidden="true"></span><span class="chip-name">Titanium Alloy</span><span class="chip-file">procedural</span></button>
           <span class="material-chip material-chip--meta">
             <span class="material-swatch material-swatch--unit" aria-hidden="true"></span>
-            <span class="chip-name">px = world unit</span>
+            <span class="chip-name">px = 200 world units</span>
             <span class="chip-file">1 : 1</span>
           </span>
         </div>
@@ -240,8 +261,8 @@
     <div class="fallback-inner">
       <p class="info-kicker">Static summary</p>
       <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
-      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. The 27 long cuboids, their material groups and their exact dimensions are listed below.</p>
-      <p class="fallback-unit">Unit convention: 1 source pixel = 1 three.js world unit &middot; scene envelope 1850 &times; 500 &times; 600 px centred at (-25, 300, 0) &middot; no runtime scaling.</p>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. The 45 long cuboids, their material groups and their exact dimensions are listed below.</p>
+      <p class="fallback-unit">Unit convention: 1 source pixel = 200 three.js world units (COLUMN_WORLD_SCALE) &middot; scene envelope 3250 &times; 500 &times; 600 px centred at (-25, 300, 0) &middot; no runtime scaling.</p>
       <div class="fallback-groups">
       <section class="fallback-group" data-fallback-group="plaster">
         <div class="fallback-group-head">
@@ -266,26 +287,26 @@
           </tbody>
         </table>
       </section>
-      <section class="fallback-group" data-fallback-group="limestone">
+      <section class="fallback-group" data-fallback-group="reeded-metal">
         <div class="fallback-group-head">
-          <span class="material-swatch material-swatch--limestone" aria-hidden="true"></span>
-          <h3 class="fallback-group-name">Limestone</h3>
-          <span class="fallback-group-source">limestone.png</span>
+          <span class="material-swatch material-swatch--reeded-metal" aria-hidden="true"></span>
+          <h3 class="fallback-group-name">Reeded Metal</h3>
+          <span class="fallback-group-source">reeded-metal.png</span>
           <span class="fallback-group-count">9 columns</span>
         </div>
         <table class="fallback-table">
-          <caption class="sr-only">Nine limestone columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
+          <caption class="sr-only">Nine reeded-metal columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
           <thead><tr><th scope="col">Column id</th><th scope="col">F</th><th scope="col">H</th><th scope="col">W &times; D &times; H px</th></tr></thead>
           <tbody>
-            <tr><th scope="row"><span class="mono">limestone-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
-            <tr><th scope="row"><span class="mono">limestone-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">reeded-metal-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
           </tbody>
         </table>
       </section>
@@ -312,8 +333,54 @@
           </tbody>
         </table>
       </section>
+      <section class="fallback-group" data-fallback-group="grain-metal">
+        <div class="fallback-group-head">
+          <span class="material-swatch material-swatch--grain-metal" aria-hidden="true"></span>
+          <h3 class="fallback-group-name">Natural Grain Metal</h3>
+          <span class="fallback-group-source">procedural</span>
+          <span class="fallback-group-count">9 columns</span>
+        </div>
+        <table class="fallback-table">
+          <caption class="sr-only">Nine natural grain metal columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
+          <thead><tr><th scope="col">Column id</th><th scope="col">F</th><th scope="col">H</th><th scope="col">W &times; D &times; H px</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><span class="mono">grain-metal-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">grain-metal-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="fallback-group" data-fallback-group="titanium">
+        <div class="fallback-group-head">
+          <span class="material-swatch material-swatch--titanium" aria-hidden="true"></span>
+          <h3 class="fallback-group-name">Titanium Alloy</h3>
+          <span class="fallback-group-source">procedural</span>
+          <span class="fallback-group-count">9 columns</span>
+        </div>
+        <table class="fallback-table">
+          <caption class="sr-only">Nine titanium alloy columns: footprints 140, 80, 40 px by heights 600, 550, 500 px</caption>
+          <thead><tr><th scope="col">Column id</th><th scope="col">F</th><th scope="col">H</th><th scope="col">W &times; D &times; H px</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><span class="mono">titanium-large-long</span></th><td class="fallback-fp">140</td><td class="fallback-h">600</td><td class="fallback-dims">140 &times; 140 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-large-medium</span></th><td class="fallback-fp">140</td><td class="fallback-h">550</td><td class="fallback-dims">140 &times; 140 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-large-short</span></th><td class="fallback-fp">140</td><td class="fallback-h">500</td><td class="fallback-dims">140 &times; 140 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-medium-long</span></th><td class="fallback-fp">80</td><td class="fallback-h">600</td><td class="fallback-dims">80 &times; 80 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-medium-medium</span></th><td class="fallback-fp">80</td><td class="fallback-h">550</td><td class="fallback-dims">80 &times; 80 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-medium-short</span></th><td class="fallback-fp">80</td><td class="fallback-h">500</td><td class="fallback-dims">80 &times; 80 &times; 500</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-small-long</span></th><td class="fallback-fp">40</td><td class="fallback-h">600</td><td class="fallback-dims">40 &times; 40 &times; 600</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-small-medium</span></th><td class="fallback-fp">40</td><td class="fallback-h">550</td><td class="fallback-dims">40 &times; 40 &times; 550</td></tr>
+            <tr><th scope="row"><span class="mono">titanium-small-short</span></th><td class="fallback-fp">40</td><td class="fallback-h">500</td><td class="fallback-dims">40 &times; 40 &times; 500</td></tr>
+          </tbody>
+        </table>
+      </section>
       </div>
-      <p class="fallback-explain">Each group's maps are cropped from its own local PBR sample sheet: <span class="mono">plaster.png</span>, <span class="mono">limestone.png</span> and <span class="mono">satin.png</span> (project asset tree <span class="mono">assets/textures/materials/</span>). The interactive model needs WebGL; the static tables above use the same frozen dimensions.</p>
+      <p class="fallback-explain">Each group's maps are cropped from its own local PBR sample sheet: <span class="mono">plaster.png</span>, <span class="mono">reeded-metal.png</span> and <span class="mono">satin.png</span> (project asset tree <span class="mono">assets/textures/materials/</span>). The interactive model needs WebGL; the static tables above use the same frozen dimensions.</p>
     </div>
   </section>
 
@@ -407,7 +474,7 @@
           material: 'all',
           view: 'hero',
           spin: false,
-          count: 27,
+          count: 45,
           materials: [],
           columns: [],
           textures: { loaded: 0, total: 18 },
@@ -433,7 +500,7 @@
   <script type="module" src="./src/columns-preview.js"></script>
   <script>
   /* Module-load safety net: if src/columns-preview.js never boots (parse/import failure),
-     reveal the static 27-column summary instead of leaving the curtain up. */
+     reveal the static 45-column summary instead of leaving the curtain up. */
   (function () {
     window.setTimeout(function () {
       try {
@@ -445,7 +512,7 @@
         var banner = document.getElementById('error-banner');
         var text = document.getElementById('error-text');
         if (banner && text) {
-          text.textContent = 'The interactive preview module could not start. The 27 columns and their exact dimensions are listed below.';
+          text.textContent = 'The interactive preview module could not start. The 45 columns and their exact dimensions are listed below.';
           banner.hidden = false;
         }
         var curtain = document.getElementById('loading');

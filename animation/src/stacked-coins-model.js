@@ -1,11 +1,10 @@
 /**
- * stacked-coins-model.js — pure deterministic model for the Rev17 stacked glowing
- * coins page (dark editorial studio, tall stack of 8-10 coins, 2-3 floating coins,
- * theme-gold glow on the reeded edges, subtle float/pulse).
+ * stacked-coins-model.js — pure deterministic model for the coin-page Stack mode
+ * (dark editorial studio, tall stack of 8-10 coins, 2-3 floating coins, lit by one
+ * dark-blue LINE light baked into the environment map; Rev21 s37, no glow).
  *
  * Reference: K:\HFWorkspace\revolutmedia\images\stacked_and_glow_coins.png
- * (reference uses a blue edge glow; this page uses the TEKO theme GOLD glow, per
- * the task brief, with our own coin model loaded by the previewer).
+ * (reference shows blue linear edge light; here it is a dark-blue line in the IBL).
  *
  * Dependency-free: no three.js, DOM, clock or randomness. The previewer consumes
  * CONFIG / LAYOUT / pose(t) / cameraFit and adds our coin model groups.
@@ -52,33 +51,47 @@ const STACK_CONFIG = deepFreeze({
 
 const FLOAT_CONFIG = deepFreeze({
   count: 3, // 2-3 allowed by the brief
-  bobPeriodSeconds: 3.0,
-  yawPeriodSeconds: 6.0,
-  bobAmplitude: [0.09, 0.075, 0.11],
-  yawDriftDeg: [8, -6, 10],
+  // Rev21 (R21-5): the unfolded float coins are STATIC — no bob, no yaw drift,
+  // no lateral drift.
+  static: true,
+  // Minimum surface clearance to every other coin (and the stack) measured in
+  // coin radii; enforced by the frozen layout below.
+  clearanceMin: 0.05,
   tiltXDeg: [16, -12, 20],
   tiltZDeg: [-10, 14, 7],
   basePosition: [
-    [-0.6, null, 0.12],
-    [0.42, null, -0.16],
-    [-0.12, null, 0.06],
+    [-0.55, null, 0.12],
+    [0.5, null, -0.14],
+    [0, null, 0.06], // nearest to the stack: x == stack x (0) by design
   ],
-  heightOffsets: [0.55, 0.98, 1.5], // above the top of the stack
+  // Height offsets above the top of the stack, indexed like basePosition. The
+  // x = 0 coin is the LOWEST one, so the float coin nearest the stack is the
+  // one aligned with the stack x (R21-5). Spacing keeps the tilted discs clear
+  // of each other and of the stack by >= clearanceMin (verified offline).
+  heightOffsets: [1.42, 2.42, 0.62],
+  nearestStackIndex: 2,
 });
 
-const GLOW = deepFreeze({
-  target: 'reeded-edges',
-  color: '#ffd60a',
-  colorRgb: [1.0, 0.8392, 0.0392],
-  emissiveBase: 2.2,
-  emissivePulseMin: 0.82,
-  emissivePulseMax: 1.2,
-  pulsePeriodSeconds: 2.0,
-  additiveHalo: true,
-  haloOpacity: 0.26,
-  haloScale: 1.03,
-  faceGlow: 0.0, // satin silver faces stay unglowed
-  rimTint: '#f5c400',
+/**
+ * Rev21 s37: the Stack mode has NO glow (no emissive, no halo, no floor pool).
+ * Its single light is one thin dark-blue LINE baked into the environment map
+ * (IBL) before PMREM (src/env-room.js setLineLight). `hex` is the target
+ * dark blue; `color` is its linear-RGB radiance direction; `intensity`
+ * multiplies it (HDR) so the strip reads as a bright blue line in reflections
+ * while staying dark blue after tone mapping. Angles in radians.
+ */
+export const LINE_LIGHT_SPEC = deepFreeze({
+  name: 'stack-line-light',
+  kind: 'env-baked-line',
+  color: [0.0116, 0.0284, 0.1470],
+  hex: '#1c2f6b',
+  intensity: 60,
+  azimuth: 0.9,
+  halfWidth: 0.035,
+  elevMin: -0.8,
+  elevMax: 1.0,
+  soft: 0.14,
+  tilt: 0,
 });
 
 const STUDIO = deepFreeze({
@@ -87,9 +100,6 @@ const STUDIO = deepFreeze({
   floor: '#0e1115',
   floorRoughness: 0.42,
   floorMetalness: 0.35,
-  keyLight: { intensity: 1.35, color: '#ffffff', position: [4.5, 7.0, 6.0] },
-  fillLight: { intensity: 0.4, color: '#cfd9e8', position: [-5.0, 3.5, 4.0] },
-  goldBounce: { intensity: 1.1, color: '#ffd60a', position: [0, 1.6, 2.6] },
 });
 
 const STACK_TOP_Y = COIN.thickness / 2 + (STACK_CONFIG.count - 1) * (COIN.thickness + STACK_CONFIG.gap);
@@ -153,7 +163,6 @@ function buildStackLayout() {
       yawDeg: round6(yawDeg),
       basePosition: [0, round6(y), 0],
       baseQuaternion: quaternion.map(round6),
-      glowPhase: round6(index * 0.11),
     });
   }
   return coins;
@@ -173,12 +182,6 @@ function buildFloatLayout() {
       index,
       basePosition: position,
       baseQuaternion: quaternion.map(round6),
-      bobAmplitude: FLOAT_CONFIG.bobAmplitude[index],
-      bobPeriodSeconds: FLOAT_CONFIG.bobPeriodSeconds,
-      bobPhase: round6((index / FLOAT_CONFIG.count) * TAU + 0.4),
-      yawPhase: round6((index / FLOAT_CONFIG.count) * TAU + 1.1),
-      yawDriftDeg: FLOAT_CONFIG.yawDriftDeg[index],
-      glowPhase: round6(index * 0.7 + 0.25),
     });
   }
   return coins;
@@ -192,57 +195,35 @@ const ALL_COINS = [...STACK_COINS, ...FLOAT_COINS];
 /* Pose                                                                      */
 /* ------------------------------------------------------------------------- */
 
-function pulseAt(time, phase) {
-  const period = GLOW.pulsePeriodSeconds;
-  const wave = 0.5 - 0.5 * Math.cos((TAU * time) / period + phase * TAU);
-  return lerp(GLOW.emissivePulseMin, GLOW.emissivePulseMax, wave);
-}
-
 /**
  * Deterministic loop pose at time t (seconds; wraps into [0, duration)).
- * Stack coins are static except a tiny breathing offset and the gold glow pulse;
- * floating coins bob/slowly yaw above the stack.
+ * Stack coins are static except a tiny breathing offset; floating coins are static.
  */
 export function coinsPose(t) {
   const raw = Number(t) || 0;
   const time = ((raw % DURATION) + DURATION) % DURATION;
   const stack = STACK_COINS.map((coin) => {
     const breathe = Math.sin((TAU * time) / DURATION + coin.index * 0.35) * 0.0025;
-    const glowIntensity = pulseAt(time, coin.glowPhase) * GLOW.emissiveBase;
     return {
       kind: 'stack',
       index: coin.index,
       position: [0, round6(coin.basePosition[1] + breathe), 0],
       quaternion: coin.baseQuaternion.slice(),
       normal: rotateByQuaternion(coin.baseQuaternion, [0, 1, 0]).map(round6),
-      glowIntensity: round6(glowIntensity),
       yawDeg: coin.yawDeg,
     };
   });
   const floats = FLOAT_COINS.map((coin) => {
-    const bobPhase = (TAU * time) / coin.bobPeriodSeconds + coin.bobPhase;
-    const bob = Math.sin(bobPhase) * coin.bobAmplitude;
-    const yawWave = Math.sin((TAU * time) / FLOAT_CONFIG.yawPeriodSeconds + coin.yawPhase);
-    const yaw = yawWave * coin.yawDriftDeg * DEG;
-    const driftX = Math.sin(bobPhase * 0.5) * 0.03;
-    const driftZ = Math.cos(bobPhase * 0.5) * 0.03;
-    const quaternion = quatMultiply(
-      quatAxisAngle(0, 1, 0, yaw),
-      coin.baseQuaternion,
-    ).map(round6);
+    const quaternion = coin.baseQuaternion.slice();
     return {
       kind: 'float',
       index: coin.index,
-      position: [
-        round6(coin.basePosition[0] + driftX),
-        round6(coin.basePosition[1] + bob),
-        round6(coin.basePosition[2] + driftZ),
-      ],
+      // Rev21 (R21-5): static pose — identical at every t.
+      position: coin.basePosition.slice(),
       quaternion,
       normal: rotateByQuaternion(quaternion, [0, 1, 0]).map(round6),
-      bob: round6(bob),
-      yawDeg: round6(yaw / DEG),
-      glowIntensity: round6(pulseAt(time, coin.glowPhase) * GLOW.emissiveBase),
+      bob: 0,
+      yawDeg: 0,
     };
   });
   return deepFreeze({
@@ -252,18 +233,11 @@ export function coinsPose(t) {
     phase: 'loop',
     stack,
     floats,
-    glow: {
-      color: GLOW.color,
-      target: GLOW.target,
-      pulseMin: GLOW.emissivePulseMin,
-      pulseMax: GLOW.emissivePulseMax,
-      pulsePeriodSeconds: GLOW.pulsePeriodSeconds,
-    },
     stackTopY: round6(STACK_TOP_Y),
   });
 }
 
-/** Reduced-motion pose: a fixed, composed frame (no float/pulse animation). */
+/** Reduced-motion pose: a fixed, composed frame (no float animation). */
 export function stackedCoinsReducedMotionPose() {
   return coinsPose(DURATION * 0.25);
 }
@@ -276,7 +250,7 @@ const CAMERA = deepFreeze({
   fovDeg: 30,
   elevationDeg: 10,
   fitMargin: 1.1,
-  trainTopY: FLOATER_BASE_Y + FLOAT_CONFIG.heightOffsets[2] + FLOAT_CONFIG.bobAmplitude[2] + COIN.radius,
+  trainTopY: FLOATER_BASE_Y + Math.max(...FLOAT_CONFIG.heightOffsets) + COIN.radius,
   targetY: null, // computed below
   near: 0.05,
   far: 120,
@@ -299,7 +273,9 @@ export function coinsCameraFit(stageWidth = 1440, stageHeight = 900) {
   const topWorld = CAMERA.trainTopY;
   const bottomWorld = -COIN.thickness;
   const frameHeight = topWorld - bottomWorld;
-  const targetY = topWorld * 0.5;
+  // Rev21 (R21-5): a slightly lower aim keeps the taller static float train in
+  // frame with the stack sitting in the lower/middle area.
+  const targetY = topWorld * 0.5 - 0.08;
   const halfWidth = COIN.radius * 1.7;
   const distanceForWidth = (halfWidth * CAMERA.fitMargin) / (tanHalf * aspect);
   const distanceForHeight = ((frameHeight / 2) * CAMERA.fitMargin) / tanHalf;
@@ -364,19 +340,16 @@ export const COINS_LAYOUT = deepFreeze({
     position: coin.basePosition.slice(),
     quaternion: coin.baseQuaternion.slice(),
     yawDeg: coin.yawDeg,
-    glowPhase: coin.glowPhase,
   })),
   floats: FLOAT_COINS.map((coin) => ({
     index: coin.index,
     basePosition: coin.basePosition.slice(),
     quaternion: coin.baseQuaternion.slice(),
-    bobAmplitude: coin.bobAmplitude,
-    bobPeriodSeconds: coin.bobPeriodSeconds,
-    bobPhase: coin.bobPhase,
-    yawPhase: coin.yawPhase,
-    yawDriftDeg: coin.yawDriftDeg,
-    glowPhase: coin.glowPhase,
+    static: true,
   })),
+  floatStatic: true,
+  floatClearanceMin: FLOAT_CONFIG.clearanceMin,
+  floatNearestStackIndex: FLOAT_CONFIG.nearestStackIndex,
   stackTopY: round6(STACK_TOP_Y),
   floaterBaseY: round6(FLOATER_BASE_Y),
   stackCount: STACK_CONFIG.count,
@@ -392,7 +365,7 @@ export const COINS_CONFIG = deepFreeze({
   coin: COIN,
   stack: STACK_CONFIG,
   float: FLOAT_CONFIG,
-  glow: GLOW,
+  lineLight: LINE_LIGHT_SPEC,
   studio: STUDIO,
   camera: CAMERA,
   bounds: COMPOSITION_BOUNDS,

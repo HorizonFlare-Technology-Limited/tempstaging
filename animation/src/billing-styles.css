@@ -762,9 +762,19 @@ body[data-shot='1'] .stage-hint {
   color: #ece9df;
 }
 
-.asset-tag--print {
-  border-color: rgba(150, 190, 235, 0.28);
-  color: #b9d2ec;
+.asset-tag--acrylic {
+  border-color: rgba(154, 162, 226, 0.34);
+  color: #c3c9f2;
+}
+
+.asset-tag--glow {
+  border-color: rgba(255, 140, 50, 0.4);
+  color: #ffb27a;
+}
+
+.asset-tag--satin {
+  border-color: rgba(206, 212, 220, 0.28);
+  color: #cfd3d9;
 }
 
 .asset-note {
@@ -911,24 +921,23 @@ body[data-shot='1'] .stage-hint {
   white-space: nowrap;
 }
 
-.layer-chip--gold {
-  border-color: rgba(232, 190, 120, 0.26);
-  background: rgba(232, 190, 120, 0.055);
+.layer-chip--paper {
+  border-color: rgba(238, 242, 248, 0.22);
+  background: rgba(238, 242, 248, 0.04);
 }
 
-.layer-chip--pcb {
-  border-color: rgba(150, 190, 235, 0.22);
-  background: rgba(150, 190, 235, 0.045);
+.layer-chip--glow {
+  border-color: rgba(255, 140, 50, 0.34);
+  background: rgba(255, 140, 50, 0.06);
+}
+
+.layer-chip--acrylic {
+  border-color: rgba(130, 150, 190, 0.34);
+  background: rgba(130, 150, 190, 0.07);
 }
 
 .layer-chip--meta {
   border-style: dashed;
-}
-
-/* Round 5: the unified text mockup is a floating layer, not paper. */
-.layer-chip--mockup {
-  border-color: rgba(214, 230, 250, 0.24);
-  background: rgba(214, 230, 250, 0.05);
 }
 
 .layer-swatch {
@@ -939,27 +948,30 @@ body[data-shot='1'] .stage-hint {
   border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.layer-swatch--mockup {
+.layer-swatch--paper {
   background:
-    repeating-linear-gradient(180deg, rgba(226, 238, 252, 0.92) 0 1px, rgba(226, 238, 252, 0) 1px 3px),
-    linear-gradient(150deg, rgba(34, 38, 45, 0.9), rgba(30, 33, 39, 0.9));
-  border-color: rgba(224, 236, 250, 0.4);
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0 1px, rgba(255, 255, 255, 0) 1px 3px),
+    linear-gradient(150deg, #e2e3e6, #b7bac0);
+  border-color: rgba(244, 246, 250, 0.42);
 }
 
-.layer-swatch--white {
-  background: linear-gradient(150deg, #f6f5ef, #cfcec4);
-  border-color: rgba(255, 255, 255, 0.42);
+.layer-swatch--glow {
+  background: radial-gradient(circle at 50% 50%, #f3f1ec 0%, #f0e6da 40%, #ff8a30 100%);
+  border-color: rgba(255, 150, 70, 0.6);
 }
-.layer-swatch--gold {
-  background: radial-gradient(circle at 50% 48%, #edc473, #f6e3b8 62%, #fbf8f0);
-  border-color: rgba(255, 224, 168, 0.46);
+
+.layer-swatch--acrylic {
+  background:
+    repeating-linear-gradient(180deg, rgba(214, 224, 250, 0.8) 0 1px, rgba(214, 224, 250, 0) 1px 3px),
+    linear-gradient(150deg, rgba(196, 210, 245, 0.55), rgba(120, 140, 180, 0.35));
+  border-color: rgba(196, 210, 240, 0.55);
 }
-.layer-swatch--pcb {
-  background: linear-gradient(150deg, #dfe8ef, #9db3c5);
-  border-color: rgba(200, 222, 240, 0.5);
-}
+
 .layer-swatch--satin {
-  background: linear-gradient(150deg, #c8ccd2, #6b7078);
+  background:
+    repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.06) 0 1px, rgba(0, 0, 0, 0.05) 1px 2px),
+    linear-gradient(150deg, #c4c7cb, #7d8085);
+  border-color: rgba(226, 232, 240, 0.3);
 }
 
 .layer-name {
@@ -1040,223 +1052,136 @@ body[data-shot='1'] .stage-hint {
   max-width: 460px;
   aspect-ratio: 0.94;
   margin: 22px auto 10px;
-  /* The reused satin column runs out of the bottom of the poster exactly like it
-     runs out of the bottom of the stage — it is cropped, never shrunk. */
+  /* The satin column runs out of the bottom of the poster exactly like it runs
+     out of the bottom of the stage — it is cropped, never shrunk. */
   overflow: hidden;
 }
 
-/* Underlight hints behind the face-down stack: one glow per treatment group. */
-.fallback-underlight {
+/* Rev21 s33 support: the satin column platform, its top face turned toward the
+   camera (a diamond) and its body running out of the poster's bottom edge. */
+.fallback-support {
   position: absolute;
-  left: 10%;
-  width: 80%;
-  height: 11%;
-  border-radius: 50%;
-  filter: blur(15px);
-  opacity: 0.55;
-  pointer-events: none;
+  left: 50%;
+  bottom: 4%;
+  width: 58%;
+  aspect-ratio: 1;
+  transform: translateX(-50%) rotate(45deg) scaleY(0.62);
   z-index: 0;
-}
-
-.fallback-underlight--white {
-  bottom: 20%;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 74%);
-}
-
-.fallback-underlight--gold {
-  bottom: 41%;
-  background: radial-gradient(closest-side, rgba(240, 196, 116, 0.5), rgba(240, 196, 116, 0) 74%);
-}
-
-.fallback-underlight--cool {
-  bottom: 62%;
-  background: radial-gradient(closest-side, rgba(158, 196, 236, 0.46), rgba(158, 196, 236, 0) 74%);
-}
-
-/* Round 5: the support is the reused columns satin COLUMN, not a plinth. It is
-   taller than the poster and cropped by the poster's bottom edge (overflow
-   hidden), so only the top band shows, exactly like the WebGL stage crop. */
-.fallback-pedestal {
-  position: absolute;
-  left: 30%;
-  bottom: 0;
-  width: 40%;
-  height: 34%;
-  z-index: 1;
-  border-radius: 6px 6px 0 0;
+  border: 1px solid rgba(236, 242, 250, 0.32);
+  border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 18%, rgba(120, 128, 140, 0.14) 46%, rgba(20, 23, 28, 0.9) 96%),
-    linear-gradient(100deg, #6d7480, #aab2bd 34%, #5d636d 70%, #80858f);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 8px 0 22px rgba(255, 255, 255, 0.06),
-    inset -10px 0 24px rgba(0, 0, 0, 0.42);
-  border: 1px solid rgba(226, 234, 244, 0.14);
-  border-bottom: 0;
+    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 58%),
+    repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.035) 0 2px, rgba(0, 0, 0, 0.05) 2px 4px),
+    linear-gradient(135deg, #c9ccd1, #8f9297 58%, #6f7277);
+  box-shadow: 0 34px 70px rgba(0, 0, 0, 0.6);
 }
 
-/* Face-down horizontal paper sheets: rounded landscape cards, three treatments.
-   Round 5: the paper carries no artwork any more — the unified text mockup is a
-   separate floating layer (.fallback-mockup) above each sheet. */
-.fallback-sheet {
+.fallback-support::after {
+  content: '';
   position: absolute;
-  width: 72%;
-  aspect-ratio: 1.72;
-  border-radius: 8px;
+  inset: 0;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 34%, rgba(10, 12, 15, 0.72) 82%);
+}
+
+/* Floating layer cards, bottom to top: 3 paper, 1 glow, 3 acrylic. An index
+   doubles as the stacking order; the paper cards round their lower corner to
+   hint at the 3D drape, and each acrylic plate shows one pale pattern bar. */
+.fallback-layer {
+  position: absolute;
+  width: 74%;
+  height: 5.4%;
+  border-radius: 9px;
   overflow: hidden;
   border: 1px solid rgba(226, 236, 246, 0.24);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
-}
-
-/* The unified text mockup: ONE pattern floating above every sheet, drawn as bare
-   ink (transparent background) so it reads detached from the paper. This flat
-   poster approximates the floating layer as a thin ink band hovering over the
-   exposed band of each sheet (the 3D build lifts the layer 10 px above the paper
-   and casts its blurred shadow on it). */
-.fallback-mockup {
-  position: absolute;
-  width: 58%;
-  height: 5.2%;
-  z-index: 9;
-  pointer-events: none;
-  color: rgba(12, 13, 15, 0.9);
-  background-image: repeating-linear-gradient(
-    180deg,
-    currentColor 0,
-    currentColor 1.3px,
-    rgba(0, 0, 0, 0) 1.3px,
-    rgba(0, 0, 0, 0) 6.6px
-  );
-  -webkit-mask-image: linear-gradient(90deg, #000 0 44%, rgba(0, 0, 0, 0.28) 68%, rgba(0, 0, 0, 0) 86%);
-  mask-image: linear-gradient(90deg, #000 0 44%, rgba(0, 0, 0, 0.28) 68%, rgba(0, 0, 0, 0) 86%);
-  filter: drop-shadow(0 1.5px 1.2px rgba(0, 0, 0, 0.55));
-  transform: translateY(-1.5px);
-}
-
-.fallback-mockup--5,
-.fallback-mockup--6,
-.fallback-mockup--7 {
-  color: rgba(238, 246, 255, 0.9);
-}
-
-/* Round 5 faces: white and gold are OPAQUE; only the PCB paper stays translucent
-   (its background alpha lets the underlight glow behind it read through). */
-.fallback-sheet--white {
-  color: rgba(20, 22, 26, 0.92);
-  background:
-    linear-gradient(168deg, #f8f7f2, #e7e5db 58%, #d7d6cc),
-    #f2f1ea;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.42), 0 0 26px rgba(255, 255, 255, 0.2),
-    inset 0 -7px 16px rgba(255, 255, 255, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.62);
-}
-
-.fallback-sheet--gold {
-  color: rgba(38, 32, 22, 0.88);
-  border-color: rgba(255, 214, 148, 0.5);
-  background: radial-gradient(ellipse at 50% 52%, #e6ad55 0%, #f1cf8c 38%, #f8eed8 70%, #fcfbf7 100%);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.42), 0 0 30px rgba(240, 190, 100, 0.34),
-    inset 0 -8px 18px rgba(238, 176, 78, 0.42), inset 0 0 0 1px rgba(255, 236, 200, 0.6);
-}
-
-.fallback-sheet--pcb {
-  color: rgba(244, 250, 255, 0.92);
-  border-color: rgba(198, 220, 238, 0.4);
-  background:
-    linear-gradient(168deg, rgba(214, 225, 238, 0.72), rgba(182, 199, 219, 0.66) 56%, rgba(147, 169, 200, 0.62)),
-    rgba(191, 207, 224, 0.5);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.42), 0 0 28px rgba(158, 196, 236, 0.26),
-    inset 0 -8px 18px rgba(150, 192, 232, 0.38), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
-}
-
-/* Sheet index doubles as the stacking order: each sheet's mockup layer sits
-   directly above its own paper (z = sheet z + 1) and below the next sheet up. */
-.fallback-sheet--1 {
-  left: 12%;
-  bottom: 18%;
-  transform: rotate(0.7deg);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.46);
   z-index: 2;
 }
 
-.fallback-sheet--2 {
-  left: 11.4%;
-  bottom: 24.6%;
-  transform: rotate(0.2deg);
-  z-index: 4;
+.fallback-layer--paper {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, rgba(255, 255, 255, 0) 1px 3px),
+    linear-gradient(168deg, #dcdde0, #bcbfc4);
+  border-color: rgba(238, 242, 248, 0.3);
+  border-bottom-right-radius: 40% 90%;
 }
 
-.fallback-sheet--3 {
-  left: 10.8%;
-  bottom: 31.2%;
-  transform: rotate(-0.3deg);
-  z-index: 6;
+.fallback-layer--glow {
+  border-color: rgba(255, 170, 100, 0.55);
+  background:
+    linear-gradient(90deg, rgba(255, 130, 40, 0.7), rgba(255, 130, 40, 0) 22%, rgba(255, 130, 40, 0) 78%, rgba(255, 130, 40, 0.7)),
+    linear-gradient(168deg, #f2f1ed, #dedcd8);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.46), 0 0 24px rgba(255, 122, 28, 0.28);
 }
 
-.fallback-sheet--4 {
-  left: 10.2%;
-  bottom: 37.8%;
-  transform: rotate(-0.6deg);
-  z-index: 8;
+.fallback-layer--acrylic {
+  border-color: rgba(206, 218, 250, 0.5);
+  background:
+    repeating-linear-gradient(0deg, rgba(214, 224, 250, 0.22) 0 1px, rgba(214, 224, 250, 0) 1px 4px),
+    linear-gradient(168deg, rgba(150, 170, 210, 0.55), rgba(72, 88, 120, 0.6) 58%, rgba(96, 114, 150, 0.55));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.46), inset 0 0 0 1px rgba(255, 255, 255, 0.26);
 }
 
-.fallback-sheet--5 {
-  left: 9.6%;
-  bottom: 44.4%;
-  transform: rotate(-0.9deg);
-  z-index: 10;
+.fallback-layer--acrylic::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  top: 34%;
+  width: 34%;
+  height: 22%;
+  border-radius: 999px;
+  background: rgba(246, 250, 255, 0.52);
+  opacity: 0.85;
+  box-shadow: 0 0 6px rgba(180, 196, 230, 0.5);
 }
 
-.fallback-sheet--6 {
-  left: 9%;
-  bottom: 51%;
-  transform: rotate(-1.2deg);
-  z-index: 12;
+.fallback-layer--1 {
+  left: 13%;
+  bottom: 12%;
+  transform: rotate(0.6deg);
+  z-index: 2;
 }
 
-.fallback-sheet--7 {
-  left: 8.4%;
-  bottom: 57.6%;
-  transform: rotate(-1.5deg);
-  z-index: 14;
-}
-
-.fallback-mockup--1 {
-  left: 15%;
-  bottom: 19.3%;
+.fallback-layer--2 {
+  left: 12.3%;
+  bottom: 18.6%;
+  transform: rotate(0.1deg);
   z-index: 3;
 }
 
-.fallback-mockup--2 {
-  left: 14.4%;
-  bottom: 25.9%;
+.fallback-layer--3 {
+  left: 11.6%;
+  bottom: 25.2%;
+  transform: rotate(-0.4deg);
+  z-index: 4;
+}
+
+.fallback-layer--4 {
+  left: 10.9%;
+  bottom: 31.8%;
+  transform: rotate(-0.9deg);
   z-index: 5;
 }
 
-.fallback-mockup--3 {
-  left: 13.8%;
-  bottom: 32.5%;
+.fallback-layer--5 {
+  left: 10.2%;
+  bottom: 38.4%;
+  transform: rotate(-1.3deg);
+  z-index: 6;
+}
+
+.fallback-layer--6 {
+  left: 9.5%;
+  bottom: 45%;
+  transform: rotate(-1.7deg);
   z-index: 7;
 }
 
-.fallback-mockup--4 {
-  left: 13.2%;
-  bottom: 39.1%;
-  z-index: 9;
-}
-
-.fallback-mockup--5 {
-  left: 12.6%;
-  bottom: 45.7%;
-  z-index: 11;
-}
-
-.fallback-mockup--6 {
-  left: 12%;
-  bottom: 52.3%;
-  z-index: 13;
-}
-
-.fallback-mockup--7 {
-  left: 11.4%;
-  bottom: 58.9%;
-  z-index: 15;
+.fallback-layer--7 {
+  left: 8.8%;
+  bottom: 51.6%;
+  transform: rotate(-2.1deg);
+  z-index: 8;
 }
 
 .fallback-files {
@@ -1692,4 +1617,29 @@ body[data-fallback='1'] .fallback {
     animation: none;
     border-top-color: rgba(226, 234, 244, 0.5);
   }
+}
+
+/* Rev21 s33: zoom controls (wheel / pinch also zoom the stage). */
+.zoom-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn--icon {
+  min-width: 40px;
+  padding-left: 0;
+  padding-right: 0;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.zoom-value {
+  min-width: 3.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(238, 242, 248, 0.72);
 }

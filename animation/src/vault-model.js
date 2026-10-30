@@ -1,26 +1,30 @@
 /**
- * tekoanimation — Vault object model (reference: user figure 5).
+ * tekoanimation — Vault object model (reference: user figure 5), revision 21.
  *
- * Standalone procedural model for `vault.html` (docs/vault.md, revision 17):
- * a metallic safe/vault with a dense ribbed/finned left side, a chamfered front
- * door hinged on the right with a circular ring of small dots/perforations and
- * a recessed grip slot, a satin steel body, a dark recessed interior revealed
- * when the door swings open, and a striped bar field of 24 thin vertical
- * capsules that frames the safe in depth: 12 bars stand IN FRONT of the safe on
- * its right, starting at the right edge and stepping downward; 12 bars stand
- * BEHIND the safe on its left, starting at the left edge and stepping upward.
- * The reveal is ordered bottom-most bar first, each next bar sliding forward
- * (+z) while fading in, and runs at the same time as the door opening from
- * closed to open.
+ * Standalone procedural model for `vault.html` (docs/vault.md, model 3.0.0):
+ * a dark-metal safe/vault with a dense ribbed/finned left side, a chamfered
+ * front door hinged on the right with a circular ring of small dots/perforations
+ * and a recessed grip slot, a recessed interior revealed when the door swings
+ * open, and a single bar chain of 24 identical thin vertical capsules that
+ * forms ONE continuous helix around the safe: it starts at the safe's front-left,
+ * runs around the left side, behind the safe and around the right side while
+ * ascending, closing exactly one revolution (23 equal angular steps of
+ * 360/23 deg, constant vertical step). The path radius clears the safe body and
+ * the full door swing at every bar.
+ *
+ * The reveal is ordered bottom-most first (the helix ascends in index order);
+ * each next bar advances along the helix tangent from the previous slot, fading
+ * in, at exactly the same time as the door opens. Final frame holds the open
+ * door with all 24 bars seated on the helix.
  *
  * Everything is generated from constants — no randomness, no network, no DOM.
  * The module is safe to import in Node for offline geometry/determinism checks;
  * the page controller (src/vault-preview.js) owns the renderer, camera fitting,
- * environment, reflective floor and animation timeline.
+ * environment, reflective floor, trackball and animation timeline.
  */
 import * as THREE from 'three';
 
-export const MODEL_VERSION = '2.0.0';
+export const MODEL_VERSION = '3.0.0';
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
@@ -81,35 +85,128 @@ export const VAULT_SPEC = Object.freeze({
 export const BAR_SPEC = Object.freeze({
   count: 24,
   radius: 0.05,
-  // RIGHT flank: 12 bars IN FRONT of the safe (final z beyond the safe front
-  // plane, +z), starting at the safe's right edge and stepping DOWNWARD away
-  // from it. Each bar stands on the floor; its top height descends with index.
-  rightCount: 12,
-  right: Object.freeze({
-    startX: 1.62,
-    stepX: 0.18,
-    startZ: 1.7,
-    depthStep: 0.14,
-    topStart: 2.92,
-    topStep: 0.17,
+  /** ONE geometry for every bar: radius + length are the only size inputs. */
+  length: 1.0,
+  /**
+   * ONE continuous helix around the safe:
+   *   theta_i = startAngleDeg + i * deltaAngleDeg
+   *   x = radius * cos(theta), z = radius * sin(theta)
+   *   y_i = startY + i * stepY
+   * 24 bars = 23 equal angular steps, so the chain closes exactly one
+   * revolution (sum of the steps = 360 deg). Bar 0 sits at the safe's
+   * front-left (135 deg in plan: x < 0, z > 0); the chain then runs around the
+   * left side (180 deg), behind the safe (270 deg), around the right side
+   * (360 deg) and ends one turn higher at bar 0's plan angle.
+   */
+  helix: Object.freeze({
+    // Clears the safe body + the full open-door swing (see barClearanceReport).
+    radius: 3.45,
+    startAngleDeg: 135,
+    deltaAngleDeg: 360 / 23,
+    startY: 0.62,
+    stepY: 0.05, // Rev21 s17: half of the rev-2 pitch (0.1)
   }),
-  // LEFT flank: 12 bars BEHIND the safe (final z behind the safe back plane,
-  // -z), starting at the safe's left edge and stepping UPWARD away from it.
-  leftCount: 12,
-  left: Object.freeze({
-    startX: -1.62,
-    stepX: 0.18,
-    startZ: -1.58,
-    depthStep: 0.14,
-    topStart: 1.12,
-    topStep: 0.17,
-  }),
-  baseY: 0.04,
-  // Every bar slides forward (+z) by this distance while it fades in, so the
-  // reveal reads as an advancing curtain of steel-blue colour.
-  advance: 1.1,
+  /** Every bar starts one helical slot behind its final slot (helix tangent). */
+  revealFromPreviousSlot: true,
   toneCount: 5,
 });
+
+export const BAR_HELIX = BAR_SPEC.helix;
+
+/** Sum of the angular steps: exactly one revolution. */
+export const BAR_REVOLUTIONS = ((BAR_SPEC.count - 1) * BAR_HELIX.deltaAngleDeg) / 360;
+
+const OPEN_ANGLE_RAD = VAULT_SPEC.door.openAngleDeg * DEG;
+
+/**
+ * Horizontal AABB of everything the safe body occupies with the door CLOSED:
+ * shell/back plate, the rib fins on the left, and the seated door's front face.
+ */
+export const SAFE_BOX = Object.freeze({
+  min: Object.freeze({ x: -1.605, y: 0, z: -1.2 }),
+  max: Object.freeze({ x: 1.55, y: VAULT_SPEC.height + 0.04, z: 1.45 }),
+});
+
+/** Vertical range of the door plate (hinge height +/- plate height). */
+export const DOOR_Y_RANGE = Object.freeze({
+  min: VAULT_SPEC.height / 2 - VAULT_SPEC.door.height / 2 - 0.08,
+  max: VAULT_SPEC.height / 2 + VAULT_SPEC.door.height / 2 + 0.08,
+});
+
+/**
+ * The door's plan-space OBB corners (x, z) for a hinge rotation angle.
+ * 0 = closed (seated over the front face); openAngleRad = fully open.
+ */
+export function doorPlanCorners(angleRad = OPEN_ANGLE_RAD) {
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  const width = VAULT_SPEC.door.width;
+  const thickness = VAULT_SPEC.door.thickness + 0.2;
+  const local = [
+    [-width - 0.04, 0],
+    [-0.04, 0],
+    [-width - 0.04, thickness],
+    [-0.04, thickness],
+  ];
+  return local.map(([x, z]) => ({
+    x: VAULT_SPEC.door.hingeX + x * cos + z * sin,
+    z: VAULT_SPEC.door.hingeZ - x * sin + z * cos,
+  }));
+}
+
+/** Max plan radius reached by the door across its swing (door OBB corners). */
+export function doorMaxRadius(angleRad = OPEN_ANGLE_RAD) {
+  return Math.max(...doorPlanCorners(angleRad).map((corner) => Math.hypot(corner.x, corner.z)));
+}
+
+/** The helix slot of bar `index` (final seated pose). Pure function. */
+export function barSlot(index) {
+  const i = Math.max(0, Math.floor(index));
+  const thetaDeg = BAR_HELIX.startAngleDeg + i * BAR_HELIX.deltaAngleDeg;
+  const thetaRad = thetaDeg * DEG;
+  const y = BAR_HELIX.startY + i * BAR_HELIX.stepY;
+  return {
+    index: i,
+    slot: i,
+    thetaDeg,
+    thetaRad,
+    x: BAR_HELIX.radius * Math.cos(thetaRad),
+    z: BAR_HELIX.radius * Math.sin(thetaRad),
+    y,
+    top: y + BAR_SPEC.length / 2,
+    tone: i % BAR_TONES.length,
+  };
+}
+
+/**
+ * The previous helical slot (one angular step back, one vertical step down) —
+ * the reveal start pose, so a bar advances along the helix tangent rather than
+ * sliding on a straight world axis. For bar 0 this extrapolates one slot.
+ */
+export function barStartSlot(index) {
+  const i = Math.max(0, Math.floor(index));
+  const thetaDeg = BAR_HELIX.startAngleDeg + (i - 1) * BAR_HELIX.deltaAngleDeg;
+  const thetaRad = thetaDeg * DEG;
+  const y = BAR_HELIX.startY + (i - 1) * BAR_HELIX.stepY;
+  return {
+    index: i,
+    thetaDeg,
+    thetaRad,
+    x: BAR_HELIX.radius * Math.cos(thetaRad),
+    z: BAR_HELIX.radius * Math.sin(thetaRad),
+    y,
+  };
+}
+
+/** Reveal rank: the helix ascends in index order, so the bottom-most is index 0. */
+export function barRevealRank(index) {
+  return Math.max(0, Math.floor(index));
+}
+
+/** Deterministic full reveal order (bottom-most first). */
+export const BAR_REVEAL_ORDER = Object.freeze(
+  Array.from({ length: BAR_SPEC.count }, (_, index) => index),
+);
 
 export const CAMERA_SPEC = Object.freeze({
   fov: 33,
@@ -125,10 +222,11 @@ export const CAMERA_SPEC = Object.freeze({
 
 /**
  * The door OPENS over 1.6 s while the 24 bars reveal bottom-most first: each
- * bar takes 0.75 s to slide forward + fade in, staggered by 37 ms. The last bar
- * starts at 23 * 37 = 851 ms and lands at 1601 ms, i.e. one millisecond after
- * the door finishes - both motions share the same window and the final frame
- * holds the open door with every bar visible.
+ * bar takes 0.75 s to advance along the helix + fade in, staggered by 37 ms.
+ * Reveal t0 === door t0 === 0; the last bar starts at 23 * 37 = 851 ms and
+ * lands at 1601 ms, one millisecond after the door finishes - both motions
+ * share the same window and the final frame holds the open door with every bar
+ * seated on the helix.
  */
 export const ANIMATION_SPEC = Object.freeze({
   doorDurationMs: 1600,
@@ -156,71 +254,35 @@ export const BAR_TONES = Object.freeze([
 ]);
 
 /**
- * Deterministic bar layout + start/final pose pair.
+ * Deterministic final/start pose pair for one bar.
  *
- * index 0..rightCount-1 -> right flank, IN FRONT of the safe: x starts at the
- * safe's right edge and steps outward, the top height steps DOWN with the
- * sequence, and the final z stays beyond the safe front plane (+z).
- * index rightCount..count-1 -> left flank, BEHIND the safe: x starts at the
- * safe's left edge and steps outward, the top height steps UP with the
- * sequence, and the final z stays behind the safe back plane (-z).
- *
- * `order` is the reveal rank: every bar sorted bottom-most top first (ties by
- * x), so the lowest bar appears first and the sequence climbs to the tallest
- * outer bar on the left. `start` is the same vertical bar pushed back by
- * BAR_SPEC.advance; the reveal slides it forward into `final`.
+ * `final` is the helical slot (barSlot); `start` is the previous helical slot
+ * (one angular + one vertical step back), so the reveal advance travels along
+ * the helix tangent instead of sliding on a world axis.
  */
-function barLayout(index) {
-  const i = Math.max(0, Math.floor(index));
-  const right = i < BAR_SPEC.rightCount;
-  const side = right ? 'right' : 'left';
-  const spec = right ? BAR_SPEC.right : BAR_SPEC.left;
-  const local = right ? i : i - BAR_SPEC.rightCount;
-  const direction = right ? 1 : -1;
-  const top = right
-    ? spec.topStart - local * spec.topStep
-    : spec.topStart + local * spec.topStep;
-  const length = top - BAR_SPEC.baseY;
-  const x = spec.startX + direction * local * spec.stepX;
-  const z = spec.startZ + direction * (local % 2) * spec.depthStep;
-  const tone = (i * 2 + (right ? 1 : 3)) % BAR_TONES.length;
-  return { index: i, side, local, top, length, x, z, tone };
-}
-
-/** Reveal rank per bar index: sorted by top height (bottom-most first), then x. */
-function computeRevealOrder() {
-  const entries = [];
-  for (let index = 0; index < BAR_SPEC.count; index += 1) {
-    const layout = barLayout(index);
-    entries.push({ index, top: layout.top, x: layout.x });
-  }
-  entries.sort((a, b) => (a.top === b.top ? a.x - b.x : a.top - b.top));
-  return entries.map((entry) => entry.index);
-}
-
-export const BAR_REVEAL_ORDER = Object.freeze(computeRevealOrder());
-
-export function barRevealRank(index) {
-  return BAR_REVEAL_ORDER.indexOf(Math.max(0, Math.floor(index)));
-}
-
 export function barPoses(index) {
-  const layout = barLayout(index);
-  const order = barRevealRank(layout.index);
-  const y = BAR_SPEC.baseY + layout.length / 2;
-  const final = { position: { x: layout.x, y, z: layout.z }, rotation: { x: 0, y: 0, z: 0 } };
+  const slot = barSlot(index);
+  const previous = barStartSlot(index);
+  const order = barRevealRank(slot.index);
+  const final = {
+    position: { x: slot.x, y: slot.y, z: slot.z },
+    rotation: { x: 0, y: 0, z: 0 },
+  };
   const start = {
-    position: { x: layout.x, y, z: layout.z - BAR_SPEC.advance },
+    position: { x: previous.x, y: previous.y, z: previous.z },
     rotation: { x: 0, y: 0, z: 0 },
   };
   return {
-    index: layout.index,
-    side: layout.side,
-    local: layout.local,
-    top: layout.top,
-    length: layout.length,
-    tone: layout.tone,
-    toneName: BAR_TONES[layout.tone].name,
+    index: slot.index,
+    slot: slot.slot,
+    thetaDeg: slot.thetaDeg,
+    thetaRad: slot.thetaRad,
+    startThetaDeg: previous.thetaDeg,
+    radius: BAR_HELIX.radius,
+    top: slot.top,
+    length: BAR_SPEC.length,
+    tone: slot.tone,
+    toneName: BAR_TONES[slot.tone].name,
     order,
     final,
     start,
@@ -232,6 +294,118 @@ export function barRevealTiming(order) {
   return {
     startMs: order * ANIMATION_SPEC.barStaggerMs,
     endMs: order * ANIMATION_SPEC.barStaggerMs + ANIMATION_SPEC.barDurationMs,
+  };
+}
+
+/* ------------------------------------------------------------- clearance */
+
+/** Distance from a plan point to an axis-aligned plan box (0 inside). */
+function pointToAabb2D(x, z, box) {
+  const dx = Math.max(box.min.x - x, 0, x - box.max.x);
+  const dz = Math.max(box.min.z - z, 0, z - box.max.z);
+  return Math.hypot(dx, dz);
+}
+
+/** Distance from a plan point to a convex planar polygon (0 inside). */
+function pointToPolygon2D(x, z, corners) {
+  let inside = true;
+  let minDistance = Infinity;
+  for (let index = 0; index < corners.length; index += 1) {
+    const a = corners[index];
+    const b = corners[(index + 1) % corners.length];
+    const cross = (b.x - a.x) * (z - a.z) - (b.z - a.z) * (x - a.x);
+    if (cross < 0) inside = false;
+    // distance to the edge segment a-b
+    const ex = b.x - a.x;
+    const ez = b.z - a.z;
+    const lengthSq = ex * ex + ez * ez;
+    const t = lengthSq > 1e-12 ? clamp(((x - a.x) * ex + (z - a.z) * ez) / lengthSq, 0, 1) : 0;
+    minDistance = Math.min(minDistance, Math.hypot(x - (a.x + ex * t), z - (a.z + ez * t)));
+  }
+  return inside ? 0 : minDistance;
+}
+
+function verticalOverlap(aMin, aMax, bMin, bMax) {
+  return Math.min(aMax, bMax) - Math.max(aMin, bMin) > 0;
+}
+
+/**
+ * Full numeric clearance report for the 24-bar helix:
+ *   - horizontal gap between every bar's capsule surface and the safe AABB;
+ *   - the same against the door OBB in its CLOSED and OPEN states (the swing is
+ *     monotonic in plan radius, so those two states bound every intermediate
+ *     angle);
+ *   - the helix radius vs the largest plan radius of the safe + open door.
+ * Clearance values are surface gaps: `distance - barRadius`.
+ */
+export function barClearanceReport() {
+  const barRadius = BAR_SPEC.radius;
+  const halfLength = BAR_SPEC.length / 2 + barRadius;
+  const closedDoor = doorPlanCorners(0);
+  const openDoor = doorPlanCorners(OPEN_ANGLE_RAD);
+  const entries = [];
+  for (let index = 0; index < BAR_SPEC.count; index += 1) {
+    const slot = barSlot(index);
+    const yMin = slot.y - halfLength;
+    const yMax = slot.y + halfLength;
+    const safeOverlap = verticalOverlap(yMin, yMax, SAFE_BOX.min.y, SAFE_BOX.max.y);
+    const doorOverlap = verticalOverlap(yMin, yMax, DOOR_Y_RANGE.min, DOOR_Y_RANGE.max);
+    const safeDistance = safeOverlap ? pointToAabb2D(slot.x, slot.z, SAFE_BOX) : Infinity;
+    const closedDistance = doorOverlap ? pointToPolygon2D(slot.x, slot.z, closedDoor) : Infinity;
+    const openDistance = doorOverlap ? pointToPolygon2D(slot.x, slot.z, openDoor) : Infinity;
+    entries.push({
+      index,
+      thetaDeg: slot.thetaDeg,
+      x: slot.x,
+      y: slot.y,
+      z: slot.z,
+      safeDistance,
+      doorClosedDistance: closedDistance,
+      doorOpenDistance: openDistance,
+      safeClearance: safeDistance - barRadius,
+      doorClosedClearance: closedDistance - barRadius,
+      doorOpenClearance: openDistance - barRadius,
+    });
+  }
+  const minOf = (key) => Math.min(...entries.map((entry) => entry[key]));
+  const safeMaxRadius = Math.max(
+    Math.hypot(SAFE_BOX.min.x, SAFE_BOX.min.z),
+    Math.hypot(SAFE_BOX.min.x, SAFE_BOX.max.z),
+    Math.hypot(SAFE_BOX.max.x, SAFE_BOX.min.z),
+    Math.hypot(SAFE_BOX.max.x, SAFE_BOX.max.z),
+  );
+  const doorClosedMaxRadius = doorMaxRadius(0);
+  const doorOpenMaxRadius = doorMaxRadius(OPEN_ANGLE_RAD);
+  const maxBodyRadius = Math.max(safeMaxRadius, doorClosedMaxRadius, doorOpenMaxRadius);
+  return {
+    barRadius,
+    helixRadius: BAR_HELIX.radius,
+    deltaAngleDeg: BAR_HELIX.deltaAngleDeg,
+    deltaY: BAR_HELIX.stepY,
+    safeBox: SAFE_BOX,
+    doorYRange: DOOR_Y_RANGE,
+    doorClosedCorners: closedDoor,
+    doorOpenCorners: openDoor,
+    safeMaxRadius,
+    doorClosedMaxRadius,
+    doorOpenMaxRadius,
+    maxBodyRadius,
+    /** The helix circle must clear the largest body radius plus the bar radius. */
+    helixClearsBody: BAR_HELIX.radius - maxBodyRadius - barRadius > 0,
+    helixClearance: BAR_HELIX.radius - maxBodyRadius - barRadius,
+    entries,
+    minSafeDistance: minOf('safeDistance'),
+    minDoorClosedDistance: minOf('doorClosedDistance'),
+    minDoorOpenDistance: minOf('doorOpenDistance'),
+    minSafeClearance: minOf('safeClearance'),
+    minDoorClosedClearance: minOf('doorClosedClearance'),
+    minDoorOpenClearance: minOf('doorOpenClearance'),
+    minClearance: Math.min(
+      minOf('safeClearance'),
+      minOf('doorClosedClearance'),
+      minOf('doorOpenClearance'),
+    ),
+    allClear: entries.every((entry) => entry.safeClearance > 0 && entry.doorClosedClearance > 0 && entry.doorOpenClearance > 0),
   };
 }
 
@@ -354,29 +528,24 @@ export function createVaultModel({ quality = 'hero' } = {}) {
   const root = new THREE.Group();
   root.name = 'vault-root';
 
-  // Rev-1 capture fix: the reference safe is a DARK gunmetal body with a bright
-  // silver chamfered door - not a white box. Body/fins/shell go near-black satin
-  // steel; the door face/bevels stay bright polished silver for contrast.
+  // Revision 21 (image-based lighting): the shell/fins/frame are now a readable
+  // DARK GUNMETAL, not near-black. Under the env-room photograph only (no THREE
+  // lights) a near-black dielectric has no form at all, so the albedo was raised
+  // and the environment response (metalness/envMapIntensity) retuned until the
+  // ribbed side and body edges read as dark metal. The door stays bright polished
+  // silver for contrast.
   const materials = {
-    // Rev-2b capture fix: even #171a1e at metalness 0.7 mirrored the bright PMREM
-    // as silver. The shell/ribs/top/back are now a NON-MIRROR dark dielectric /
-    // semi-metal (metalness 0.15-0.35, roughness 0.55-0.75, low env) so they cannot
-    // turn white; only the door stays bright polished silver metal.
-    // Final fix (Lead): the visible shell/top/left/right/back, the rib fins and
-    // the outer frame/rails are plain NON-METAL dark dielectric materials - a
-    // dielectric with near-black albedo cannot mirror the studio white. Only the
-    // door face/bevels stay bright polished silver metal.
     body: new THREE.MeshStandardMaterial({
-      name: 'vault-body-dark', color: linearColor(0x121417), metalness: 0.0, roughness: 0.8,
-      envMapIntensity: 0.1,
+      name: 'vault-body-dark', color: linearColor(0x3a414a), metalness: 0.55, roughness: 0.52,
+      envMapIntensity: 1.4,
     }),
     fin: new THREE.MeshStandardMaterial({
-      name: 'vault-fin-dark', color: linearColor(0x1a1e22), metalness: 0.0, roughness: 0.75,
-      envMapIntensity: 0.12,
+      name: 'vault-fin-dark', color: linearColor(0x4a525c), metalness: 0.5, roughness: 0.48,
+      envMapIntensity: 1.6,
     }),
     finValley: new THREE.MeshStandardMaterial({
-      name: 'vault-fin-valley', color: linearColor(0x050607), metalness: 0.0, roughness: 0.9,
-      envMapIntensity: 0.06,
+      name: 'vault-fin-valley', color: linearColor(0x101318), metalness: 0.2, roughness: 0.8,
+      envMapIntensity: 0.4,
     }),
     door: satinSteel(0xd9e0e8, { metalness: 1.0, roughness: 0.28, envMapIntensity: 1.6 }),
     doorPanel: satinSteel(0xc2ccd7, { metalness: 1.0, roughness: 0.34, envMapIntensity: 1.4 }),
@@ -385,28 +554,28 @@ export function createVaultModel({ quality = 'hero' } = {}) {
       envMapIntensity: 0.35,
     }),
     outerFrame: new THREE.MeshStandardMaterial({
-      name: 'vault-outer-frame', color: linearColor(0x0e1013), metalness: 0.0, roughness: 0.85,
-      envMapIntensity: 0.1,
+      name: 'vault-outer-frame', color: linearColor(0x2e343b), metalness: 0.45, roughness: 0.55,
+      envMapIntensity: 1.2,
     }),
     dot: new THREE.MeshStandardMaterial({
-      name: 'vault-perforation', color: linearColor(0x070809), metalness: 0.35, roughness: 0.62,
-      envMapIntensity: 0.3,
+      name: 'vault-perforation', color: linearColor(0x14171b), metalness: 0.5, roughness: 0.55,
+      envMapIntensity: 0.7,
     }),
     dotGroove: new THREE.MeshStandardMaterial({
-      name: 'vault-perforation-groove', color: linearColor(0x0c0e11), metalness: 0.5, roughness: 0.55,
-      envMapIntensity: 0.35,
+      name: 'vault-perforation-groove', color: linearColor(0x1d2127), metalness: 0.5, roughness: 0.5,
+      envMapIntensity: 0.8,
     }),
     grip: new THREE.MeshStandardMaterial({
-      name: 'vault-grip-slot', color: linearColor(0x0a0c0f), metalness: 0.5, roughness: 0.6,
-      envMapIntensity: 0.35,
+      name: 'vault-grip-slot', color: linearColor(0x1a1e24), metalness: 0.5, roughness: 0.55,
+      envMapIntensity: 0.8,
     }),
     interior: new THREE.MeshStandardMaterial({
-      name: 'vault-interior', color: linearColor(0x12161b), metalness: 0.18, roughness: 0.8,
-      envMapIntensity: 0.3, side: THREE.BackSide,
+      name: 'vault-interior', color: linearColor(0x181c22), metalness: 0.3, roughness: 0.75,
+      envMapIntensity: 0.5, side: THREE.BackSide,
     }),
     interiorShelf: new THREE.MeshStandardMaterial({
-      name: 'vault-interior-shelf', color: linearColor(0x1a2027), metalness: 0.32, roughness: 0.6,
-      envMapIntensity: 0.45,
+      name: 'vault-interior-shelf', color: linearColor(0x2a3039), metalness: 0.4, roughness: 0.55,
+      envMapIntensity: 0.9,
     }),
     interiorGlow: new THREE.MeshBasicMaterial({
       name: 'vault-interior-glow', color: linearColor(0x22303f), transparent: true, opacity: 0.5,
@@ -627,45 +796,54 @@ export function createVaultModel({ quality = 'hero' } = {}) {
     safe.add(foot);
   }
 
-  /* ---------------- striped bar background ------------------------------- */
+  /* ---------------- one continuous 24-bar helix --------------------------- */
   const barsGroup = new THREE.Group();
   barsGroup.name = 'vault-bars';
   root.add(barsGroup);
-  const barGeometryCache = new Map();
+  // ONE geometry instance for all 24 bars (identical radius/length/segments).
+  const barGeometry = track(new THREE.CapsuleGeometry(
+    BAR_SPEC.radius, BAR_SPEC.length, detail.barSegments, detail.barRadial,
+  ));
+  barGeometry.name = 'vault-bar-shared-geometry';
   const bars = [];
   for (let index = 0; index < BAR_SPEC.count; index += 1) {
     const pose = barPoses(index);
-    const key = pose.length.toFixed(3);
-    if (!barGeometryCache.has(key)) {
-      const geometry = new THREE.CapsuleGeometry(
-        BAR_SPEC.radius, pose.length, detail.barSegments, detail.barRadial,
-      );
-      geometries.push(geometry);
-      barGeometryCache.set(key, geometry);
-    }
     const material = createBarMaterial(BAR_TONES[pose.tone]);
-    const bar = new THREE.Mesh(barGeometryCache.get(key), material);
+    const bar = new THREE.Mesh(barGeometry, material);
     bar.name = 'vault-bar-' + index;
+    bar.scale.set(1, 1, 1);
     bar.userData = {
       barIndex: index,
-      side: pose.side,
+      slot: pose.slot,
+      thetaDeg: pose.thetaDeg,
       tone: pose.toneName,
       revealOrder: pose.order,
     };
     barsGroup.add(bar);
     bars.push({
       index,
-      side: pose.side,
+      slot: pose.slot,
+      thetaDeg: pose.thetaDeg,
+      thetaRad: pose.thetaRad,
+      startThetaDeg: pose.startThetaDeg,
+      radius: pose.radius,
       tone: pose.toneName,
       length: pose.length,
       top: pose.top,
       order: pose.order,
       mesh: bar,
+      geometry: barGeometry,
       material,
       final: pose.final,
       start: pose.start,
     });
   }
+  const barGeometryShare = {
+    geometry: barGeometry,
+    sharedInstance: true,
+    geometryCount: new Set(bars.map((bar) => bar.mesh.geometry)).size,
+    meshCount: bars.length,
+  };
 
   /* ---------------- poses / bounds --------------------------------------- */
   const openAngle = doorSpec.openAngleDeg * DEG;
@@ -775,7 +953,7 @@ export function createVaultModel({ quality = 'hero' } = {}) {
   };
   // The fitted camera frames the union of every pose the page can show: the
   // closed safe, the opening door, the fully open door and the revealed bars
-  // (plus their pushed-back start pose so a revealing bar never clips).
+  // (plus their helical start pose so a revealing bar never clips).
   const allSources = [
     safeBounds,
     bounds.barsFinal,
@@ -783,7 +961,7 @@ export function createVaultModel({ quality = 'hero' } = {}) {
     bounds.doorClosed,
     bounds.doorOpen,
   ];
-  bounds.all = {
+  const union = {
     min: {
       x: Math.min(...allSources.map((box) => box.min.x)),
       y: Math.min(...allSources.map((box) => box.min.y)),
@@ -794,6 +972,17 @@ export function createVaultModel({ quality = 'hero' } = {}) {
       y: Math.max(...allSources.map((box) => box.max.y)),
       z: Math.max(...allSources.map((box) => box.max.z)),
     },
+  };
+  // The trackball can yaw the whole rig freely, so the fit box is made
+  // rotation-safe: the plan extents are squared around the vertical axis using
+  // the largest plan reach (the bar ring is already the widest part).
+  const planReach = Math.max(
+    Math.abs(union.min.x), Math.abs(union.max.x), Math.abs(union.min.z), Math.abs(union.max.z),
+  );
+  bounds.planReach = planReach;
+  bounds.all = {
+    min: { x: -planReach, y: union.min.y, z: -planReach },
+    max: { x: planReach, y: union.max.y, z: planReach },
   };
 
   const model = {
@@ -811,6 +1000,11 @@ export function createVaultModel({ quality = 'hero' } = {}) {
     },
     barsGroup,
     bars,
+    /** ONE shared geometry instance for all 24 bars (same size/scale). */
+    barGeometry,
+    barGeometryShare,
+    helix: BAR_HELIX,
+    barClearance: barClearanceReport(),
     materials,
     barMaterials,
     barGradient,
@@ -828,7 +1022,6 @@ export function createVaultModel({ quality = 'hero' } = {}) {
       for (const material of Object.values(materials)) material.dispose();
       for (const material of barMaterials) material.dispose();
       if (barGradient && typeof barGradient.dispose === 'function') barGradient.dispose();
-      barGeometryCache.clear();
     },
   };
 

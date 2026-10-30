@@ -92,22 +92,22 @@
  * Radius mapping the model applies per column footprint (supplied by the
  * caller — this module only takes the resulting `radius` value)
  * ---------------------------------------------------------------------------
- *   footprint large  (140 px)  → radius 10 px
- *   footprint medium ( 80 px)  → radius  5 px
- *   footprint small  ( 40 px)  → radius  3 px
+ *   footprint large  (140 px)  → radius 2.8 px (s60)
+ *   footprint medium ( 80 px)  → radius 1.6 px (s60)
+ *   footprint small  ( 40 px)  → radius   1 px (s60)
  * Height class (600/550/500 px) does not change the radius.
  *
  * `radius` is clamped defensively to `[0, min(width, height, depth) / 2]`;
  * `radius = 0` degrades to the plain 24-vertex / 12-triangle sharp box.  (At
  * the exact clamp limit the Minkowski decomposition collapses — the page's
- * 3/5/10 px radii are ≤ 0.15 × that limit — but the clamp still keeps every
+ * 3/5/10 px radii (pre-s47; s47 uses 5/8/14) are ≤ 0.15 × that limit — but the clamp still keeps every
  * output finite, unit-normal and bbox-exact.)
  *
  * @example
  *   import { createRoundedColumnGeometry } from './columns-rounded-geometry.js';
  *   const geometry = createRoundedColumnGeometry({
  *     width: spec.width, height: spec.heightPx, depth: spec.depth,
- *     radius: RADIUS_BY_FOOTPRINT[spec.footprint],   // 140→10, 80→5, 40→3
+ *     radius: RADIUS_BY_FOOTPRINT[spec.footprint],   // 140→2.8, 80→1.6, 40→1
  *     tilePx: effectiveTilePx,                       // tilePx × UV_DENSITY_SCALE
  *   });
  *   geometry.userData = Object.assign(geometry.userData, { columnId: spec.id });
@@ -121,8 +121,8 @@ import * as THREE from 'three';
  */
 export const DEFAULT_BEVEL_SEGMENTS = 6;
 
-/** Hard cap on `bevelSegments` (defensive; the page uses 6). */
-const MAX_BEVEL_SEGMENTS = 24;
+/** Hard cap on `bevelSegments` (defensive; the page uses 14 since s47). */
+const MAX_BEVEL_SEGMENTS = 32;
 
 /** Quarter turn in radians — every bevel arc is exactly this wide. */
 const HALF_PI = Math.PI / 2;

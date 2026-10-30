@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
-<meta name="description" content="TEKO Stacked Panels — six silver-white terraces rise from a flat plate, our real metal card settles low in the frame, and six amount tags expand outward in three waves. Deterministic three.js composition, local assets only.">
+<meta name="description" content="TEKO Stacked Panels — six silver-white terraces rise from a flat plate, our real metal card settles low in the frame, and six amount tags appear at random positions. Deterministic three.js composition, local assets only.">
 <title>TEKO — Stacked Panels</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='8' width='26' height='17' rx='4' fill='%23eef1f5' stroke='%239aa3ae' stroke-width='1.3'/%3E%3Cpath d='M3.4 13.8h25.2' stroke='%239aa3ae' stroke-width='1.2'/%3E%3Cpath d='M8 19.6h6.2' stroke='%23ffd60a' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="./src/stacked-panel-styles.css">
+<link rel="stylesheet" href="./src/site-nav.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body data-page="stacked-panel" data-variant="a" data-ready="0" data-errors="0" data-phase="start" data-time="0" data-playing="0" data-shot="0" data-reduced-motion="0" data-fallback="0">
@@ -31,6 +32,20 @@
         <span class="brand-product">Stacked Panels</span>
       </a>
       <div class="header-side">
+        <nav class="site-nav" aria-label="Collections">
+          <a href="./">Coin</a>
+          <a href="./card.html">Metal Card</a>
+          <a href="./columns.html">Columns</a>
+          <a href="./phone.html">iPhone 15</a>
+          <a href="./billing.html">Billing</a>
+          <a href="./shield.html">Shield</a>
+          <a href="./currency-blocks.html">Currency Blocks</a>
+          <a href="./vault.html">Vault</a>
+          <a href="./paperplane.html">Plane</a>
+          <a href="./connection.html">Connection</a>
+          <a href="./logo-blocks.html">Logo Blocks</a>
+          <span class="site-nav-current" aria-current="page">Stacked Panel</span>
+        </nav>
         <p class="header-note">Silver-white studio <span class="header-dot" aria-hidden="true"></span> real card model <span class="header-dot" aria-hidden="true"></span> six terraces</p>
         <a class="header-link" href="./card.html">
           <span>Metal Card</span>
@@ -46,14 +61,14 @@
       <section class="copy-slot" aria-labelledby="page-title">
         <p class="copy-kicker"><span class="copy-rule" aria-hidden="true"></span> TEKO · Stacked panels</p>
         <h1 class="copy-title" id="page-title">Every layer<br><span>adds up.</span></h1>
-        <p class="copy-body">Six silver terraces rise out of a flat plate, one layer at a time. The card settles low, then six amounts fan out in three waves — +100 to +2k.</p>
-        <p class="copy-meta"><span id="variant-name">Silver-white panels + black card</span><span class="copy-meta-dot" aria-hidden="true"></span><span>6.5 s deterministic</span></p>
+        <p class="copy-body">Six silver terraces rise out of a flat plate, one layer at a time. The card settles low, then six amounts appear at random spots — +100 to +2k.</p>
+        <p class="copy-meta"><span id="variant-name">Silver-white panels + black card</span><span class="copy-meta-dot" aria-hidden="true"></span><span>31.9 s deterministic</span></p>
       </section>
 
       <section class="stage-column" aria-label="Stacked panel animation">
         <div class="stage" id="stage">
           <div class="stage-aura" aria-hidden="true"></div>
-          <canvas id="stage-canvas" aria-label="Six silver-white rounded-hexagon terraces rising from a flat plate with the TEKO metal card resting low on the top terrace and six amount tags expanding in three waves."></canvas>
+          <canvas id="stage-canvas" aria-label="Six silver-white rounded-hexagon terraces rising from a flat plate with the TEKO metal card resting low on the top terrace and six amount tags appearing at random positions."></canvas>
           <div class="stage-overlay" aria-hidden="true">
             <div class="stage-eyebrow"><span class="stage-dot"></span><span id="stage-eyebrow-text">Silver-white studio</span></div>
             <div class="stage-index"><span id="stage-variant-code">A</span><span class="stage-index-slash">/</span><span>02</span></div>
@@ -102,7 +117,7 @@
 
           <div class="timeline" aria-label="Animation timeline">
             <div class="timeline-track" aria-hidden="true"><div class="timeline-fill" id="timeline-fill"></div></div>
-            <span class="timeline-readout" id="timeline-readout">0.0 s <span aria-hidden="true">/</span> 6.5 s</span>
+            <span class="timeline-readout" id="timeline-readout">0.0 s <span aria-hidden="true">/</span> 31.9 s</span>
             <span class="timeline-phase" id="timeline-phase" aria-live="polite">START</span>
           </div>
         </div>

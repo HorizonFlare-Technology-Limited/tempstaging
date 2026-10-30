@@ -1,0 +1,90 @@
+/*
+ * tekoanimation — shared site navigation (Rev20).
+ * One nav component on every page, listing every model/animation. It inherits
+ * the page's text colour so it reads on the dark, navy and silver-white pages.
+ * Desktop: right-aligned, wraps to two rows. Phone: one swipeable row under
+ * the brand (the nav scrolls inside its own box; the page never scrolls sideways).
+ */
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  max-width: min(880px, 68vw);
+  margin: 0 0 0 auto;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+}
+
+.site-nav a,
+.site-nav .site-nav-current {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: inherit;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  opacity: 0.62;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.site-nav .site-nav-current {
+  opacity: 1;
+  border-color: color-mix(in srgb, currentColor 26%, transparent);
+  background: color-mix(in srgb, currentColor 11%, transparent);
+}
+
+/* the nav replaces the old descriptive/link note in the header */
+.site-header .header-note { display: none; }
+
+/* header layouts: let the brand + nav share the row, grow when the nav wraps */
+.site-header .site-nav { flex: 0 1 auto; }
+
+@media (max-width: 1180px) {
+  .site-nav { max-width: min(640px, 58vw); }
+  .site-nav a,
+  .site-nav .site-nav-current { padding: 0 8px; letter-spacing: 0.1em; }
+}
+
+@media (max-width: 900px) {
+  header.site-header {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding-top: 10px;
+    padding-bottom: 8px;
+  }
+  .site-nav {
+    order: 3;
+    flex: 1 0 100%;
+    max-width: none;
+    margin: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .site-nav::-webkit-scrollbar { display: none; }
+}
+

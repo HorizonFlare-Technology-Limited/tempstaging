@@ -2,32 +2,36 @@
  * tekoanimation — Logo blocks preview controller.
  *
  * Standalone collection page controller for `logo-blocks.html`
- * (docs/logo-blocks-contract.md): one stage, two compositions —
+ * (docs/logo-blocks-contract.md): one stage, two compositions (Rev22 removed
+ * catalogue scenes 01 / 02; the labels 03 / 04 are unchanged) —
  *
- *   scene `stack`  figure 4: four stacked silver rounded-square blocks with
- *                  silver/graphite machined TEKO emblems and brand-gold accent
- *                  bands, on a dark polished slab in a navy editorial studio;
- *   scene `bank`   figure 5: a fluted/dotted bank-icon plaque and a logo plaque
- *                  standing on a light concrete slab in a dark cool-grey studio.
+ *   scene `plates`  catalogue 03: seven upright silver brand plates that slide in
+ *                   from the right, gather into a 45-degree cluster and spread
+ *                   along the same 45-degree line into a row, with the TEKO arrow
+ *                   as a silver/graphite machined emboss;
+ *   scene `link`    catalogue 04: a logo block + a bank block with a theme-gold
+ *                   glow ring and 56 dotted particle rays.
  *
  * Both compositions are built synchronously by `src/logo-blocks-model.js` from
  * the local `assets/logo-blocks/teko2_icon.svg` (fetched here, same-origin only).
- * This module owns the two deterministic studios (procedural PMREM environments,
- * lights, backdrop, floor slab and authored contact shadows), the per-scene
- * fixed three-quarter camera fitted in closed form from each scene's
- * `fitPoints`, the clamped damped orbit, the scene toggle, the URL flags, the
- * loading curtain, the no-WebGL/error fallback and the QA API
- * `window.__tekoLogoBlocks`.
+ * This module owns the deterministic studios (backdrop, backdrop wall and the
+ * studio fallback surface), the per-scene fixed three-quarter camera fitted in
+ * closed form from each scene's `fitPoints`, the clamped damped orbit, the scene
+ * toggle, the URL flags, the loading curtain, the no-WebGL/error fallback and the
+ * QA API `window.__tekoLogoBlocks`.
  *
- * Camera/stage contract: stack 24°/13° fitted to 88 % of the stage (84 % narrow),
- * bank 18°/9° fitted to 82 % (78 % narrow), fov 30°. There is deliberately no
- * autonomous motion — the only movement is the user's clamped orbit — so
- * `?still=1` / `?shot=1` and reduced motion are deterministic by construction.
+ * Camera/stage contract: plates 0 deg / 10 deg fitted to 90 % of the stage (86 %
+ * narrow), link 0 deg / 14 deg fitted to 90 % (86 % narrow), fov 30 deg. There is
+ * deliberately no autonomous camera motion — the only movement is the user's
+ * clamped orbit and the plates' deterministic loop — so `?still=1` / `?shot=1`
+ * and reduced motion are deterministic by construction.
  */
 import * as THREE from 'three';
 import * as LogoBlocksModel from './logo-blocks-model.js';
+import { loadColumnBank } from './columns-model.js';
+import { applyEnvRoom } from './env-room.js';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 
 const IS_BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
 
@@ -35,19 +39,42 @@ const MODEL = LogoBlocksModel;
 
 /* --------------------------------------------------------------- constants */
 
-const SCENE_IDS = Object.freeze(['stack', 'bank']);
+const SCENE_IDS = Object.freeze(['plates', 'link']);
 
 const LOGO_RELATIVE = './assets/logo-blocks/teko2_icon.svg';
 const LOGO_URL = new URL('../assets/logo-blocks/teko2_icon.svg', import.meta.url);
 const MODEL_MODULE = './src/logo-blocks-model.js';
 const THREE_MODULE = './vendor/three.module.js';
 
-const RENDERER = Object.freeze({ exposure: 1.0, dprMax: 2 });
+const RENDERER = Object.freeze({ exposure: 1.35, dprMax: 2 });
+
+// Rev21 lighting contract: every composition is lit only by
+// assets/env/modern-empty-room.jpg (PMREM through ./env-room.js). All four rig
+// scenes share one PMREM texture; the room photo is far dimmer than the retired
+// procedural panels, so the per-material env intensity is multiplied up.
+const ROOM = Object.freeze({
+  intensity: 3.2,
+  boost: 9,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
+});
+
+/**
+ * Rev22 satin platform. The mesh reuses the Columns deliverable geometry and the
+ * loaded columns bank's satin material object verbatim; only the per-page envMap
+ * gain is re-tuned here (the columns page clamps the same shared material to its
+ * own MIRROR.satin value), so maps / metalness / roughness / uv wiring are
+ * untouched and the material identity check stays true.
+ */
+const PLATFORM = Object.freeze({
+  columnId: 'satin-large-long',
+  envIntensity: 0.9,
+  label: 'src/columns-model.js satin-large-long (laid horizontal)',
+});
 
 /** Framing (contract L2): fill fraction of the stage per composition. */
 const FRAMING = Object.freeze({
-  stack: Object.freeze({ fill: 0.88, fillNarrow: 0.84 }),
-  bank: Object.freeze({ fill: 0.82, fillNarrow: 0.78 }),
+  plates: Object.freeze({ fill: 0.9, fillNarrow: 0.86 }),
+  link: Object.freeze({ fill: 0.9, fillNarrow: 0.86 }),
 });
 
 const NARROW_STAGE_WIDTH = 520;
@@ -55,8 +82,8 @@ const ORBIT = Object.freeze({ damping: 16, dragSensitivity: 0.18, nudgeDeg: 3 })
 
 /** Default three-quarter poses + pitch clamps (contract L2). */
 const DEFAULT_CAMERA = Object.freeze({
-  stack: Object.freeze({ azimuthDeg: 24, elevationDeg: 13, pitchMaxDeg: 30 }),
-  bank: Object.freeze({ azimuthDeg: 18, elevationDeg: 9, pitchMaxDeg: 26 }),
+  plates: Object.freeze({ azimuthDeg: 0, elevationDeg: 10, pitchMaxDeg: 26 }),
+  link: Object.freeze({ azimuthDeg: 0, elevationDeg: 14, pitchMaxDeg: 30 }),
 });
 const YAW_HALF_RANGE_DEG = 16;
 const PITCH_MIN_DEG = -4;
@@ -204,7 +231,7 @@ function sceneCameraSpec(key) {
 
 /* ----------------------------------------------------------- scene copy/UI */
 
-const STACK_GLYPH =
+const PLATE_GLYPH =
   '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
   '<rect x="28" y="6" width="24" height="24" rx="6" opacity="0.3"></rect>' +
   '<rect x="22" y="12" width="24" height="24" rx="6" opacity="0.55"></rect>' +
@@ -212,194 +239,137 @@ const STACK_GLYPH =
   '<path d="M29.5 47V33"></path><path d="M24 38.5 29.5 33 35 38.5"></path>' +
   '</svg>';
 
-const BANK_GLYPH =
+const LINK_GLYPH =
   '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">' +
   '<path d="M9 26 32 12l23 14"></path>' +
   '<path d="M15 26v19M24 26v19M33 26v19M42 26v19M51 26v19"></path>' +
   '<path d="M15 45h38"></path><path d="M11 51h46"></path><path d="M8 57h48"></path>' +
   '</svg>';
 
-const STACK_LAYERS = Object.freeze([
-  Object.freeze({ name: 'Block', color: 0x8a8f96, candidates: ['stackFace', 'face', 'stackBody'], swatch: 'block' }),
-  Object.freeze({ name: 'Wall', color: 0x2c2f34, candidates: ['stackBody', 'body'], swatch: 'wall' }),
-  Object.freeze({ name: 'Rim', color: 0xd6dbe1, candidates: ['stackRim', 'rim'], swatch: 'rim' }),
-  Object.freeze({ name: 'Face', color: 0x8a8f96, candidates: ['stackFace', 'face'], swatch: 'face' }),
+const PLATE_LAYERS = Object.freeze([
+  Object.freeze({ name: 'Plate', color: 0xcfd3d9, candidates: ['bankFace', 'face'], swatch: 'block' }),
+  Object.freeze({ name: 'Wall', color: 0x8d949c, candidates: ['frameSatin', 'body'], swatch: 'wall' }),
+  Object.freeze({ name: 'Rim', color: 0xeef2f6, candidates: ['bankRim', 'rim'], swatch: 'rim' }),
   Object.freeze({ name: 'Emblem silver', color: 0xd6dbe1, candidates: ['emblemSilver'], swatch: 'silver' }),
   Object.freeze({ name: 'Emblem graphite', color: 0x6a7078, candidates: ['emblemGraphite'], swatch: 'graphite' }),
-  Object.freeze({ name: 'Gold band', color: 0xffd60a, candidates: ['goldBright', 'goldEdge'], swatch: 'gold', gold: true }),
-  Object.freeze({ name: 'Surface', color: 0x23262b, candidates: ['stackFloor', 'floor'], swatch: 'surface' }),
+  Object.freeze({ name: 'Satin platform', color: 0xc9ccd1, candidates: ['satinPlatform', 'satin'], swatch: 'surface' }),
 ]);
 
-const BANK_LAYERS = Object.freeze([
-  Object.freeze({ name: 'Plaque', color: 0xcfd3d9, candidates: ['bankFace', 'face', 'bankBody'], swatch: 'block' }),
-  Object.freeze({ name: 'Wall', color: 0xb9bec6, candidates: ['bankBody', 'body'], swatch: 'wall' }),
+const LINK_LAYERS = Object.freeze([
+  Object.freeze({ name: 'Block', color: 0xd4d8de, candidates: ['coinFace', 'face'], swatch: 'block' }),
+  Object.freeze({ name: 'Frame', color: 0x8d949c, candidates: ['frameSatin', 'body'], swatch: 'wall' }),
   Object.freeze({ name: 'Rim', color: 0xeef2f6, candidates: ['bankRim', 'rim'], swatch: 'rim' }),
-  Object.freeze({ name: 'Gold ring', color: 0xffd60a, candidates: ['goldEdge', 'goldBright'], swatch: 'gold', gold: true }),
-  Object.freeze({ name: 'Fluted panel', color: 0xb7bcc4, candidates: [], swatch: 'surface' }),
-  Object.freeze({ name: 'Bank icon', color: 0xe6eaee, candidates: ['bankRim', 'emblemSilver'], swatch: 'silver' }),
+  Object.freeze({ name: 'Gold ring', color: 0xffd60a, candidates: ['goldGlow', 'goldEdge'], swatch: 'gold', gold: true }),
+  Object.freeze({ name: 'Bank icon', color: 0xe6eaee, candidates: ['bankIcon', 'bankRim'], swatch: 'silver' }),
   Object.freeze({ name: 'Emblem graphite', color: 0x6a7078, candidates: ['emblemGraphite'], swatch: 'graphite' }),
-  Object.freeze({ name: 'Concrete', color: 0xd9d9d7, candidates: ['concrete', 'surface'], swatch: 'surface' }),
+  Object.freeze({ name: 'Satin platform', color: 0xc9ccd1, candidates: ['satinPlatform', 'satin'], swatch: 'surface' }),
 ]);
 
 const SCENE_META = Object.freeze({
-  stack: Object.freeze({
-    id: 'stack',
+  plates: Object.freeze({
+    id: 'plates',
     stage: Object.freeze({
-      eyebrow: 'Composition 01 \u00b7 stacked blocks',
-      code: 'STK',
-      name: 'Four-block stack',
-      detail: 'Silver relief \u00b7 gold edge bands',
-      index: '01',
-      total: '02',
+      eyebrow: 'Composition 03 \u00b7 brand plates',
+      code: 'PLT',
+      name: 'Brand plate parade',
+      detail: '45\u00b0 gather \u00b7 45\u00b0 spread',
+      index: '03',
+      total: '04',
     }),
     info: Object.freeze({
-      name: 'Stacked Logo Blocks',
-      region: 'Four silver blocks \u00b7 brand-gold edge accents',
-      index: 'Stack / 01',
-      glyph: STACK_GLYPH,
+      name: 'Silver Brand Plates',
+      region: 'Seven upright silver plates \u00b7 silver-grey satin frame',
+      index: 'Plates / 03',
+      glyph: PLATE_GLYPH,
     }),
-    sceneLabel: 'Stack \u00b7 fig 4',
-    blocksLabel: '4 blocks \u00b7 1.500 square',
-    surfaceLabel: 'Dark polished slab',
-    accentLabel: 'Brand-gold accent bands',
+    sceneLabel: 'Plates \u00b7 parade',
+    blocksLabel: '7 plates \u00b7 1.500 square',
+    surfaceLabel: 'Satin column platform',
+    accentLabel: 'None (silver only)',
     thicknessFallback: 0.3,
-    layers: STACK_LAYERS,
+    layers: PLATE_LAYERS,
     tags: Object.freeze([
       Object.freeze({ label: 'teko2_icon.svg' }),
-      Object.freeze({ label: '3 contours', metal: true }),
-      Object.freeze({ label: 'silver + graphite' }),
-      Object.freeze({ label: 'gold edge bands', gold: true }),
-      Object.freeze({ label: 'seeded studio' }),
+      Object.freeze({ label: '7 plates', metal: true }),
+      Object.freeze({ label: '45\u00b0 gather' }),
+      Object.freeze({ label: 'fixed camera' }),
     ]),
-    note: 'Logo copied byte-identically from <span class="mono">K:\\HFWorkspace\\icons</span> \u00b7 SVG parsed at runtime \u00b7 brand gold only on the edge accents \u00b7 no network',
-    footState: 'Stack \u00b7 brand-gold edges',
-    footerState: 'Stack ready',
+    note: 'Plates slide in from the right into a cluster turned 45\u00b0 right, then each plate keeps its orientation (no rotation) and spreads along the same 45\u00b0 line \u00b7 camera never moves \u00b7 11 s loop',
+    footState: 'Plates \u00b7 gather + spread',
+    footerState: 'Plates ready',
   }),
-  bank: Object.freeze({
-    id: 'bank',
+  link: Object.freeze({
+    id: 'link',
     stage: Object.freeze({
-      eyebrow: 'Composition 02 \u00b7 bank icon',
-      code: 'BNK',
-      name: 'Bank icon + logo',
-      detail: 'Machined relief \u00b7 gold face ring',
-      index: '02',
-      total: '02',
+      eyebrow: 'Composition 04 \u00b7 link rays',
+      code: 'LNK',
+      name: 'Logo + bank link',
+      detail: 'Gold glow ring \u00b7 dotted particle rays',
+      index: '04',
+      total: '04',
     }),
     info: Object.freeze({
-      name: 'Bank Icon Blocks',
-      region: 'Two silver plaques \u00b7 machined emblem + bank icon',
-      index: 'Bank / 02',
-      glyph: BANK_GLYPH,
+      name: 'Logo + Bank Link',
+      region: 'Two blocks on the satin column \u00b7 dotted gold rays',
+      index: 'Link / 04',
+      glyph: LINK_GLYPH,
     }),
-    sceneLabel: 'Bank \u00b7 fig 5',
-    blocksLabel: '2 plaques \u00b7 1.450 square',
-    surfaceLabel: 'Procedural concrete',
-    accentLabel: 'Brand-gold face ring',
+    sceneLabel: 'Link \u00b7 rays',
+    blocksLabel: '2 blocks \u00b7 1.450 square',
+    surfaceLabel: 'Satin column platform',
+    accentLabel: 'Theme-gold glow ring',
     thicknessFallback: 0.2,
-    layers: BANK_LAYERS,
+    layers: LINK_LAYERS,
     tags: Object.freeze([
       Object.freeze({ label: 'teko2_icon.svg' }),
-      Object.freeze({ label: '3 contours', metal: true }),
       Object.freeze({ label: 'bank icon relief' }),
-      Object.freeze({ label: 'gold face ring', gold: true }),
-      Object.freeze({ label: 'concrete 1024\u00b2' }),
+      Object.freeze({ label: 'gold glow ring', gold: true }),
+      Object.freeze({ label: '56 dotted rays', gold: true }),
     ]),
-    note: 'Logo copied byte-identically from <span class="mono">K:\\HFWorkspace\\icons</span> \u00b7 SVG parsed at runtime \u00b7 seeded flutes, dots and concrete \u00b7 no network',
-    footState: 'Bank \u00b7 machined icon',
-    footerState: 'Bank ready',
+    note: 'Blocks stand upright, yawed 45\u00b0 right, bottom edge face flat on the satin column top \u00b7 rays leave the logo block\u2019s back edge ring and land on the bank block\u2019s front edge ring, dark\u2013bright\u2013dark',
+    footState: 'Link \u00b7 particle rays',
+    footerState: 'Link ready',
   }),
 });
 
 /* ----------------------------------------------------------- studio specs */
 
 /**
- * Per-composition studio definition. Colours are authored sRGB hex; the
- * environment values are LINEAR radiance (panels may exceed 1.0). Nothing is
- * baked into a map: every tonal difference comes from albedo + lights + PMREM.
+ * Per-composition studio definition. Colours are authored sRGB hex. Rev21: the
+ * environment/lights specs are gone — every rig is lit solely by the shared
+ * env-room photograph; only the visible backdrop/wall differ (the model owns the
+ * satin column platform and the contact shadows).
  */
-const STUDIO = Object.freeze({
-  stack: Object.freeze({
-    backdrop: Object.freeze({
-      top: 0x060a14,
-      subject: 0x15203a,
-      horizon: 0x0f1830,
-      bottom: 0x04060c,
-      stops: Object.freeze([0.0, 0.5]),
-      leftLift: 0.05,
-      rightTint: 0.05,
-    }),
-    wall: Object.freeze({
-      zOffset: -0.06,
-      width: 16,
-      height: 22,
-      bottom: 0x0a0c12,
-      top: 0x05070f,
-      glow: 0x26385f,
-      glowOpacity: 0.42,
-      glowY: 0.34,
-      ao: 0.55,
-    }),
-    environment: Object.freeze({
-      sigma: 0.03,
-      dome: Object.freeze({ radius: 12, sky: 0.06, horizon: 0.03, floor: 0.005, frontBoost: 0.02, horizonGlow: 0.015, warmTint: 0.01, coolTint: 0.03 }),
-      panels: Object.freeze([
-        Object.freeze({ position: [-1.7, 0.35, 6.0], lookAt: [0, 0.9, 0], size: [6.6, 3.2], color: [1.0, 0.99, 0.97], intensity: 2.6 }),
-        Object.freeze({ position: [1.2, 3.0, 5.6], lookAt: [0, 0.8, 0], size: [6.0, 3.6], color: [1.0, 0.99, 0.97], intensity: 1.1 }),
-        Object.freeze({ position: [-3.8, 4.2, 3.4], lookAt: [0, 0.6, 0], size: [3.2, 2.4], color: [1.0, 0.96, 0.9], intensity: 2.2 }),
-        Object.freeze({ position: [0.2, 5.4, 1.2], lookAt: [0, 0.4, 0], size: [3.4, 1.6], color: [1.0, 1.0, 1.0], intensity: 1.6 }),
-        Object.freeze({ position: [3.9, 2.2, 1.8], lookAt: [0, 0.4, 0], size: [2.2, 3.2], color: [0.82, 0.9, 1.0], intensity: 0.8 }),
-        Object.freeze({ position: [2.0, 2.4, -4.6], lookAt: [0, 0.4, 0], size: [2.4, 1.8], color: [1.0, 0.82, 0.55], intensity: 0.7 }),
-      ]),
-    }),
-    lights: Object.freeze({
-      key: Object.freeze({ color: 0xfff2e2, intensity: 0.15, position: [-3.6, 4.8, 4.2], target: [0, 0.2, 0] }),
-      fill: Object.freeze({ color: 0xd6e2f5, intensity: 0.1, position: [3.8, 1.7, 3.0], target: [0, 0.2, 0] }),
-      rim: Object.freeze({ color: 0xffd9a8, intensity: 0.25, position: [1.2, 2.6, -4.4], target: [0, 0.3, 0] }),
-    }),
-    surface: Object.freeze({ color: 0x23262b, metalness: 0.35, roughness: 0.3, envMapIntensity: 0.9, thickness: 0.16 }),
-    shadows: Object.freeze({ mode: 'group', widthScale: 1.65, depthScale: 1.5, opacity: 0.52, coreScale: 0.68, coreOpacity: 0.4, offsetX: 0.12, offsetZ: 0.1 }),
+const DARK_STUDIO = Object.freeze({
+  backdrop: Object.freeze({
+    top: 0x060a14,
+    subject: 0x15203a,
+    horizon: 0x0f1830,
+    bottom: 0x04060c,
+    stops: Object.freeze([0.0, 0.5]),
+    leftLift: 0.05,
+    rightTint: 0.05,
   }),
-  bank: Object.freeze({
-    backdrop: Object.freeze({
-      top: 0x3b434d,
-      subject: 0x2f363f,
-      horizon: 0x2a3038,
-      bottom: 0x171b20,
-      stops: Object.freeze([0.0, 0.5]),
-      leftLift: 0.16,
-      rightTint: 0.02,
-    }),
-    wall: Object.freeze({
-      zOffset: -0.1,
-      width: 16,
-      height: 22,
-      bottom: 0x212730,
-      top: 0x39414b,
-      glow: 0x7c8b9e,
-      glowOpacity: 0.26,
-      glowY: 0.52,
-      ao: 0.3,
-    }),
-    environment: Object.freeze({
-      sigma: 0.03,
-      dome: Object.freeze({ radius: 12, sky: 0.33, horizon: 0.22, floor: 0.05, frontBoost: 0.05, horizonGlow: 0.03, warmTint: 0.015, coolTint: 0.03 }),
-      panels: Object.freeze([
-        Object.freeze({ position: [-1.2, 0.5, 6.2], lookAt: [0, 1.0, 0], size: [6.0, 3.0], color: [1.0, 0.99, 0.97], intensity: 1.35 }),
-        Object.freeze({ position: [-3.2, 4.4, 3.8], lookAt: [0, 0.8, 0], size: [4.0, 2.8], color: [1.0, 0.97, 0.92], intensity: 2.2 }),
-        Object.freeze({ position: [0.2, 5.6, 1.2], lookAt: [0, 0.4, 0], size: [3.2, 2.0], color: [1.0, 1.0, 1.0], intensity: 1.3 }),
-        Object.freeze({ position: [3.8, 2.4, 2.8], lookAt: [0, 0.6, 0], size: [2.2, 3.0], color: [0.88, 0.93, 1.0], intensity: 1.0 }),
-        Object.freeze({ position: [0.4, 2.2, 5.4], lookAt: [0, 0.6, 0], size: [6.0, 3.2], color: [1.0, 0.99, 0.97], intensity: 0.45 }),
-      ]),
-    }),
-    lights: Object.freeze({
-      key: Object.freeze({ color: 0xfff6ea, intensity: 1.05, position: [-3.8, 4.6, 3.8], target: [0, 0.4, 0] }),
-      fill: Object.freeze({ color: 0xdce8f6, intensity: 0.42, position: [4.2, 2.0, 2.4], target: [0, 0.4, 0] }),
-      rim: Object.freeze({ color: 0xffffff, intensity: 0.35, position: [0.4, 3.2, -4.2], target: [0, 0.5, 0] }),
-    }),
-    surface: Object.freeze({ color: 0xd9d9d7, metalness: 0.0, roughness: 0.85, envMapIntensity: 0.6, thickness: 0.42 }),
-    shadows: Object.freeze({ mode: 'blocks', widthScale: 1.55, depthScale: 1.35, opacity: 0.46, coreScale: 0.6, coreOpacity: 0.34, offsetX: 0.16, offsetZ: 0.12 }),
+  wall: Object.freeze({
+    zOffset: -0.06,
+    width: 16,
+    height: 22,
+    bottom: 0x0a0c12,
+    top: 0x05070f,
+    glow: 0x26385f,
+    glowOpacity: 0.42,
+    glowY: 0.34,
+    ao: 0.55,
   }),
+  surface: Object.freeze({ color: 0x23262b, metalness: 0.35, roughness: 0.3, envMapIntensity: 0.9, thickness: 0.16 }),
+  shadows: Object.freeze({ mode: 'group', widthScale: 1.65, depthScale: 1.5, opacity: 0.52, coreScale: 0.68, coreOpacity: 0.4, offsetX: 0.12, offsetZ: 0.1 }),
 });
+
+const STUDIO = Object.freeze({
+  plates: DARK_STUDIO,
+  link: DARK_STUDIO,
+});
+
 
 /* --------------------------------------------------------------- early qa */
 
@@ -449,7 +419,10 @@ const state = {
   webgl: null,
   model: null,
   studio: null,
-  scene: urlParams.get('scene') === 'bank' ? 'bank' : 'stack',
+  columnBank: null,
+  platform: null,
+  scene: SCENE_IDS.indexOf(urlParams.get('scene')) >= 0 ? urlParams.get('scene') : 'plates',
+  spread: urlParams.get('spread') !== '0',
   still: urlParams.get('still') === '1',
   shot: urlParams.get('shot') === '1',
   qaMode: urlParams.get('qa') === '1',
@@ -487,8 +460,9 @@ function initDom() {
   dom.veilText = byId('veil-text');
   dom.sceneToggle = byId('scene-toggle');
   dom.btnReset = byId('btn-reset');
-  dom.btnSceneStack = byId('btn-scene-stack');
-  dom.btnSceneBank = byId('btn-scene-bank');
+  dom.btnSpread = byId('btn-spread');
+  dom.btnScenePlates = byId('btn-scene-plates');
+  dom.btnSceneLink = byId('btn-scene-link');
   dom.poseState = byId('pose-state');
   dom.infoName = byId('info-name');
   dom.infoRegion = byId('info-region');
@@ -608,9 +582,9 @@ function findMaterialByHint(hint) {
 }
 
 function faceMaterialFor(sceneKey) {
-  const candidates = sceneKey === 'stack'
-    ? ['stackFace', 'faceStack', 'face', 'stackFaceMaterial']
-    : ['bankFace', 'faceBank', 'face', 'bankFaceMaterial'];
+  const candidates = sceneKey === 'link'
+    ? ['coinFace', 'faceLink', 'face']
+    : ['bankFace', 'facePlates', 'face'];
   for (const key of candidates) {
     const materials = state.model && state.model.materials;
     if (materials && materials[key]) return materials[key];
@@ -639,25 +613,21 @@ function sceneFacts(sceneKey) {
   const faceHex = hexFromMaterial(face);
   const emblem = sceneModel && sceneModel.emblem ? sceneModel.emblem : null;
   const emblemShapes = emblem ? finiteOr(emblem.shapeCount, Array.isArray(emblem.shapes) ? emblem.shapes.length : 3) : 3;
-  const accent = sceneModel && sceneModel.accent ? sceneModel.accent : null;
-  const accentCount = accent ? finiteOr(accent.count, 0) : 0;
   return {
     sceneLabel: meta.sceneLabel,
     blocks: meta.blocksLabel,
     face: faceHex ? faceHex + ' \u00b7 ' + finishLabel(face ? face.roughness : NaN) : '\u2014',
     thickness: thickness.toFixed(3),
     emblem: 'teko2_icon.svg \u00b7 ' + emblemShapes + ' shapes \u00b7 silver/graphite',
-    accent: sceneKey === 'stack'
-      ? meta.accentLabel + (accentCount > 0 ? ' \u00d7 ' + accentCount : '')
-      : meta.accentLabel,
+    accent: meta.accentLabel,
     surface: meta.surfaceLabel,
     camera: cameraSpec.azimuthDeg + '\u00b0 / ' + cameraSpec.elevationDeg + '\u00b0 three-quarter',
     triangles: triangles > 0 ? triangles.toLocaleString('en-US') : '\u2014',
     blockCount,
     trianglesRaw: triangles,
     emblemShapes,
-    bankIconShapes: model && model.scenes && model.scenes.bank && model.scenes.bank.bankIcon
-      ? finiteOr(model.scenes.bank.bankIcon.shapeCount, 0)
+    bankIconShapes: model && model.scenes && model.scenes.link && model.scenes.link.bankIcon
+      ? finiteOr(model.scenes.link.bankIcon.shapeCount, 0)
       : 0,
   };
 }
@@ -699,8 +669,8 @@ function tagsMarkup(sceneKey, facts) {
 }
 
 function syncSceneButtons() {
-  if (dom.btnSceneStack) dom.btnSceneStack.setAttribute('aria-pressed', state.scene === 'stack' ? 'true' : 'false');
-  if (dom.btnSceneBank) dom.btnSceneBank.setAttribute('aria-pressed', state.scene === 'bank' ? 'true' : 'false');
+  if (dom.btnScenePlates) dom.btnScenePlates.setAttribute('aria-pressed', state.scene === 'plates' ? 'true' : 'false');
+  if (dom.btnSceneLink) dom.btnSceneLink.setAttribute('aria-pressed', state.scene === 'link' ? 'true' : 'false');
 }
 
 function syncPoseReadout() {
@@ -818,81 +788,9 @@ function resolveFitPoints(sceneModel) {
   return new Float32Array(corners);
 }
 
-function disposeObject(root) {
-  if (!root) return;
-  root.traverse((object) => {
-    if (object.isMesh) {
-      if (object.geometry) object.geometry.dispose();
-      const material = object.material;
-      if (Array.isArray(material)) {
-        for (const entry of material) {
-          if (entry.map) entry.map.dispose();
-          if (entry.normalMap) entry.normalMap.dispose();
-          if (entry.roughnessMap) entry.roughnessMap.dispose();
-          entry.dispose();
-        }
-      } else if (material) {
-        if (material.map) material.map.dispose();
-        if (material.normalMap) material.normalMap.dispose();
-        if (material.roughnessMap) material.roughnessMap.dispose();
-        material.dispose();
-      }
-    }
-  });
-}
-
 /* ------------------------------------------------------------- environments */
-
-/**
- * Build one procedural PMREM environment (deterministic `fromScene`, no HDR
- * file): a smooth radiance dome plus a few large soft panels. Returns the
- * render target; dispose it with the studio.
- */
-function buildEnvironment(renderer, spec) {
-  const pmremGenerator = new THREE.PMREMGenerator(renderer);
-  pmremGenerator.compileEquirectangularShader();
-  const envScene = new THREE.Scene();
-  envScene.name = 'logo-blocks-environment';
-
-  const dome = spec.dome;
-  const geometry = new THREE.SphereGeometry(dome.radius, 64, 40);
-  const position = geometry.getAttribute('position');
-  const colors = new Float32Array(position.count * 3);
-  for (let index = 0; index < position.count; index += 1) {
-    const x = position.getX(index) / dome.radius;
-    const y = position.getY(index) / dome.radius;
-    const z = position.getZ(index) / dome.radius;
-    let value = lerp(dome.floor, dome.sky, smoothstep(-0.85, 0.3, y));
-    value += dome.horizonGlow * Math.exp(-Math.pow((y - 0.02) / 0.3, 2));
-    value += dome.frontBoost * Math.pow(Math.max(0, z), 1.5);
-    const warm = Math.max(0, -x) * dome.warmTint;
-    const cool = Math.max(0, x) * dome.coolTint;
-    colors[index * 3] = Math.max(0, value + warm);
-    colors[index * 3 + 1] = Math.max(0, value + warm * 0.55 + cool * 0.25);
-    colors[index * 3 + 2] = Math.max(0, value - warm * 0.45 + cool);
-  }
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  const domeMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, toneMapped: false });
-  const domeMesh = new THREE.Mesh(geometry, domeMaterial);
-  domeMesh.name = 'env-dome';
-  envScene.add(domeMesh);
-
-  for (let index = 0; index < spec.panels.length; index += 1) {
-    const panel = spec.panels[index];
-    const color = new THREE.Color().setRGB(panel.color[0], panel.color[1], panel.color[2]).multiplyScalar(panel.intensity);
-    const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(panel.size[0], panel.size[1]), material);
-    mesh.name = 'env-panel-' + index;
-    mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-    mesh.lookAt(panel.lookAt[0], panel.lookAt[1], panel.lookAt[2]);
-    envScene.add(mesh);
-  }
-
-  const renderTarget = pmremGenerator.fromScene(envScene, spec.sigma);
-  pmremGenerator.dispose();
-  disposeObject(envScene);
-  return renderTarget;
-}
+/* Rev21: there is no procedural environment builder — every rig scene is lit by
+ * the one shared env-room PMREM texture (see LogoBlocksStudio.init). */
 
 /** Visible studio backdrop: a large vertex-coloured dome (world-Y gradient). */
 function buildBackdrop(spec, radius) {
@@ -945,11 +843,12 @@ function rgbaString(hex, alpha) {
 }
 
 /**
- * Studio backdrop wall (cyclorama) behind the composition. It hides the far
- * expanse of the model's surface slab — which otherwise fills the frame and
- * reads as a plaza instead of the reference's table-against-backdrop — and
- * carries the scene's soft glow and a contact-darkened junction band. It is an
- * unlit gradient, deterministic, and part of the studio (not the model).
+ * Studio backdrop wall (cyclorama) behind the composition. It carries the
+ * scene's soft glow and a contact-darkened junction band; it is an unlit
+ * gradient, deterministic, and part of the studio (not the model). Rev22: the
+ * wall sits behind the satin column platform (not just behind the composition)
+ * and its bottom edge reaches the platform bottom so the beam ends against the
+ * wall instead of poking through it.
  */
 function buildBackdropWall(spec, modelScene) {
   const size = 512;
@@ -1000,36 +899,24 @@ function buildBackdropWall(spec, modelScene) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'studio-backdrop-wall';
   const bounds = modelScene && modelScene.bounds;
+  const platform = modelScene && modelScene.platform;
   const surfaceY = bounds ? bounds.min.y : 0;
+  const backZ = platform ? platform.centreZ - platform.halfDepth : bounds ? bounds.min.z : 0;
+  const bottomY = platform ? platform.topY - platform.heightWorldY : surfaceY - 0.35;
   mesh.position.set(
     bounds ? bounds.center.x : 0,
-    surfaceY + spec.height / 2 - 0.35,
-    (bounds ? bounds.min.z : 0) + spec.zOffset,
+    bottomY + spec.height / 2,
+    backZ + spec.zOffset,
   );
   mesh.renderOrder = -4;
   return mesh;
 }
 
-function addStudioLights(scene, lights) {
-  const out = {};
-  for (const key of Object.keys(lights)) {
-    const spec = lights[key];
-    const light = new THREE.DirectionalLight(spec.color, spec.intensity);
-    light.name = 'studio-light-' + key;
-    light.position.set(spec.position[0], spec.position[1], spec.position[2]);
-    light.target.position.set(spec.target[0], spec.target[1], spec.target[2]);
-    scene.add(light);
-    scene.add(light.target);
-    out[key] = light;
-  }
-  return out;
-}
-
 /**
- * The model owns the visible floor slabs and authored contact shadows (it is
- * part of each composition's group). Detect them so this previewer never adds a
- * second, coplanar floor on top: the procedural studio floor + shadow below are
- * only a fallback for a model that omits them.
+ * The model owns the visible satin column platform and the authored contact
+ * shadows (they are part of each composition's group). Detect them so this
+ * previewer never adds a second, coplanar floor on top: the procedural studio
+ * floor + shadow below are only a fallback for a model that omits them.
  */
 function detectModelStudio(modelScene) {
   const found = { surface: false, shadow: false, surfaceY: null };
@@ -1042,7 +929,7 @@ function detectModelStudio(modelScene) {
       found.shadow = true;
       return;
     }
-    if (/surface|floor|slab|table/.test(name)) found.surface = true;
+    if (/platform|surface|floor|slab|table/.test(name)) found.surface = true;
   });
   if (found.surface && modelScene.bounds) found.surfaceY = modelScene.bounds.min.y;
   return found;
@@ -1050,60 +937,20 @@ function detectModelStudio(modelScene) {
 
 /* ------------------------------------------------------------- floor slab */
 
-function tileTexture(source, repeatX, repeatY, isColorMap) {
-  if (!source || !source.isTexture) return null;
-  const texture = source.clone();
-  texture.name = (source.name || 'surface') + '-tiled';
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  if (isColorMap && texture.encoding !== THREE.sRGBEncoding) texture.encoding = THREE.sRGBEncoding;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function pickSurfaceTexture(surfaceMaps, names) {
-  if (!surfaceMaps) return null;
-  for (const name of names) {
-    const value = surfaceMaps[name];
-    if (!value) continue;
-    if (value.isTexture) return value;
-    if (value.texture && value.texture.isTexture) return value.texture;
-  }
-  return null;
-}
-
-function createSurfaceMaterial(sceneKey, studioSpec, sceneModel) {
+/**
+ * Fallback studio floor material (dark satin slab). Rev22: the model owns the
+ * satin column platform, so this fallback is only materialised when a model
+ * scene omits its own surface.
+ */
+function createSurfaceMaterial(studioSpec) {
   const spec = studioSpec.surface;
-  if (sceneKey !== 'bank') {
-    return new THREE.MeshStandardMaterial({
-      name: 'studio-floor-stack',
-      color: workingColorFromHex(spec.color),
-      metalness: spec.metalness,
-      roughness: spec.roughness,
-      envMapIntensity: spec.envMapIntensity,
-    });
-  }
-
-  const surfaceMaps = sceneModel && sceneModel.textures ? sceneModel.textures.surface : null;
-  const albedo = pickSurfaceTexture(surfaceMaps, ['albedo', 'map', 'color']);
-  const normal = pickSurfaceTexture(surfaceMaps, ['normal', 'normalMap']);
-  const roughness = pickSurfaceTexture(surfaceMaps, ['roughness', 'roughnessMap']);
-  const material = new THREE.MeshStandardMaterial({
-    name: 'studio-floor-bank',
-    color: albedo ? new THREE.Color(1, 1, 1) : workingColorFromHex(spec.color),
+  return new THREE.MeshStandardMaterial({
+    name: 'studio-floor',
+    color: workingColorFromHex(spec.color),
     metalness: spec.metalness,
-    roughness: roughness ? 1.0 : spec.roughness,
+    roughness: spec.roughness,
     envMapIntensity: spec.envMapIntensity,
   });
-  if (albedo) material.map = tileTexture(albedo, 2, 2, true);
-  if (normal) {
-    material.normalMap = tileTexture(normal, 2, 2, false);
-    material.normalScale = new THREE.Vector2(1, 1);
-  }
-  if (roughness) material.roughnessMap = tileTexture(roughness, 2, 2, false);
-  material.userData = { role: 'concrete slab (bank scene)', procedural: Boolean(albedo), local: true };
-  return material;
 }
 
 /**
@@ -1122,7 +969,7 @@ function buildSurface(sceneKey, studioSpec, sceneModel) {
   const width = Math.max(fit.width * 2.2, 10);
   const centerX = fit.centerX;
   const centerZ = (frontZ + backZ) / 2;
-  const material = createSurfaceMaterial(sceneKey, studioSpec, sceneModel);
+  const material = createSurfaceMaterial(studioSpec);
 
   const group = new THREE.Group();
   group.name = 'studio-surface';
@@ -1241,13 +1088,12 @@ function buildContactShadows(spec, sceneModel, surfaceY, fit) {
  * snaps its camera to that scene's default pose (deterministic).
  */
 class LogoBlocksRig {
-  constructor({ studio, key, spec, scene, camera, envRT, backdrop, wall, surface, shadows, modelScene }) {
+  constructor({ studio, key, spec, scene, camera, backdrop, wall, surface, shadows, modelScene }) {
     this.studio = studio;
     this.key = key;
     this.spec = spec;
     this.scene = scene;
     this.camera = camera;
-    this.envRT = envRT;
     this.backdrop = backdrop;
     this.wall = wall;
     this.surface = surface;
@@ -1505,8 +1351,6 @@ class LogoBlocksRig {
       this.scene.environment = null;
     }
     if (this.shadows && this.shadows.texture) this.shadows.texture.dispose();
-    if (this.envRT) this.envRT.dispose();
-    this.envRT = null;
     this.scene = null;
     this.camera = null;
   }
@@ -1520,8 +1364,9 @@ class LogoBlocksStudio {
     this.stage = stage;
     this.model = model;
     this.rigs = {};
-    this.activeKey = 'stack';
+    this.activeKey = 'plates';
     this.renderer = null;
+    this.room = null;
     this.stageBox = { width: 0, height: 0 };
     this.renderCount = 0;
     this.firstFrameRendered = false;
@@ -1564,6 +1409,16 @@ class LogoBlocksStudio {
     this.renderer = renderer;
 
     for (const key of SCENE_IDS) this.rigs[key] = this.buildRig(key);
+    // Rev21: one PMREM from the room photograph, shared by every rig scene.
+    // applyEnvRoom attaches it to the first scene and scales each material's own
+    // envMapIntensity on r151; refresh() re-walks every other rig's graph.
+    const firstRig = this.rigs[SCENE_IDS[0]];
+    this.room = await applyEnvRoom(THREE, this.renderer, firstRig.scene, { intensity: ROOM.intensity, boost: ROOM.boost });
+    for (const key of SCENE_IDS) {
+      const rig = this.rigs[key];
+      if (!rig) continue;
+      this.room.bind(rig.scene);
+    }
 
     if (typeof ResizeObserver === 'function') {
       this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -1592,15 +1447,11 @@ class LogoBlocksStudio {
     const camera = new THREE.PerspectiveCamera(spec.fov, 1.6, spec.near, spec.far);
     camera.name = 'logo-blocks-camera-' + key;
 
-    const envRT = buildEnvironment(this.renderer, studioSpec.environment);
-    scene.environment = envRT.texture;
-
     const backdropRadius = clamp(spec.far * 0.5, 10, 24);
     const backdrop = buildBackdrop(studioSpec.backdrop, backdropRadius);
     scene.add(backdrop);
     const wall = buildBackdropWall(studioSpec.wall, modelScene);
     scene.add(wall);
-    addStudioLights(scene, studioSpec.lights);
 
     const modelStudio = detectModelStudio(modelScene);
     const fitExtents = measurePointExtents(modelScene.fitPoints, modelScene.bounds);
@@ -1622,7 +1473,6 @@ class LogoBlocksStudio {
       spec,
       scene,
       camera,
-      envRT,
       backdrop,
       wall,
       surface,
@@ -1685,11 +1535,54 @@ class LogoBlocksStudio {
     const dt = Math.min(64, Math.max(0, now - previous));
     this.lastTime = now;
     const rig = this.getActiveRig();
+    if (this.tickAnimation(now)) this.needsRender = true;
     if (rig && rig.updateOrbit(dt / 1000)) {
       this.needsRender = true;
       this.emitChange();
     }
     if (this.needsRender) this.renderFrame();
+  }
+
+  /**
+   * Drives a model scene's `update(t)` (the Rev19 plate parade). Static modes
+   * (still / shot / reduced motion) hold the final composed frame, or the
+   * frame given by `?t=`; live mode loops the animation on the page clock.
+   */
+  tickAnimation(now) {
+    const modelScene = this.model.scenes ? this.model.scenes[this.activeKey] : null;
+    if (!modelScene || typeof modelScene.update !== 'function' || !modelScene.animation) return false;
+    const duration = modelScene.animation.duration;
+    let t;
+    if (this.fixedTime !== null && this.fixedTime !== undefined) t = this.fixedTime;
+    else if (!this.motionAllowed()) t = duration;
+    else {
+      if (this.animStart === undefined || this.animKey !== this.activeKey) {
+        this.animStart = now;
+        this.animKey = this.activeKey;
+      }
+      t = ((now - this.animStart) / 1000) % duration;
+    }
+    t = Math.min(duration, Math.max(0, t));
+    if (t === this.lastAnimTime) return false;
+    this.lastAnimTime = t;
+    modelScene.update(t);
+    modelScene.group.updateMatrixWorld(true);
+    this.animTime = t;
+    return true;
+  }
+
+  /** Spread on/off for the plates scene (Rev3 s20); off = plates stay in the cluster. */
+  setSpread(on) {
+    const modelScene = this.model.scenes ? this.model.scenes.plates : null;
+    if (modelScene && typeof modelScene.setSpread === 'function') modelScene.setSpread(on);
+    this.lastAnimTime = undefined;
+    this.needsRender = true;
+  }
+
+  setAnimationTime(seconds) {
+    this.fixedTime = seconds === null || seconds === undefined ? null : Number(seconds);
+    this.lastAnimTime = undefined;
+    this.needsRender = true;
   }
 
   emitChange() {
@@ -1740,6 +1633,8 @@ class LogoBlocksStudio {
       drawCalls: info ? info.render.calls : 0,
       toneMappingExposure: this.renderer ? this.renderer.toneMappingExposure : RENDERER.exposure,
       shadowMapEnabled: Boolean(this.renderer && this.renderer.shadowMap.enabled),
+      environment: ROOM.label,
+      envIntensity: ROOM.intensity,
     };
   }
 
@@ -1765,6 +1660,10 @@ class LogoBlocksStudio {
         /* best effort */
       }
       this.rigs[key] = null;
+    }
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
     }
     if (this.renderer) {
       this.renderer.dispose();
@@ -1834,48 +1733,19 @@ function minimalSceneDebug(key, sceneModel) {
     bounds: boundsDebug(sceneModel.bounds),
     stats: statsDebug(sceneModel.stats),
     emblem: emblemDebug(sceneModel.emblem),
+    surface: sceneModel.surface || null,
+    platform: sceneModel.platform || null,
   };
-  if (key === 'bank') {
-    const icon = sceneModel.bankIcon;
-    out.bankIcon = icon
-      ? {
-          shapeCount: finiteOr(icon.shapeCount, 0),
-          triangleCount: finiteOr(icon.triangleCount, 0),
-          width: finiteOr(icon.width, 0),
-          relief: finiteOr(icon.relief, 0),
-          parts: Array.isArray(icon.parts) ? icon.parts : [],
-        }
-      : null;
-    const textures = sceneModel.textures || {};
-    out.textures = {
-      panel: textures.panel ? { size: textures.panel.size || null } : null,
-      surface: textures.surface ? { size: textures.surface.size || null } : null,
-      dotSeed: textures.dotSeed !== undefined ? textures.dotSeed : null,
-      dotSpacing: textures.dotSpacing !== undefined ? textures.dotSpacing : null,
-      flutePeriod: textures.flutePeriod !== undefined ? textures.flutePeriod : null,
-    };
-    out.accent = sceneModel.accent
-      ? {
-          count: finiteOr(sceneModel.accent.count, 0),
-          colorSrgb: sceneModel.accent.colorSrgb || null,
-          deepSrgb: sceneModel.accent.deepSrgb || null,
-          emissiveSrgb: sceneModel.accent.emissiveSrgb || null,
-          emissiveIntensity: finiteOr(sceneModel.accent.emissiveIntensity, 0),
-          bandHeight: finiteOr(sceneModel.accent.bandHeight, 0),
-        }
-      : null;
-  } else {
-    out.accent = sceneModel.accent
-      ? {
-          count: finiteOr(sceneModel.accent.count, 0),
-          colorSrgb: sceneModel.accent.colorSrgb || null,
-          deepSrgb: sceneModel.accent.deepSrgb || null,
-          emissiveSrgb: sceneModel.accent.emissiveSrgb || null,
-          emissiveIntensity: finiteOr(sceneModel.accent.emissiveIntensity, 0),
-          bandHeight: finiteOr(sceneModel.accent.bandHeight, 0),
-        }
-      : null;
-  }
+  const icon = sceneModel.bankIcon;
+  out.bankIcon = icon
+    ? {
+        shapeCount: finiteOr(icon.shapeCount, 0),
+        triangleCount: finiteOr(icon.triangleCount, 0),
+        width: finiteOr(icon.width, 0),
+        relief: finiteOr(icon.relief, 0),
+        parts: Array.isArray(icon.parts) ? icon.parts : [],
+      }
+    : null;
   return out;
 }
 
@@ -1956,6 +1826,90 @@ function readStageRect() {
   }
 }
 
+/** Deterministic platform / contact report for the QA snapshot. */
+function platformDebug() {
+  const model = state.model;
+  if (!model) return null;
+  const bank = state.columnBank;
+  const satin = bank && bank.materials ? bank.materials.satin : null;
+  const scenesOut = {};
+  for (const key of SCENE_IDS) {
+    const sceneModel = model.scenes ? model.scenes[key] : null;
+    const platform = sceneModel && sceneModel.platform;
+    if (!platform) {
+      scenesOut[key] = null;
+      continue;
+    }
+    let platformMesh = null;
+    if (sceneModel.group && typeof sceneModel.group.traverse === 'function') {
+      sceneModel.group.traverse((object) => {
+        if (!platformMesh && object.isMesh && /platform/.test(String(object.name || ''))) platformMesh = object;
+      });
+    }
+    const blocks = (sceneModel.blocks || []).map((block) => {
+      if (block.group && typeof block.group.updateMatrixWorld === 'function') block.group.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(block.group);
+      return {
+        id: block.id,
+        bottomY: round(box.min.y, 6),
+        deltaToPlatformTop: round(box.min.y - platform.topY, 6),
+      };
+    });
+    const maxContactDelta = blocks.reduce((max, block) => Math.max(max, Math.abs(block.deltaToPlatformTop)), 0);
+    scenesOut[key] = {
+      columnId: platform.columnId,
+      materialId: platform.materialId,
+      laidHorizontal: platform.laidHorizontal,
+      heightPx: platform.heightPx,
+      scale: round(platform.scale, 6),
+      topY: platform.topY,
+      centreX: round(platform.centreX, 6),
+      centreZ: round(platform.centreZ, 6),
+      halfLength: round(platform.halfLength, 6),
+      halfDepth: round(platform.halfDepth, 6),
+      heightWorldY: round(platform.heightWorldY, 6),
+      mesh: platformMesh ? platformMesh.name : null,
+      materialName: platformMesh && platformMesh.material ? platformMesh.material.name : null,
+      materialIsColumnsSatin: Boolean(platformMesh && satin && platformMesh.material === satin),
+      geometryColumnId: platformMesh && platformMesh.geometry && platformMesh.geometry.userData
+        ? platformMesh.geometry.userData.columnId || null
+        : null,
+      geometryIsColumnsLong: Boolean(platformMesh && platformMesh.geometry && platformMesh.geometry.userData
+        && platformMesh.geometry.userData.columnId === 'satin-large-long'),
+      blocks,
+      maxContactDelta: round(maxContactDelta, 6),
+    };
+  }
+  return {
+    bankLoaded: Boolean(bank),
+    satinMaterialName: satin ? satin.name : null,
+    satinEnvMapIntensity: satin ? round(finiteOr(satin.envMapIntensity, 0), 3) : null,
+    columnId: PLATFORM.columnId,
+    scenes: scenesOut,
+  };
+}
+
+/** Audit of the active rig scene: no lights, no pillar meshes, exactly one platform. */
+function sceneAudit() {
+  const studio = state.studio;
+  const rig = studio ? studio.getActiveRig() : null;
+  if (!rig || !rig.scene || typeof rig.scene.traverse !== 'function') return null;
+  const audit = { scene: state.scene, meshes: 0, lights: 0, pillarMeshes: 0, platformMeshes: 0, environment: Boolean(rig.scene.environment) };
+  rig.scene.traverse((object) => {
+    if (object.isLight) {
+      audit.lights += 1;
+      return;
+    }
+    if (object.isMesh) {
+      audit.meshes += 1;
+      const name = String(object.name || '');
+      if (/pillar/i.test(name)) audit.pillarMeshes += 1;
+      if (/platform/i.test(name)) audit.platformMeshes += 1;
+    }
+  });
+  return audit;
+}
+
 function buildDebug() {
   const studio = state.studio;
   const rig = studio ? studio.getActiveRig() : null;
@@ -1965,11 +1919,16 @@ function buildDebug() {
     errors: qa.errors.slice(),
     warnings: qa.warnings.slice(),
     webgl: { supported: Boolean(state.webgl), version: state.webgl || '' },
+    lights: [],
+    environment: ROOM.label,
+    envIntensity: ROOM.intensity,
     scene: state.scene,
     scenes: SCENE_IDS.slice(),
     camera: rig ? rig.getCameraDebug(studio.dragging) : null,
     objectRect: rig ? rig.getObjectRect() : null,
     stageRect: readStageRect(),
+    sceneAudit: sceneAudit(),
+    platform: platformDebug(),
     model: modelDebugSnapshot(),
     render: studio ? studio.getRenderDebug() : null,
     flags: {
@@ -2001,6 +1960,17 @@ function updateSceneUrl(scene) {
   } catch (error) {
     /* URL reflection is best effort */
   }
+}
+
+function doSetSpread(on) {
+  state.spread = Boolean(on);
+  if (state.studio) state.studio.setSpread(state.spread);
+  if (dom.btnSpread) {
+    dom.btnSpread.setAttribute('aria-pressed', state.spread ? 'true' : 'false');
+    const label = dom.btnSpread.querySelector('span');
+    if (label) label.textContent = state.spread ? 'Spread on' : 'Spread off';
+  }
+  return state.spread;
 }
 
 function doSetScene(name) {
@@ -2074,6 +2044,12 @@ const api = {
   },
   getScene() {
     return state.scene;
+  },
+  setSpread(on) {
+    return doSetSpread(on);
+  },
+  getSpread() {
+    return state.spread;
   },
   reset(options) {
     return doReset(options || {});
@@ -2195,16 +2171,9 @@ function wireUi() {
       doReset();
     });
   }
-  if (dom.btnSceneStack) {
-    dom.btnSceneStack.addEventListener('click', () => {
-      doSetScene('stack');
-    });
-  }
-  if (dom.btnSceneBank) {
-    dom.btnSceneBank.addEventListener('click', () => {
-      doSetScene('bank');
-    });
-  }
+  if (dom.btnSpread) dom.btnSpread.addEventListener('click', () => doSetSpread(!state.spread));
+  if (dom.btnScenePlates) dom.btnScenePlates.addEventListener('click', () => doSetScene('plates'));
+  if (dom.btnSceneLink) dom.btnSceneLink.addEventListener('click', () => doSetScene('link'));
 
   // Drag-to-orbit with pointer capture; the pose is clamped inside the rig.
   let drag = null;
@@ -2256,7 +2225,7 @@ function wireUi() {
           /* release is best effort */
         }
       }
-      if (wasMoved) announce('Orbiting the ' + (state.scene === 'stack' ? 'stacked blocks' : 'bank plaques'));
+      if (wasMoved) announce('Orbiting the ' + (state.scene === 'link' ? 'logo + bank link' : 'brand plates'));
       syncPoseReadout();
       publishState();
     };
@@ -2290,12 +2259,12 @@ function wireUi() {
       syncPoseReadout();
       publishState();
     };
-    if (event.key === '1') {
+    if (event.key === '3') {
       event.preventDefault();
-      doSetScene('stack');
-    } else if (event.key === '2') {
+      doSetScene('plates');
+    } else if (event.key === '4') {
       event.preventDefault();
-      doSetScene('bank');
+      doSetScene('link');
     } else if (event.key === 'r' || event.key === 'R') {
       if (target === dom.btnReset) return;
       event.preventDefault();
@@ -2373,6 +2342,17 @@ async function loadLogoSvg() {
 }
 
 /* ------------------------------------------------------------------- boot */
+
+/**
+ * Rev22 platform tuning: keep the columns bank's satin material object and its
+ * maps, only set the page's env gain so the beam reads as grey satin here (the
+ * columns page clamps the same shared material to its own MIRROR.satin value).
+ */
+function applyPlatformTuning() {
+  const satin = state.columnBank && state.columnBank.materials ? state.columnBank.materials.satin : null;
+  if (!satin) return;
+  satin.envMapIntensity = PLATFORM.envIntensity;
+}
 
 function createStudio() {
   const studio = new LogoBlocksStudio({
@@ -2453,7 +2433,7 @@ async function boot() {
     resolveReady(false);
     return;
   }
-  if (!model || !model.scenes || !model.scenes.stack || !model.scenes.bank || !model.scenes.stack.group || !model.scenes.bank.group) {
+  if (!model || !model.scenes || !model.scenes.plates || !model.scenes.link || !model.scenes.plates.group || !model.scenes.link.group) {
     showFallback('The logo-block model did not produce both compositions.');
     resolveReady(false);
     return;
@@ -2462,11 +2442,34 @@ async function boot() {
     for (const warning of model.warnings) pushWarning('model: ' + warning);
   }
 
+  // Rev22 platform: the scene platform is a REAL Columns deliverable column
+  // (satin-large-long) laid horizontal, reusing the columns bank's satin
+  // material object verbatim. Load the bank, then mount one mesh per scene.
+  curtainProgress(0.55, 'Loading the satin column platform', '');
+  await nextFrame();
+  try {
+    state.columnBank = await loadColumnBank({
+      onProgress(loaded, total) {
+        const ratio = total ? clamp(loaded / total, 0, 1) : 1;
+        curtainProgress(0.55 + 0.07 * ratio, 'Loading the satin column platform', loaded + ' / ' + total);
+      },
+    });
+    state.platform = model.attachColumnPlatforms(state.columnBank);
+  } catch (error) {
+    showFallback(
+      'The satin columns platform could not be loaded (' + errorMessage(error) + '), so the compositions cannot be placed. A static preview is shown below.',
+      { error, banner: true },
+    );
+    resolveReady(false);
+    return;
+  }
+
   curtainProgress(0.62, 'Building studio environments', '');
   await nextFrame();
   try {
     state.studio = createStudio();
     await state.studio.init();
+    applyPlatformTuning();
     const contextLost = (event) => {
       event.preventDefault();
       if (state.failed) return;
@@ -2494,7 +2497,10 @@ async function boot() {
   studio.still = state.still;
   studio.shot = state.shot;
   studio.reducedMotion = state.reducedMotion;
+  const requestedTime = urlParams.get('t');
+  if (requestedTime !== null && Number.isFinite(Number(requestedTime))) studio.setAnimationTime(Number(requestedTime));
   studio.setScene(state.scene);
+  doSetSpread(state.spread);
   if (state.poseRequested) {
     studio.setPose(state.poseRequested.azimuthDeg, state.poseRequested.elevationDeg, { snap: true });
   }
@@ -2576,6 +2582,15 @@ function main() {
       }
       state.model = null;
     }
+    if (state.columnBank) {
+      try {
+        state.columnBank.dispose();
+      } catch (error) {
+        /* best effort */
+      }
+      state.columnBank = null;
+    }
+    state.platform = null;
   });
 }
 

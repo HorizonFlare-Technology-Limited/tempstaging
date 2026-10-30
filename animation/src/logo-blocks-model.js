@@ -1,71 +1,66 @@
 /**
  * tekoanimation — Logo blocks model (docs/logo-blocks-contract.md, L2 / L3 / L6).
  *
- * Two deterministic compositions for one page, built in a single module:
+ * Two deterministic compositions for one page (Rev22: scenes 01 `stack` and 02
+ * `bank` were removed; the catalogue numbering 03 / 04 is unchanged), built in a
+ * single module:
  *
- *   scene `stack` (reference: K:\HFWorkspace\refs\round3\logo-block.png, fig 4)
- *     four standing rounded-square metal blocks — 1.50 x 1.50 x 0.30 world units,
+ *   scene `plates` (catalogue 03, reference: K:\HFWorkspace\refs\round3\logo-block.png)
+ *     seven standing rounded-square metal plates — 1.50 x 1.50 x 0.30 world units,
  *     corner radius 0.255, rolled outer edge radius 0.085, face panel recessed
- *     0.020 below the rim crest, near-black side walls, satin silver faces. The
- *     front block sits at the +X/+Z corner; blocks 1..3 recede on a shallow
- *     -X/-Z diagonal (0.17 face-width X, 0.13 face-width Z, +0.015 Y, -3 deg yaw
- *     per step), so only their rounded front-left edges show. Every block carries
- *     the TEKO arrow embossed as a two-tone *silver/graphite machined relief*
- *     (Lead correction 2026-10-26 — the mark is silver-on-silver, never gold),
- *     built as a dark socket, a visible wall and a chamfered cap (polished
- *     silver / satin graphite) so it reads as a raised metal mark with real
- *     light/shadow, not a flat decal. The hero block stays monochrome silver;
- *     the exposed rear-block edges carry the brand-gold accent bands (bright
- *     #ffd60a on blocks 1-2, deep #7d5a00 on the rear block) — a few thin strips,
- *     never a face bezel (Lead visual review 2026-10-26). The blocks stand on a
- *     dark reflective slab with a polished rounded front lip.
+ *     0.020 below the rim crest, silver-grey satin side walls, bright satin
+ *     faces. Each plate carries the TEKO arrow embossed as a two-tone
+ *     *silver/graphite machined relief* built from a dark socket, a visible wall
+ *     and a chamfered cap, so the mark reads as raised metal under the image
+ *     based lighting (no lights exist in Rev21+). The plates slide in from the
+ *     right into a cluster turned 45 degrees to the right, then every plate
+ *     rotates about its own origin and spreads along the SAME 45 degree gather
+ *     line (`PLATES_SPEC.open` and `.cluster` share the 1:1 direction vector;
+ *     only the spacing differs) into an expanded row. They stand on the studio
+ *     surface (Rev22: the surface is the satin columns platform).
  *
- *   scene `bank` (reference: K:\HFWorkspace\refs\round3\logo-bank-blocks.png, fig 5)
- *     two standing bright-silver plaques — 1.45 x 1.45 x 0.20, corner radius
- *     0.245, rolled bright edge. The left/back plaque carries a recessed panel
- *     with a seeded procedural fluted + dotted texture set (1024^2 albedo /
- *     normal / roughness) and a raised classical bank icon (pediment, four
- *     columns with capitals, two base steps, +0.024 relief); the bank icon caps
- *     sample the same projected panel maps so the dot/flute field runs across the
- *     relief. The right/front plaque carries the same silver/graphite TEKO arrow
- *     relief and a thin gold accent ring around the face edge. Both plaques rest
- *     on a light concrete slab (seeded speckle albedo + normal, 1024^2, mean luma
- *     ~205) with a rounded front lip.
+ *   scene `link` (catalogue 04)
+ *     a logo block + a bank block (the same 1.45 x 1.45 x 0.20 shell, corner
+ *     radius 0.245, rolled bright edge) with a thin theme-gold glow ring on the
+ *     logo block, a raised classical bank icon relief on the bank block, and 56
+ *     dotted particle rays from the logo block's back edge ring to the bank
+ *     block's front edge ring. Rev22 removed the two metal pillars: the blocks
+ *     rest directly on the same satin column top.
  *
  * Determinism / offline rules (contract L3, L7): everything is constants plus one
  * seeded mulberry32 stream (`SEED`); there is no Math.random, no time/device
- * input, no network access and no image asset in this module. The only textures
- * are the two authored procedural families (bank panel field, concrete surface);
- * both are fixed 1024^2 and seeded. Contact shadows use vertex-alpha geometry,
- * not a baked shadow map. The logo SVG is supplied by the page (the model never
- * fetches it) and parsed at runtime; its two authored fills are mapped to the two
- * machined metal tones (silver / graphite) while brand gold appears only in the
- * accent bands / edge ring. Authored sRGB albedos are converted to linear working
- * values explicitly (`workingColorFromHex`, as in src/shield-model.js) because
- * three r151 ships with ColorManagement disabled.
+ * input, no network access and no image asset in this module. Contact shadows use
+ * vertex-alpha geometry, not a baked shadow map. The logo SVG is supplied by the
+ * page (the model never fetches it) and parsed at runtime; its two authored fills
+ * are mapped to the two machined metal tones (silver / graphite). Authored sRGB
+ * albedos are converted to linear working values explicitly
+ * (`workingColorFromHex`, as in src/shield-model.js) because three r151 ships
+ * with ColorManagement disabled.
  *
- * The page/studio layer (`src/logo-blocks-preview.js`) owns lights, environment,
+ * The page/studio layer (`src/logo-blocks-preview.js`) owns environment,
  * cameras, DOM and renderer; each scene group here contains only the composition
- * (meshes, Y up, front faces +Z) plus the authored surface slab and contact
- * shadow planes. `bounds` is the composition bounds (the blocks / plaques), so
- * `bounds.min.y` is the surface height the composition rests on; `fitPoints`
- * additionally carries the surface front-lip extents for camera framing.
+ * (meshes, Y up, front faces +Z) plus the authored surface/contact shadows.
+ * `bounds` is the composition bounds (the plates / blocks), so `bounds.min.y` is
+ * the surface height the composition rests on; `fitPoints` additionally carries
+ * the surface front-edge extents for camera framing.
  *
  * Public API (frozen for ./logo-blocks-preview.js, contract L3):
  *   MODEL_VERSION, LOGO_SOURCE_PATH, LOGO_PNG_PATH,
- *   STACK_SPEC, BANK_SPEC, MATERIAL_SPEC, CAMERA_SPEC, SEED,
+ *   PLATE_SPEC, LINK_BLOCK_SPEC, PLATES_SPEC, LINK_SPEC,
+ *   MATERIAL_SPEC, CAMERA_SPEC, SEED,
  *   parseTekoLogoSvg(svgText, options),
  *   createLogoBlocksModel({ logoSvgText, logoSourcePath, seed, quality }) -> model
- *     model: { version, spec, materials, scenes: { stack, bank }, getDebug(), dispose() }
+ *     model: { version, spec, materials, scenes: { plates, link }, getDebug(), dispose() }
  *
- * Everything else (rounded-rect sampling, band/extrusion helpers, texture painters,
- * emblem and bank-icon builders) is internal.
+ * Everything else (rounded-rect sampling, band/extrusion helpers, emblem and
+ * bank-icon builders) is internal.
  */
 
 import * as THREE from 'three';
+import { createColumns, COLUMN_GEOMETRY_RATIO } from './columns-model.js';
 
 /** Human-readable module version (reported by getDebug(), not the page contract). */
-export const MODEL_VERSION = '1.0.0';
+export const MODEL_VERSION = '2.1.0';
 
 /** Project-relative path of the copied TEKO icon used for the embossed emblem. */
 export const LOGO_SOURCE_PATH = './assets/logo-blocks/teko2_icon.svg';
@@ -87,11 +82,6 @@ const DEG = Math.PI / 180;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const clamp01 = (value) => clamp(value, 0, 1);
 const lerp = (a, b, t) => a + (b - a) * t;
-
-function smoothStep(t) {
-  const c = clamp01(t);
-  return c * c * (3 - 2 * c);
-}
 
 function degToRad(deg) {
   return deg * DEG;
@@ -132,57 +122,20 @@ function hexString(hex) {
   return '#' + (Number(hex) >>> 0).toString(16).padStart(6, '0');
 }
 
-/**
- * Deterministic PRNG (mulberry32). All procedural detail in this module derives
- * from one stream created from `SEED`; there is no Math.random anywhere.
- */
-function createSeededRandom(seed) {
-  let state = (Number(seed) || 0) >>> 0;
-  return function next() {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Value noise on a wrapping grid (seeded, bilinear) for procedural surfaces. */
-function createValueNoise(random, columns, rows) {
-  const values = new Float32Array(columns * rows);
-  for (let i = 0; i < values.length; i += 1) values[i] = random() * 2 - 1;
-  return function sample(u, v) {
-    const x = clamp(u, 0, 0.9999) * columns;
-    const y = clamp(v, 0, 0.9999) * rows;
-    const x0 = Math.floor(x);
-    const y0 = Math.floor(y);
-    const fx = x - x0;
-    const fy = y - y0;
-    const x1 = (x0 + 1) % columns;
-    const y1 = (y0 + 1) % rows;
-    const a = lerp(values[y0 * columns + x0], values[y0 * columns + x1], fx);
-    const b = lerp(values[y1 * columns + x0], values[y1 * columns + x1], fx);
-    return lerp(a, b, fy);
-  };
-}
-
 /* ------------------------------------------------------------------ specs */
 
 /**
- * Scene `stack` (fig 4) — blocks, layout, emblem, accent and surface constants.
+ * Scene `plates` block profile (catalogue 03) — plate shell, emblem and the
+ * shared studio-surface constants.
  *
- * Profile numbers are measured from the block's back face (profile z 0 = back,
+ * Profile numbers are measured from the plate's back face (profile z 0 = back,
  * `thickness` = front rim crest); the builder recentres them on the block origin.
  * The rolled edge is a quarter circle of radius `rolledEdgeRadius` that starts at
- * the top of the straight dark wall (`wallEndZ`) and ends at the crest; the face
+ * the top of the straight satin wall (`wallEndZ`) and ends at the crest; the face
  * panel plane (`faceZ`) is `faceRecess` below that crest, inside the rim chamfer
- * table. The accent band is a thin gold shell that follows the rolled edge from
- * `accent.zStart` (wall) to `accent.zEnd` (just under the crest) on the exposed
- * rear blocks only (see `accent.frontBand`), so the coloured strips read as edge
- * lights rather than a bezel around the hero face.
+ * table.
  */
-export const STACK_SPEC = Object.freeze({
-  blockCount: 4,
+export const PLATE_SPEC = Object.freeze({
   faceSize: 1.5,
   thickness: 0.3,
   cornerRadius: 0.255,
@@ -210,23 +163,6 @@ export const STACK_SPEC = Object.freeze({
   edgeSegments: 12,
   /** Rings used to tessellate the rolled edge quarter circle. */
   rimArcSegments: 6,
-  /**
-   * Layout: block `index` sits at
-   *   (frontX + stepX*index, surfaceTopY + frontY + stepY*index, frontZ + stepZ*index)
-   * with yaw stepYawDeg*index. Block 0 is the hero at the +X/+Z corner; each step
-   * moves -0.20 face widths in X and -0.067 in Z (Lead visual review 2026-10-26:
-   * spread laterally / less depth so the group silhouette is landscape like fig 4,
-   * the earlier -0.17 / -0.13 diagonal read too tall and narrow).
-   */
-  layout: Object.freeze({
-    frontX: 0.38,
-    frontY: 0.75,
-    frontZ: 0.2,
-    stepX: -0.3,
-    stepZ: -0.1,
-    stepY: 0.015,
-    stepYawDeg: -3,
-  }),
   emblem: Object.freeze({
     /** Emblem width as a fraction of the face width (0.52 of 1.50). */
     width: 0.52,
@@ -248,71 +184,44 @@ export const STACK_SPEC = Object.freeze({
     /** Cubic flattening segments per SVG curve. */
     curveSegments: 12,
   }),
-  accent: Object.freeze({
-    /** Gold band profile-z window (height = 0.075 just behind the crest). */
-    zStart: 0.215,
-    zEnd: 0.29,
-    height: 0.075,
-    /** Shell offset outward from the rolled edge (avoids z-fighting). */
-    outwardOffset: 0.0016,
-    segments: 5,
-    brightColor: 0xffd60a,
-    deepColor: 0x7d5a00,
-    emissiveColor: 0xffb300,
-    emissiveIntensity: 0.55,
-    /** Rear-most block takes the deep-gold variant. */
-    rearIndex: 3,
-    /**
-     * Lead visual review 2026-10-26: the hero block stays monochrome silver (the
-     * reference's coloured strips only appear on the exposed rear-block edges), so
-     * the front block carries no accent band; blocks 1-2 are bright gold and the
-     * rear block is deep gold. The band is clipped to the left-facing perimeter
-     * (the exposed edge) instead of being a full ring, so it reads as a vertical
-     * strip rather than a gold border.
-     */
-    frontIndex: 0,
-    frontBand: false,
-    /** Outward normal-x threshold for the left-facing accent strip. */
-    faceNormalMaxX: -0.2,
-  }),
-  surface: Object.freeze({
-    topY: 0,
-    width: 14,
-    backZ: -6.5,
-    frontTopZ: 1.5,
-    lipRadius: 0.16,
-    bottomY: -0.7,
-    lipSegments: 7,
-  }),
   /**
-   * Camera-fit lip probe: a strip of surface front-lip points (Lead visual review
-   * 2026-10-26: the surface extents must be in fitPoints). The strip spans
-   * `lipHalfWidth` around the composition centre so the fit frames blocks + table
-   * lip and the projected composition stays landscape (objectRect aspect ~1.3,
-   * blocks dominant) instead of tall/narrow.
+   * Satin columns platform (Rev22). The platform is the Columns collection's
+   * deliverable `satin-large-long` column mesh (600 px long, 140 x 140 px cross
+   * section, 1 px = 1 world unit) rotated so its length runs along world X, laid
+   * HORIZONTAL with its top face at `topY`. The scene builder derives a uniform
+   * `scale` from the composition footprint (depth of the top face = 140 * scale)
+   * with `marginXZ` clearance, and the preview reuses the columns bank's satin
+   * material object verbatim (same maps/params, no re-build).
    */
-  fit: Object.freeze({
-    lipCenterOffset: 0,
-    lipHalfWidth: 1.2,
+  platform: Object.freeze({
+    columnId: 'satin-large-long',
+    materialId: 'satin',
+    footprint: 'large',
+    height: 'long',
+    crossSectionPx: 140,
+    lengthPx: 600,
+    topY: 0,
+    marginXZ: 0.24,
+    probeHalfWidth: 1.2,
   }),
+  /** Per-plate soft contact shadow pressed onto the platform top face. */
   shadow: Object.freeze({
-    alpha: 0.5,
-    radiusX: 1.32,
-    radiusZ: 0.82,
-    centerX: -0.02,
-    centerZ: 0.02,
+    alpha: 0.48,
+    radiusX: 0.92,
+    radiusZ: 0.6,
     raise: 0.0016,
-    rings: 12,
-    segments: 48,
+    rings: 10,
+    segments: 36,
   }),
 });
 
 /**
- * Scene `bank` (fig 5) — plaque, icon, panel-texture, ring and surface constants.
- * Profile numbers follow the same back-face convention as STACK_SPEC.
+ * Scene `link` block profile (catalogue 04) — logo/bank block shell, emblem,
+ * glow ring and the raised classical bank icon. Profile numbers follow the same
+ * back-face convention as PLATE_SPEC. The two blocks' placement, tilt and rays
+ * live in LINK_SPEC below.
  */
-export const BANK_SPEC = Object.freeze({
-  blockCount: 2,
+export const LINK_BLOCK_SPEC = Object.freeze({
   faceSize: 1.45,
   thickness: 0.2,
   cornerRadius: 0.245,
@@ -329,18 +238,6 @@ export const BANK_SPEC = Object.freeze({
   cornerSegments: 8,
   edgeSegments: 12,
   rimArcSegments: 5,
-  /** Centre y of both plaques; plaque half height 0.725 rests on the slab top. */
-  layout: Object.freeze({
-    plaqueY: 0.78,
-    /**
-     * Lead visual review 2026-10-26: the bank plaque was hidden behind the logo
-     * plaque. It now sits further left and only slightly behind so its fluted +
-     * dotted face and bank icon read beside the logo plaque (fig 5: bank left /
-     * back, logo right / front, slight overlap).
-     */
-    bank: Object.freeze({ x: -0.82, y: 0.78, z: 0.06, yawDeg: 16 }),
-    logo: Object.freeze({ x: 0.43, y: 0.78, z: 0.3, yawDeg: -10 }),
-  }),
   emblem: Object.freeze({
     width: 0.5,
     centerX: 0,
@@ -379,106 +276,34 @@ export const BANK_SPEC = Object.freeze({
     shadowScale: 1.035,
     shadowLift: 0.0005,
   }),
-  /** Procedural fluted + dotted panel texture field (fig 5 left plaque). */
-  panel: Object.freeze({
-    textureSize: 1024,
-    /** Vertical flute period in face units (~8.5 px at 1024 over 1.45). */
-    flutePeriod: 0.012,
-    /** Bright-dot grid spacing in face units. */
-    dotSpacing: 0.05,
-    /** Seeded dot-position jitter in face units (subtle: keeps a regular grid). */
-    dotJitter: 0.0035,
-    /** Dot radius in face units (small, even bright dots). */
-    dotRadius: 0.0085,
-    reliefStrength: 1.05,
-    albedoBase: 203,
-    dotGain: 24,
-    fluteGain: 4,
-    roughnessBase: 0.3,
-  }),
-  /** Procedural concrete surface field (fig 5 slab). */
-  surface: Object.freeze({
-    topY: 0.055,
-    width: 14,
-    backZ: -6.5,
-    frontTopZ: 1.8,
-    lipRadius: 0.16,
-    bottomY: -0.95,
-    lipSegments: 7,
-    textureSize: 1024,
-    textureTile: 4,
-    targetMeanLuma: 205,
-    normalStrength: 0.6,
-    speckCells: 88,
-  }),
-  /** Camera-fit lip probe (see STACK_SPEC.fit; bank lip strip is a bit narrower). */
-  fit: Object.freeze({
-    lipCenterOffset: 0,
-    lipHalfWidth: 1.1,
-  }),
-  shadow: Object.freeze({
-    alpha: 0.5,
-    radiusX: 0.98,
-    radiusZ: 0.62,
-    offsetZ: 0.18,
-    raise: 0.0015,
-    rings: 10,
-    segments: 40,
-  }),
 });
 
 /**
  * Every material in the model. `color` is the authored sRGB albedo (converted to
  * linear working values by workingColorFromHex at creation); no baked lighting is
- * stored in any map. The only mapped materials are the two procedural surfaces
- * (`bankPanel` = fluted + dotted field, `concrete` = speckle slab): every plain
- * metal material is map-free. Brand gold is confined to the accent band / edge
- * ring (`goldEdge` carries the subtle emissive); the emblem is silver-on-silver
- * (`emblemSilver` polished cap from the SVG's bright fill, `emblemGraphite` satin
- * cap from the SVG's deep fill) over the dark `socket` outline.
+ * stored in any map and every plain metal material is map-free. Brand gold is
+ * confined to the link glow ring (`goldGlow` carries the subtle emissive); the
+ * emblem is silver-on-silver (`emblemSilver` polished cap from the SVG's bright
+ * fill, `emblemGraphite` satin cap from the SVG's deep fill) over the dark
+ * `socket` outline.
  */
 export const MATERIAL_SPEC = Object.freeze({
-  stackFace: Object.freeze({ color: 0x8a8f96, metalness: 1.0, roughness: 0.32, envMapIntensity: 1.0, role: 'satin silver front face (fig 4)' }),
-  stackBody: Object.freeze({ color: 0x2c2f34, metalness: 1.0, roughness: 0.24, envMapIntensity: 1.0, role: 'dark metal side wall / back (fig 4)' }),
-  stackRim: Object.freeze({ color: 0xd6dbe1, metalness: 1.0, roughness: 0.18, envMapIntensity: 1.1, role: 'rolled polished rim crest (fig 4)' }),
-  bankFace: Object.freeze({ color: 0xcfd3d9, metalness: 1.0, roughness: 0.26, envMapIntensity: 1.05, role: 'bright polished silver plaque face (fig 5)' }),
-  bankBody: Object.freeze({ color: 0xb9bec6, metalness: 1.0, roughness: 0.2, envMapIntensity: 1.0, role: 'bright silver plaque wall / back (fig 5)' }),
-  bankRim: Object.freeze({ color: 0xeef2f6, metalness: 1.0, roughness: 0.12, envMapIntensity: 1.1, role: 'bright rolled edge (fig 5)' }),
-  goldBright: Object.freeze({ color: 0xffd60a, metalness: 1.0, roughness: 0.22, envMapIntensity: 1.1, role: 'brand gold (bright, accents only)' }),
-  goldDeep: Object.freeze({ color: 0x7d5a00, metalness: 1.0, roughness: 0.3, envMapIntensity: 1.0, role: 'brand gold (deep, rear accent band)' }),
-  goldEdge: Object.freeze({ color: 0xffd60a, metalness: 0.9, roughness: 0.25, envMapIntensity: 1.0, emissive: 0xffb300, emissiveIntensity: 0.55, role: 'gold accent band / face edge ring (subtle emissive)' }),
+  bankFace: Object.freeze({ color: 0xcfd3d9, metalness: 1.0, roughness: 0.26, envMapIntensity: 1.05, role: 'bright satin silver plate face (catalogue 03)' }),
+  bankRim: Object.freeze({ color: 0xeef2f6, metalness: 1.0, roughness: 0.12, envMapIntensity: 1.1, role: 'bright rolled edge' }),
   emblemSilver: Object.freeze({ color: 0xd6dbe1, metalness: 1.0, roughness: 0.18, envMapIntensity: 1.1, role: 'machined emblem cap from the SVG bright fill (polished silver)' }),
   emblemGraphite: Object.freeze({ color: 0x6a7078, metalness: 1.0, roughness: 0.36, envMapIntensity: 0.8, role: 'machined emblem cap from the SVG deep fill (satin graphite; tuned so it reads visibly darker than the silver cap)' }),
   socket: Object.freeze({ color: 0x2a2d31, metalness: 0.9, roughness: 0.5, envMapIntensity: 0.7, role: 'emblem socket outline' }),
-  concrete: Object.freeze({
-    color: 0xffffff,
-    metalness: 0.0,
-    roughness: 0.85,
-    envMapIntensity: 0.6,
-    maps: Object.freeze(['albedo', 'normal']),
-    albedoTone: 0xd9d9d7,
-    role: 'bank-scene slab (procedural speckle albedo + normal; the map carries the measured tone)',
-  }),
-  stackFloor: Object.freeze({ color: 0x23262b, metalness: 0.35, roughness: 0.3, envMapIntensity: 0.9, role: 'dark reflective surface slab (fig 4)' }),
-  bankPanel: Object.freeze({
-    color: 0xffffff,
-    metalness: 1.0,
-    roughness: 1.0,
-    envMapIntensity: 1.05,
-    maps: Object.freeze(['albedo', 'normal', 'roughness']),
-    albedoTone: 0xd6dae0,
-    role: 'bright silver fluted + dotted panel (procedural maps carry tone + finish)',
-  }),
   bankIcon: Object.freeze({
     color: 0xffffff,
     colorScale: 1.14,
     metalness: 1.0,
     roughness: 0.14,
     envMapIntensity: 1.25,
-    maps: Object.freeze(['albedo', 'normal']),
-    albedoTone: 0xe4e8ee,
-    role: 'polished silver classical-bank icon relief (same projected panel maps, tighter polish + a touch brighter than the field so the key light catches the pediment/column edges)',
+    role: 'polished silver classical-bank icon relief (tighter polish + a touch brighter than the field so the light catches the pediment/column edges)',
   }),
+  frameSatin: Object.freeze({ color: 0x8d949c, metalness: 1.0, roughness: 0.42, envMapIntensity: 0.95, role: 'silver-grey satin metal middle frame (Rev19)' }),
+  coinFace: Object.freeze({ color: 0xd4d8de, metalness: 1.0, roughness: 0.38, envMapIntensity: 0.92, role: 'coin-style satin silver block face (same metal/roughness/clearcoat as the coin face)' }),
+  goldGlow: Object.freeze({ color: 0xffd60a, metalness: 0.6, roughness: 0.3, envMapIntensity: 0.8, emissive: 0xffc21a, emissiveIntensity: 1.5, role: 'theme-gold glow ring between face and frame' }),
   bankShadow: Object.freeze({
     color: 0x2f3237,
     metalness: 0.0,
@@ -491,7 +316,7 @@ export const MATERIAL_SPEC = Object.freeze({
     metalness: 1.0,
     roughness: 0.1,
     envMapIntensity: 1.25,
-    role: 'polished plain silver for the bank-icon chamfer/side walls (the caps keep the projected fluted/dotted maps)',
+    role: 'polished plain silver for the bank-icon chamfer/side walls',
   }),
   contactShadow: Object.freeze({
     color: 0x000000,
@@ -507,37 +332,37 @@ export const MATERIAL_SPEC = Object.freeze({
  * default; pitch clamps are absolute elevation degrees).
  */
 export const CAMERA_SPEC = Object.freeze({
-  stack: Object.freeze({
+  plates: Object.freeze({
     fov: 30,
     near: 0.05,
     far: 60,
-    azimuthDeg: 24,
-    elevationDeg: 13,
-    yawMinDeg: 8,
-    yawMaxDeg: 40,
-    yawRangeDeg: 16,
-    pitchMinDeg: -4,
-    pitchMaxDeg: 30,
-    dragSensitivity: 0.16,
-    fitMargin: 0.88,
-    fitMarginNarrow: 0.84,
-    narrowStageWidth: 520,
-    targetYOffset: 0,
-  }),
-  bank: Object.freeze({
-    fov: 30,
-    near: 0.05,
-    far: 60,
-    azimuthDeg: 18,
-    elevationDeg: 9,
-    yawMinDeg: 2,
-    yawMaxDeg: 34,
+    azimuthDeg: 0,
+    elevationDeg: 10,
+    yawMinDeg: -16,
+    yawMaxDeg: 16,
     yawRangeDeg: 16,
     pitchMinDeg: -4,
     pitchMaxDeg: 26,
     dragSensitivity: 0.16,
-    fitMargin: 0.82,
-    fitMarginNarrow: 0.78,
+    fitMargin: 0.9,
+    fitMarginNarrow: 0.86,
+    narrowStageWidth: 520,
+    targetYOffset: 0,
+  }),
+  link: Object.freeze({
+    fov: 30,
+    near: 0.05,
+    far: 60,
+    azimuthDeg: 0,
+    elevationDeg: 14,
+    yawMinDeg: -16,
+    yawMaxDeg: 16,
+    yawRangeDeg: 16,
+    pitchMinDeg: -4,
+    pitchMaxDeg: 30,
+    dragSensitivity: 0.16,
+    fitMargin: 0.9,
+    fitMarginNarrow: 0.86,
     narrowStageWidth: 520,
     targetYOffset: 0,
   }),
@@ -565,333 +390,12 @@ function workingColorFromHex(hex) {
   return color;
 }
 
-function createCanvas(width, height) {
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-    throw new Error('logo-blocks-model: a DOM document is required to paint the procedural textures');
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  return canvas;
-}
-
-function get2d(canvas) {
-  const context = typeof canvas.getContext === 'function' ? canvas.getContext('2d', { willReadFrequently: true }) : null;
-  if (!context) throw new Error('logo-blocks-model: 2D canvas context unavailable');
-  return context;
-}
-
-function createCanvasTexture(canvas, name, options = {}) {
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.name = name;
-  if (options.srgb) texture.encoding = THREE.sRGBEncoding;
-  texture.anisotropy = 8;
-  texture.wrapS = options.wrap === 'repeat' ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-  texture.wrapT = options.wrap === 'repeat' ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 /** Triangle count of a geometry (indexed or not). */
 function triangleCountOf(geometry) {
   if (!geometry) return 0;
   if (geometry.index) return geometry.index.count / 3;
   const position = geometry.getAttribute('position');
   return position ? position.count / 3 : 0;
-}
-
-/**
- * Procedural fluted + dotted panel field (fig 5, left plaque).
- *
- * Height field = vertical flute cosine (period `flutePeriod` face units) +
- * seeded bright-dot bumps (grid `dotSpacing`, seeded jitter `dotJitter`, radius
- * `dotRadius`). One pass writes three fixed 1024^2 maps:
- *   albedo    sRGB silver field, brighter ridges and dot crowns;
- *   roughness linear map (multiplied by bankPanel.roughness = 1.0), smoother dots;
- *   normal    tangent-space normal from the analytic height field.
- * Nothing is sampled from the network or from Math.random.
- */
-function buildPanelMaps(spec, faceSize, seed) {
-  const size = spec.textureSize;
-  const pxPerUnit = size / faceSize;
-  const flutePeriodPx = spec.flutePeriod * pxPerUnit;
-  const dotSpacingPx = spec.dotSpacing * pxPerUnit;
-  const random = createSeededRandom(seed ^ 0x50414e4c); // "PANL"
-  const micro = createValueNoise(random, 192, 192);
-
-  // Seeded bright-dot lattice (one dot per cell, jittered inside its cell).
-  const cells = Math.max(4, Math.round(size / dotSpacingPx));
-  const cell = size / cells;
-  const jitterPx = Math.min(0.46, spec.dotJitter / spec.dotSpacing) * cell;
-  const dots = new Array(cells * cells);
-  for (let gy = 0; gy < cells; gy += 1) {
-    for (let gx = 0; gx < cells; gx += 1) {
-      dots[gy * cells + gx] = {
-        x: (gx + 0.5) * cell + (random() - 0.5) * 2 * jitterPx,
-        y: (gy + 0.5) * cell + (random() - 0.5) * 2 * jitterPx,
-        r: spec.dotRadius * pxPerUnit * (0.94 + random() * 0.12),
-      };
-    }
-  }
-
-  const count = size * size;
-  const fluteField = new Float32Array(count);
-  const bumpField = new Float32Array(count);
-  const heightField = new Float32Array(count);
-
-  for (let y = 0; y < size; y += 1) {
-    const gy = Math.floor(y / cell);
-    for (let x = 0; x < size; x += 1) {
-      const i = y * size + x;
-      const flute = Math.cos(((x + 0.5) / flutePeriodPx) * TAU);
-      const gx = Math.floor(x / cell);
-      let bump = 0;
-      for (let oy = -1; oy <= 1; oy += 1) {
-        const cy = gy + oy;
-        if (cy < 0 || cy >= cells) continue;
-        for (let ox = -1; ox <= 1; ox += 1) {
-          const cx = gx + ox;
-          if (cx < 0 || cx >= cells) continue;
-          const dot = dots[cy * cells + cx];
-          const dx = x + 0.5 - dot.x;
-          const dy = y + 0.5 - dot.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < dot.r) {
-            const t = 1 - distance / dot.r;
-            const value = t * t * (3 - 2 * t);
-            if (value > bump) bump = value;
-          }
-        }
-      }
-      fluteField[i] = flute;
-      bumpField[i] = bump;
-      heightField[i] = flute * 0.55 + bump * 1.35 + micro(x / size, y / size) * 0.05;
-    }
-  }
-
-  // --- albedo (sRGB silver field with brighter dot crowns / flute ridges).
-  const albedoCanvas = createCanvas(size, size);
-  const albedoContext = get2d(albedoCanvas);
-  const albedoImage = albedoContext.createImageData(size, size);
-  const albedoData = albedoImage.data;
-  let lumaSum = 0;
-  for (let i = 0; i < count; i += 1) {
-    const microValue = micro((i % size) / size, Math.floor(i / size) / size);
-    const value = spec.albedoBase + fluteField[i] * spec.fluteGain + bumpField[i] * spec.dotGain + microValue * 2.5;
-    const v = clamp(value, 0, 255);
-    const o = i * 4;
-    albedoData[o] = clamp(v - 1, 0, 255);
-    albedoData[o + 1] = clamp(v, 0, 255);
-    albedoData[o + 2] = clamp(v + 3, 0, 255);
-    albedoData[o + 3] = 255;
-    lumaSum += 0.2126 * albedoData[o] + 0.7152 * albedoData[o + 1] + 0.0722 * albedoData[o + 2];
-  }
-  albedoContext.putImageData(albedoImage, 0, 0);
-
-  // --- roughness (linear; smoother dot crowns, slightly rougher flute grooves).
-  const roughCanvas = createCanvas(size, size);
-  const roughContext = get2d(roughCanvas);
-  const roughImage = roughContext.createImageData(size, size);
-  const roughData = roughImage.data;
-  for (let i = 0; i < count; i += 1) {
-    const roughValue = clamp(
-      spec.roughnessBase + (0.5 - fluteField[i] * 0.5) * 0.1 - bumpField[i] * 0.12 + micro((i % size) / size, Math.floor(i / size) / size) * 0.02,
-      0.14,
-      0.46,
-    );
-    const encoded = Math.round(roughValue * 255);
-    const o = i * 4;
-    roughData[o] = encoded;
-    roughData[o + 1] = encoded;
-    roughData[o + 2] = encoded;
-    roughData[o + 3] = 255;
-  }
-  roughContext.putImageData(roughImage, 0, 0);
-
-  // --- normal map from the analytic height field.
-  const normalCanvas = createCanvas(size, size);
-  const normalContext = get2d(normalCanvas);
-  const normalImage = normalContext.createImageData(size, size);
-  const normalData = normalImage.data;
-  const strength = spec.reliefStrength;
-  let maxTilt = 0;
-  for (let y = 0; y < size; y += 1) {
-    const ym = y > 0 ? y - 1 : 0;
-    const yp = y < size - 1 ? y + 1 : size - 1;
-    for (let x = 0; x < size; x += 1) {
-      const xm = x > 0 ? x - 1 : 0;
-      const xp = x < size - 1 ? x + 1 : size - 1;
-      const i = y * size + x;
-      const dhdu = (heightField[y * size + xp] - heightField[y * size + xm]) * 0.5;
-      const dhdv = -(heightField[yp * size + x] - heightField[ym * size + x]) * 0.5;
-      let nx = -dhdu * strength;
-      let ny = -dhdv * strength;
-      const length = Math.sqrt(nx * nx + ny * ny + 1) || 1;
-      nx /= length;
-      ny /= length;
-      const nz = 1 / length;
-      const o = i * 4;
-      normalData[o] = Math.round((nx * 0.5 + 0.5) * 255);
-      normalData[o + 1] = Math.round((ny * 0.5 + 0.5) * 255);
-      normalData[o + 2] = Math.round((nz * 0.5 + 0.5) * 255);
-      normalData[o + 3] = 255;
-      const tilt = Math.sqrt(nx * nx + ny * ny);
-      if (tilt > maxTilt) maxTilt = tilt;
-    }
-  }
-  normalContext.putImageData(normalImage, 0, 0);
-
-  const textures = {
-    albedo: createCanvasTexture(albedoCanvas, 'logo-blocks-bank-panel-albedo', { srgb: true }),
-    normal: createCanvasTexture(normalCanvas, 'logo-blocks-bank-panel-normal'),
-    roughness: createCanvasTexture(roughCanvas, 'logo-blocks-bank-panel-roughness'),
-  };
-  return {
-    textures,
-    stats: {
-      size,
-      faceSize,
-      dotSeed: (seed ^ 0x50414e4c) >>> 0,
-      dotCount: dots.length,
-      dotSpacing: spec.dotSpacing,
-      dotSpacingPx: Math.round(dotSpacingPx * 10) / 10,
-      dotRadius: spec.dotRadius,
-      flutePeriod: spec.flutePeriod,
-      flutePeriodPx: Math.round(flutePeriodPx * 100) / 100,
-      cellPx: Math.round(cell * 100) / 100,
-      meanLuma: Math.round(lumaSum / count),
-      maxTilt: Math.round(maxTilt * 1000) / 1000,
-    },
-  };
-}
-
-/**
- * Procedural concrete surface field (fig 5 slab): seeded multi-scale mottling,
- * fine grain and a wrapped speckle lattice, written into fixed 1024^2 albedo +
- * normal maps that tile seamlessly (`textureTile` world units per repeat). The
- * albedo mean luma is normalised to `targetMeanLuma` (~205) so the slab reads as
- * the reference's light concrete.
- */
-function buildConcreteMaps(spec, seed) {
-  const size = spec.textureSize;
-  const random = createSeededRandom(seed ^ 0x434f4e43); // "CONC"
-  const blotchLow = createValueNoise(random, 6, 6);
-  const blotchMid = createValueNoise(random, 24, 24);
-  const grain = createValueNoise(random, 160, 160);
-
-  // Wrapped speckle lattice (one speckle per cell, jittered inside its cell).
-  const speckCells = spec.speckCells;
-  const speckCell = size / speckCells;
-  const speckles = new Array(speckCells * speckCells);
-  for (let gy = 0; gy < speckCells; gy += 1) {
-    for (let gx = 0; gx < speckCells; gx += 1) {
-      speckles[gy * speckCells + gx] = {
-        x: (gx + 0.5) * speckCell + (random() - 0.5) * speckCell * 0.7,
-        y: (gy + 0.5) * speckCell + (random() - 0.5) * speckCell * 0.7,
-        r: speckCell * (0.08 + random() * 0.14),
-        tone: (random() < 0.55 ? -1 : 1) * (0.4 + random() * 0.6),
-      };
-    }
-  }
-
-  const count = size * size;
-  const lumaField = new Float32Array(count);
-  const heightField = new Float32Array(count);
-  for (let y = 0; y < size; y += 1) {
-    const gy = Math.floor(y / speckCell);
-    for (let x = 0; x < size; x += 1) {
-      const i = y * size + x;
-      const u = x / size;
-      const v = y / size;
-      const low = blotchLow(u, v);
-      const mid = blotchMid(u, v);
-      const grainValue = grain(u, v);
-      let speck = 0;
-      const gx = Math.floor(x / speckCell);
-      if (gx >= 0 && gx < speckCells && gy >= 0 && gy < speckCells) {
-        const s = speckles[gy * speckCells + gx];
-        const dx = x + 0.5 - s.x;
-        const dy = y + 0.5 - s.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < s.r) speck = s.tone * smoothStep(1 - distance / s.r);
-      }
-      lumaField[i] = spec.targetMeanLuma + low * 7 + mid * 4 + grainValue * 3 + speck * 16;
-      heightField[i] = low * 0.8 + mid * 0.35 + grainValue * 0.2 + speck * 0.5;
-    }
-  }
-
-  // Normalise the tinted albedo to the measured mean luma (~205).
-  const tint = [2, 1, -3];
-  let mean = 0;
-  for (let i = 0; i < count; i += 1) {
-    const v = clamp(lumaField[i], 0, 255);
-    mean += 0.2126 * clamp(v + tint[0], 0, 255) + 0.7152 * clamp(v + tint[1], 0, 255) + 0.0722 * clamp(v + tint[2], 0, 255);
-  }
-  mean /= count;
-  const offset = spec.targetMeanLuma - mean;
-
-  const albedoCanvas = createCanvas(size, size);
-  const albedoContext = get2d(albedoCanvas);
-  const albedoImage = albedoContext.createImageData(size, size);
-  const albedoData = albedoImage.data;
-  let finalLuma = 0;
-  for (let i = 0; i < count; i += 1) {
-    const v = clamp(lumaField[i] + offset, 0, 255);
-    const o = i * 4;
-    albedoData[o] = clamp(Math.round(v + tint[0]), 0, 255);
-    albedoData[o + 1] = clamp(Math.round(v + tint[1]), 0, 255);
-    albedoData[o + 2] = clamp(Math.round(v + tint[2]), 0, 255);
-    albedoData[o + 3] = 255;
-    finalLuma += 0.2126 * albedoData[o] + 0.7152 * albedoData[o + 1] + 0.0722 * albedoData[o + 2];
-  }
-  albedoContext.putImageData(albedoImage, 0, 0);
-
-  const normalCanvas = createCanvas(size, size);
-  const normalContext = get2d(normalCanvas);
-  const normalImage = normalContext.createImageData(size, size);
-  const normalData = normalImage.data;
-  const strength = spec.normalStrength;
-  let maxTilt = 0;
-  for (let y = 0; y < size; y += 1) {
-    const ym = y > 0 ? y - 1 : 0;
-    const yp = y < size - 1 ? y + 1 : size - 1;
-    for (let x = 0; x < size; x += 1) {
-      const xm = x > 0 ? x - 1 : 0;
-      const xp = x < size - 1 ? x + 1 : size - 1;
-      const i = y * size + x;
-      const dhdu = (heightField[y * size + xp] - heightField[y * size + xm]) * 0.5;
-      const dhdv = -(heightField[yp * size + x] - heightField[ym * size + x]) * 0.5;
-      let nx = -dhdu * strength;
-      let ny = -dhdv * strength;
-      const length = Math.sqrt(nx * nx + ny * ny + 1) || 1;
-      nx /= length;
-      ny /= length;
-      const nz = 1 / length;
-      const o = i * 4;
-      normalData[o] = Math.round((nx * 0.5 + 0.5) * 255);
-      normalData[o + 1] = Math.round((ny * 0.5 + 0.5) * 255);
-      normalData[o + 2] = Math.round((nz * 0.5 + 0.5) * 255);
-      normalData[o + 3] = 255;
-      const tilt = Math.sqrt(nx * nx + ny * ny);
-      if (tilt > maxTilt) maxTilt = tilt;
-    }
-  }
-  normalContext.putImageData(normalImage, 0, 0);
-
-  const textures = {
-    albedo: createCanvasTexture(albedoCanvas, 'logo-blocks-surface-albedo', { srgb: true, wrap: 'repeat' }),
-    normal: createCanvasTexture(normalCanvas, 'logo-blocks-surface-normal', { wrap: 'repeat' }),
-  };
-  return {
-    textures,
-    stats: {
-      size,
-      tileWorld: spec.textureTile,
-      meanLuma: Math.round(finalLuma / count),
-      normalMaxTilt: Math.round(maxTilt * 1000) / 1000,
-      speckCells,
-    },
-  };
 }
 
 /* ------------------------------------------------------------ geometry core */
@@ -1134,121 +638,16 @@ function buildExtrudedPart(points, options) {
  * UVs (`u = x / tile + 0.5`, `v = z / tile + 0.5`) so a repeatable procedural map
  * tiles across the slab without seams.
  */
-function buildSurfaceTop(width, depth, centreZ, topY, tile) {
-  const geometry = new THREE.PlaneGeometry(width, depth, 1, 1);
-  geometry.rotateX(-Math.PI / 2);
-  geometry.translate(0, topY, centreZ);
-  const position = geometry.getAttribute('position');
-  const uv = new Float32Array(position.count * 2);
-  for (let i = 0; i < position.count; i += 1) {
-    uv[i * 2] = position.getX(i) / tile + 0.5;
-    uv[i * 2 + 1] = position.getZ(i) / tile + 0.5;
-  }
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  geometry.computeVertexNormals();
-  geometry.userData = { role: 'surface top' };
-  return geometry;
-}
-
 /**
  * Swept band for a surface slab cross-section (top front edge -> rounded polished
  * lip -> front wall), extruded across X. UVs are world-scaled on both axes
  * (u = x / tile, v = arc length / tile) so the concrete map keeps its density on
  * the lip and the front face.
  */
-function buildSweptProfile(profile, x0, x1, tile) {
-  const rows = profile.length;
-  const positions = new Float32Array(rows * 2 * 3);
-  const uvs = new Float32Array(rows * 2 * 2);
-  for (let i = 0; i < rows; i += 1) {
-    for (let j = 0; j < 2; j += 1) {
-      const index = i * 2 + j;
-      const x = j === 0 ? x0 : x1;
-      positions[index * 3] = x;
-      positions[index * 3 + 1] = profile[i].y;
-      positions[index * 3 + 2] = profile[i].z;
-      uvs[index * 2] = x / tile + 0.5;
-      uvs[index * 2 + 1] = profile[i].s / tile;
-    }
-  }
-  const indices = new Uint32Array((rows - 1) * 6);
-  let write = 0;
-  for (let i = 0; i < rows - 1; i += 1) {
-    const a = i * 2;
-    const b = i * 2 + 1;
-    const c = (i + 1) * 2;
-    const d = (i + 1) * 2 + 1;
-    indices[write] = a;
-    indices[write + 1] = b;
-    indices[write + 2] = c;
-    indices[write + 3] = b;
-    indices[write + 4] = d;
-    indices[write + 5] = c;
-    write += 6;
-  }
-  const geometry = createIndexedGeometry(positions, indices);
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.computeVertexNormals();
-  // Outward normals of the lip/front wall have a positive Y or Z component.
-  const normal = geometry.getAttribute('normal');
-  let score = 0;
-  const stride = Math.max(1, Math.floor(normal.count / 32));
-  for (let i = 0; i < normal.count; i += stride) score += normal.getY(i) + normal.getZ(i);
-  if (score < 0) {
-    flipWinding(geometry);
-    geometry.computeVertexNormals();
-  }
-  geometry.userData = { role: 'surface lip' };
-  return geometry;
-}
-
 /**
  * Surface slab: flat top plate + swept rounded front lip and front wall. Both
  * scenes use the same construction with their own measured profile and material.
  */
-function buildSurfaceSlab(options) {
-  const { spec, name, material, tile = 4, recorder, geometrySet } = options;
-  const group = new THREE.Group();
-  group.name = name;
-
-  const top = buildSurfaceTop(spec.width, spec.frontTopZ - spec.backZ, (spec.backZ + spec.frontTopZ) / 2, spec.topY, tile);
-  geometrySet.add(top);
-  const topMesh = new THREE.Mesh(top, material);
-  topMesh.name = name + '-top';
-  topMesh.castShadow = false;
-  topMesh.receiveShadow = true;
-  topMesh.userData = { role: 'surface top plane' };
-  group.add(topMesh);
-  recorder.add(topMesh, 'surface top plane');
-
-  const profile = [];
-  let arcLength = 0;
-  let previous = null;
-  const pushProfile = (z, y) => {
-    if (previous) arcLength += Math.hypot(z - previous[0], y - previous[1]);
-    profile.push({ z, y, s: arcLength });
-    previous = [z, y];
-  };
-  pushProfile(spec.frontTopZ, spec.topY);
-  for (let i = 1; i <= spec.lipSegments; i += 1) {
-    const phi = (Math.PI / 2) * (i / spec.lipSegments);
-    pushProfile(spec.frontTopZ + spec.lipRadius * Math.sin(phi), spec.topY - spec.lipRadius + spec.lipRadius * Math.cos(phi));
-  }
-  pushProfile(spec.frontTopZ + spec.lipRadius, spec.bottomY);
-
-  const lip = buildSweptProfile(profile, -spec.width / 2, spec.width / 2, tile);
-  geometrySet.add(lip);
-  const lipMesh = new THREE.Mesh(lip, material);
-  lipMesh.name = name + '-lip';
-  lipMesh.castShadow = false;
-  lipMesh.receiveShadow = true;
-  lipMesh.userData = { role: 'rounded polished surface lip + front wall' };
-  group.add(lipMesh);
-  recorder.add(lipMesh, 'rounded polished surface lip + front wall');
-
-  return group;
-}
-
 /**
  * Soft contact shadow: a flat disc in XZ with per-vertex RGBA (black, alpha
  * fading to zero at the rim). Geometry-only, so it adds no baked shadow map and
@@ -1836,42 +1235,8 @@ function buildEmblem(context) {
 
 /* ------------------------------------------------------- block geometries */
 
-/**
- * Contiguous index run of a rounded-square outline whose outward 2D normal points
- * to -X (the exposed left edge of each rear stack block). The gold accent band is
- * clipped to this run so it reads as a vertical strip on the exposed edge instead
- * of a full gold ring around the face.
- */
-function leftPerimeterIndices(points, maxNormalX) {
-  const count = points.length;
-  const included = new Array(count);
-  for (let i = 0; i < count; i += 1) {
-    const previous = points[(i - 1 + count) % count];
-    const next = points[(i + 1) % count];
-    const tx = next.x - previous.x;
-    const ty = next.y - previous.y;
-    const length = Math.hypot(tx, ty) || 1;
-    // The outline is traversed clockwise, so the outward normal is (-ty, tx).
-    included[i] = -ty / length <= maxNormalX;
-  }
-  let start = -1;
-  for (let i = 0; i < count; i += 1) {
-    if (included[i] && !included[(i - 1 + count) % count]) {
-      start = i;
-      break;
-    }
-  }
-  if (start < 0) return Array.from({ length: count }, (unused, index) => index);
-  const run = [];
-  for (let step = 0; step < count; step += 1) {
-    const index = (start + step) % count;
-    if (!included[index]) break;
-    run.push(index);
-  }
-  return run;
-}
-/** Shared shell geometries of the stack block (all four blocks reuse them). */
-function buildStackShellGeometries(spec, geometrySet) {
+/** Shared shell geometries of a brand plate (all plates reuse them). */
+function buildPlateShellGeometries(spec, geometrySet) {
   const half = spec.faceSize / 2;
   const zOffset = spec.thickness / 2;
   const z = (profileZ) => profileZ - zOffset;
@@ -1905,32 +1270,13 @@ function buildStackShellGeometries(spec, geometrySet) {
     { expected: 'back', uvScale, role: 'back', centre: { x: 0, y: 0, z: z(0) } },
   );
 
-  // Accent band: a thin gold strip that follows the rolled edge from the wall
-  // (zStart) to just behind the crest (zEnd), offset slightly outward and clipped
-  // to the left-facing perimeter run (the exposed edge of a rear block). The face
-  // perimeter stays silver so the gold reads as a few thin strips, not a bezel.
-  const accent = spec.accent;
-  const accentIndices = leftPerimeterIndices(wallRing, accent.faceNormalMaxX);
-  const accentRings = [];
-  const thetaMax = Math.asin(clamp((accent.zEnd - spec.wallEndZ) / radius, -1, 1));
-  for (let i = 0; i <= accent.segments; i += 1) {
-    const theta = thetaMax * (i / accent.segments);
-    const inset = radius * (1 - Math.cos(theta)) - accent.outwardOffset * Math.cos(theta);
-    const profileZ = spec.wallEndZ + radius * Math.sin(theta) + accent.outwardOffset * Math.sin(theta);
-    const points = ring(inset);
-    accentRings.push({ points: accentIndices.map((index) => points[index]), z: z(profileZ) });
-  }
-  const accentGeometry = buildBandGeometry(accentRings, { expected: 'radial', uvScale, role: 'accent', closed: false });
-
   geometrySet.add(wall);
   geometrySet.add(rim);
   geometrySet.add(face);
   geometrySet.add(back);
-  geometrySet.add(accentGeometry);
-  return { wall, rim, face, back, accent: accentGeometry };
+  return { wall, rim, face, back };
 }
 
-/** Shared shell geometries of the bank plaque (both plaques reuse them). */
 function buildBankShellGeometries(spec, geometrySet) {
   const half = spec.faceSize / 2;
   const zOffset = spec.thickness / 2;
@@ -2141,30 +1487,6 @@ function boundsObject(box) {
  * lip; using a narrow strip (rather than the slab's full width) keeps the lip in
  * frame without letting its near corners dominate the fit and shrink the blocks.
  */
-function buildSceneFitPoints(blocks, spec) {
-  const points = [];
-  const box = new THREE.Box3();
-  const blockBox = new THREE.Box3();
-  for (const block of blocks) {
-    block.group.updateMatrixWorld(true);
-    blockBox.setFromObject(block.group);
-    box.union(blockBox);
-    pushBoxCorners(points, blockBox);
-  }
-  const surface = spec.surface;
-  const centreX = (box.min.x + box.max.x) / 2 + spec.fit.lipCenterOffset;
-  const halfWidth = spec.fit.lipHalfWidth;
-  const lipZ = surface.frontTopZ + surface.lipRadius;
-  const lipY = surface.topY - surface.lipRadius;
-  const lipX0 = centreX - halfWidth;
-  const lipX1 = centreX + halfWidth;
-  // Surface where the composition stands, the front edge and the rounded lip.
-  points.push(lipX0, surface.topY, box.min.z, lipX1, surface.topY, box.min.z);
-  points.push(lipX0, surface.topY, surface.frontTopZ, lipX1, surface.topY, surface.frontTopZ);
-  points.push(lipX0, lipY, lipZ, lipX1, lipY, lipZ);
-  return new Float32Array(points);
-}
-
 function aggregateStats(group, recorder) {
   const stats = { triangles: 0, meshes: 0, drawCalls: 0, parts: recorder.parts };
   group.traverse((object) => {
@@ -2179,316 +1501,486 @@ function aggregateStats(group, recorder) {
   return stats;
 }
 
-/* ------------------------------------------------------------ scene: stack */
+/* ---------------------------------------------------- scenes: plates + link */
 
-function buildStackScene(context) {
-  const { spec, materials, emblemTemplate, geometrySet } = context;
-  const root = new THREE.Group();
-  root.name = 'logo-blocks-stack';
-  const recorder = createRecorder();
-  const shell = buildStackShellGeometries(spec, geometrySet);
-  const blocks = [];
-  const blockBox = new THREE.Box3();
-  const bounds = new THREE.Box3();
+const smooth01 = (x) => {
+  const t = Math.min(1, Math.max(0, x));
+  return t * t * (3 - 2 * t);
+};
+const easeOutCubic = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
 
-  for (let index = 0; index < spec.blockCount; index += 1) {
-    const layout = spec.layout;
-    const group = new THREE.Group();
-    group.name = 'logo-block-' + index;
+/**
+ * Scene `plates` (catalogue 03): seven upright silver brand plates. They slide
+ * in from the right one after another (leftmost first, so each plate lands in
+ * front of the parked one and parallel plates never cross) into a cluster that
+ * faces 45 degrees to the right, then every plate rotates about its OWN origin
+ * and spreads along the SAME 45 degree gather line into a row. `open` and
+ * `cluster` share the 1:1 direction vector; only the spacing is larger in
+ * `open`. The camera never moves.
+ */
+export const PLATES_SPEC = Object.freeze({
+  count: 7,
+  /** One loop in seconds (the last ~2.5 s hold the expanded row). */
+  cycle: 11,
+  enter: Object.freeze({ delayStep: 0.35, duration: 1.8, fromDx: 7.5 }),
+  expand: Object.freeze({ start: 4.6, delayStep: 0.14, duration: 2.6 }),
+  cluster: Object.freeze({ stepX: 0.24, stepZ: 0.24, yawDeg: 45 }),
+  /** Same 1:1 direction as `cluster.stepX:cluster.stepZ`; larger spacing only. */
+  open: Object.freeze({ stepX: 0.46, stepZ: 0.46, yawDeg: 45 }),
+});
 
-    const wall = addMesh(group, shell.wall, materials.stackBody, group.name + '-wall', 'dark metal side wall', recorder, index);
-    const rim = addMesh(group, shell.rim, materials.stackRim, group.name + '-rim', 'rolled polished rim crest', recorder, index);
-    const face = addMesh(group, shell.face, materials.stackFace, group.name + '-face', 'recessed satin silver face panel', recorder, index);
-    const back = addMesh(group, shell.back, materials.stackBody, group.name + '-back', 'back plate', recorder, index, { castShadow: false });
+/**
+ * Pure plate pose at time `t` seconds (clamped to one loop). The entrance is
+ * ordered leftmost-first: plate i starts after i * delayStep and slides in from
+ * +X while the already-parked plate i-1 sits behind it along the gather line, so
+ * no two plates ever interpenetrate at any t.
+ */
+export function platesPose(index, t, spec = PLATES_SPEC, spread = true) {
+  const n = spec.count;
+  const c = (n - 1) / 2;
+  const time = Math.min(spec.cycle, Math.max(0, t));
+  const cl = spec.cluster;
+  const op = spec.open;
+  const cx = (index - c) * cl.stepX;
+  const cz = (index - c) * cl.stepZ;
+  const enterDelay = index * spec.enter.delayStep;
+  const enter = easeOutCubic((time - enterDelay) / spec.enter.duration);
+  const expand = spread ? smooth01((time - spec.expand.start - index * spec.expand.delayStep) / spec.expand.duration) : 0;
+  const ox = (index - c) * op.stepX;
+  const oz = (index - c) * op.stepZ;
+  const x = (cx + (1 - enter) * spec.enter.fromDx) * (1 - expand) + ox * expand;
+  const z = cz * (1 - expand) + oz * expand;
+  const yawDeg = cl.yawDeg * (1 - expand) + op.yawDeg * expand;
+  return { x, z, yawDeg, enter, expand };
+}
 
-    // Lead visual review 2026-10-26: the hero block stays monochrome (the
-    // reference's coloured strips live on the exposed rear-block edges); blocks
-    // 1-2 take the bright-gold band and the rear block the deep-gold band.
-    const isRear = index === spec.accent.rearIndex;
-    const hasAccent = spec.accent.frontBand || index !== spec.accent.frontIndex;
-    const accentMaterial = isRear ? materials.goldDeep : materials.goldEdge;
-    let accentMesh = null;
-    if (hasAccent) {
-      accentMesh = addMesh(
-        group,
-        shell.accent,
-        accentMaterial,
-        group.name + '-accent',
-        isRear ? 'deep-gold accent band (rolled outer edge)' : 'bright-gold accent band (rolled outer edge)',
-        recorder,
-        index,
-        { receiveShadow: false },
-      );
+/**
+ * Scene `link` (catalogue 04): logo block + bank block, dotted particle rays.
+ * Rev22: the blocks rest directly on the satin column platform (no pillars), so
+ * only the X/Z placement is authored — the Y is solved from each block's
+ * real world bounding box so its lowest point touches the platform top.
+ */
+export const LINK_SPEC = Object.freeze({
+  tiltDownDeg: 0,
+  yawRightDeg: 45,
+  logo: Object.freeze({ x: 1.0, z: 1.0 }),
+  bank: Object.freeze({ x: -1.0, z: -1.0 }),
+  /** Number of rays and particles per ray (odd => one centre particle). */
+  rays: Object.freeze({ count: 56, particles: 27 }),
+  colors: Object.freeze({ end: 0x6b4f0a, mid: 0xc79a1a, bright: 0xfff0a8 }),
+  /** Brightness weight by distance (in particles) from the ray centre. */
+  weights: Object.freeze([1, 1, 0.58, 0.4]),
+  sizes: Object.freeze({ end: 0.04, mid: 0.056, bright: 0.082 }),
+  ringInset: 0.035,
+});
+
+function resampleClosed(points, count) {
+  const lengths = [0];
+  for (let i = 1; i <= points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i % points.length];
+    lengths.push(lengths[i - 1] + Math.hypot(b.x - a.x, b.y - a.y));
+  }
+  const total = lengths[lengths.length - 1];
+  const out = [];
+  let seg = 1;
+  for (let k = 0; k < count; k += 1) {
+    const s = (total * k) / count;
+    while (seg < lengths.length - 1 && lengths[seg] < s) seg += 1;
+    const a = points[(seg - 1) % points.length];
+    const b = points[seg % points.length];
+    const span = lengths[seg] - lengths[seg - 1] || 1;
+    const f = (s - lengths[seg - 1]) / span;
+    out.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+  }
+  return out;
+}
+
+function buildRoundSprite(textureSet) {
+  const size = 32;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const d = Math.hypot((x + 0.5) / size - 0.5, (y + 0.5) / size - 0.5) * 2;
+      const a = Math.max(0, Math.min(1, (1 - d) / 0.35));
+      const i = (y * size + x) * 4;
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = Math.round(a * a * (3 - 2 * a) * 255);
     }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.name = 'logo-blocks-ray-sprite';
+  texture.needsUpdate = true;
+  textureSet.add(texture);
+  return texture;
+}
 
+/* ------------------------------------------------------ satin column platform */
+
+/**
+ * Union of the composition mesh boxes over the sampled times, plus the per-time
+ * box corner fit points. The platform and the contact shadows are excluded (they
+ * are authored around the composition, not part of it).
+ */
+function sampleFitPoints(group, update, times) {
+  const points = [];
+  const box = new THREE.Box3();
+  const one = new THREE.Box3();
+  for (const t of times) {
+    update(t);
+    group.updateMatrixWorld(true);
+    one.makeEmpty();
+    group.traverse((object) => {
+      if (object.isMesh && !/platform|shadow/.test(object.name)) one.expandByObject(object);
+    });
+    box.union(one);
+    pushBoxCorners(points, one);
+  }
+  return { box, points };
+}
+
+/**
+ * Derive the satin column platform layout from a composition footprint.
+ *
+ * The Columns deliverable column geometry is 600 px long (local Y) with a
+ * 140 x 140 px cross section (local X/Z), 1 px = 1 world unit. Laid horizontal
+ * (rotated -90 deg about Z) and scaled uniformly by `scale`, it runs along world
+ * X, is `140 * scale` tall and its top face is `600 * scale` long by
+ * `140 * scale` deep. `scale` is chosen so the composition footprint (+ margin)
+ * fits the top face in both axes.
+ */
+function createPlatformSpec(platformSpec, footprintBox) {
+  const p = platformSpec;
+  const centreX = (footprintBox.min.x + footprintBox.max.x) / 2;
+  const centreZ = (footprintBox.min.z + footprintBox.max.z) / 2;
+  const needHalfX = Math.max(footprintBox.max.x - centreX, centreX - footprintBox.min.x) + p.marginXZ;
+  const needHalfZ = Math.max(footprintBox.max.z - centreZ, centreZ - footprintBox.min.z) + p.marginXZ;
+  const scale = Math.max((needHalfX * 2) / p.lengthPx, (needHalfZ * 2) / p.crossSectionPx);
+  const halfLength = (p.lengthPx * scale) / 2;
+  const halfDepth = (p.crossSectionPx * scale) / 2;
+  const height = p.crossSectionPx * scale;
+  return {
+    columnId: p.columnId,
+    materialId: p.materialId,
+    source: './src/columns-model.js',
+    footprint: p.footprint,
+    height: p.height,
+    heightPx: p.lengthPx,
+    crossSectionPx: p.crossSectionPx,
+    laidHorizontal: true,
+    scale,
+    topY: p.topY,
+    centreX,
+    centreZ,
+    halfLength,
+    halfDepth,
+    heightWorldY: height,
+    margin: p.marginXZ,
+    fitsComposition: halfLength + 1e-9 >= needHalfX && halfDepth + 1e-9 >= needHalfZ,
+  };
+}
+
+/**
+ * Mount the shared column geometry as a scene's platform mesh. The mesh is the
+ * real Columns deliverable geometry (userData.columnId = satin-large-long) and
+ * the real satin material object from the loaded columns bank.
+ */
+function mountPlatformMesh(sceneModel, geometry, material) {
+  const p = sceneModel.platform;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'logo-blocks-' + sceneModel.name + '-platform';
+  // local +Y (the 600 px length) -> world +X; local +X (140 px) -> world -Y.
+  mesh.rotation.z = -Math.PI / 2;
+  // s53: columns geometry is COLUMN_GEOMETRY_RATIO x larger; shrink it so the on-screen look is unchanged.
+  mesh.scale.setScalar(p.scale / COLUMN_GEOMETRY_RATIO);
+  mesh.position.set(p.centreX, p.topY - (p.crossSectionPx / 2) * p.scale, p.centreZ);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.userData = {
+    role: 'satin columns platform (' + p.columnId + ' laid horizontal)',
+    columnId: p.columnId,
+    laidHorizontal: true,
+    scale: p.scale,
+  };
+  sceneModel.group.add(mesh);
+  sceneModel.platform.mesh = mesh.name;
+  sceneModel.group.updateMatrixWorld(true);
+  return mesh;
+}
+
+/** Contact shadows pressed onto the platform top face (vertex-alpha geometry). */
+function addPlatformShadows(root, recorder, geometrySet, materials, shadowSpec, name, centres) {
+  const geometry = buildContactShadowGeometry(shadowSpec, geometrySet);
+  const meshes = [];
+  centres.forEach((centre, index) => {
+    const mesh = new THREE.Mesh(geometry, materials.contactShadow);
+    mesh.name = name + '-shadow-' + index;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = 2;
+    mesh.position.set(centre.x, shadowSpec.topY + shadowSpec.raise, centre.z);
+    mesh.userData = { role: 'soft contact shadow on the satin column top' };
+    root.add(mesh);
+    recorder.add(mesh, 'soft contact shadow');
+    meshes.push(mesh);
+  });
+  return meshes;
+}
+
+/** Fit points: the composition box corners + the platform top near/far edge probe. */
+function buildPlatformFitPoints(box, platform, probeHalfWidth, points) {
+  pushBoxCorners(points, box);
+  const hw = Math.min(probeHalfWidth, platform.halfLength * 0.9);
+  const nearZ = platform.centreZ + platform.halfDepth;
+  const farZ = platform.centreZ - platform.halfDepth;
+  points.push(platform.centreX - hw, platform.topY, farZ, platform.centreX + hw, platform.topY, farZ);
+  points.push(platform.centreX - hw, platform.topY, nearZ, platform.centreX + hw, platform.topY, nearZ);
+  return new Float32Array(points);
+}
+
+function finishPlayScene(scene, group, recorder, update, times, platform, probeHalfWidth) {
+  const { box, points } = sampleFitPoints(group, update, times);
+  update(times[times.length - 1]);
+  group.updateMatrixWorld(true);
+  box.min.y = platform.topY;
+  scene.bounds = boundsObject(box);
+  scene.fitPoints = buildPlatformFitPoints(box, platform, probeHalfWidth, points);
+  scene.stats = aggregateStats(group, recorder);
+  return scene;
+}
+
+/** Box of the current scene graph, excluding the platform / shadow meshes. */
+function compositionBox(group) {
+  group.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  group.traverse((object) => {
+    if (object.isMesh && !/platform|shadow/.test(object.name)) box.expandByObject(object);
+  });
+  return box;
+}
+
+function buildPlatesScene(context) {
+  const { spec, materials, emblemTemplate, geometrySet } = context;
+  const plates = PLATES_SPEC;
+  const platformConfig = spec.platform;
+  const root = new THREE.Group();
+  root.name = 'logo-blocks-plates';
+  const recorder = createRecorder();
+  const shell = buildPlateShellGeometries(spec, geometrySet);
+  const blocks = [];
+  const centreY = platformConfig.topY + spec.faceSize / 2;
+  for (let index = 0; index < plates.count; index += 1) {
+    const group = new THREE.Group();
+    group.name = 'brand-plate-' + index;
+    const wall = addMesh(group, shell.wall, materials.frameSatin, group.name + '-wall', 'silver-grey satin middle frame', recorder, index);
+    const rim = addMesh(group, shell.rim, materials.bankRim, group.name + '-rim', 'polished rim crest', recorder, index);
+    const face = addMesh(group, shell.face, materials.bankFace, group.name + '-face', 'silver face panel', recorder, index);
+    const back = addMesh(group, shell.back, materials.frameSatin, group.name + '-back', 'back plate', recorder, index, { castShadow: false });
     let emblemGroup = null;
     if (emblemTemplate) {
       emblemGroup = emblemTemplate.group.clone(true);
       emblemGroup.name = group.name + '-emblem';
       group.add(emblemGroup);
-      recorder.aggregate(
-        emblemGroup.name,
-        'TEKO arrow emboss (silver/graphite, 3 shapes)',
-        'emblemSilver+emblemGraphite+socket',
-        emblemTemplate.triangleCount,
-        index,
-      );
+      recorder.aggregate(emblemGroup.name, 'TEKO arrow emboss', 'emblemSilver+emblemGraphite+socket', emblemTemplate.triangleCount, index);
     }
-
-    group.position.set(
-      layout.frontX + layout.stepX * index,
-      spec.surface.topY + layout.frontY + layout.stepY * index,
-      layout.frontZ + layout.stepZ * index,
-    );
-    group.rotation.y = degToRad(layout.stepYawDeg * index);
     root.add(group);
-
-    blocks.push({
-      index,
-      id: 'block-' + index,
-      group,
-      mesh: wall,
-      meshes: { wall, rim, face, back },
-      emblemGroup,
-      accentMesh,
-      accentTone: !hasAccent ? 'none' : isRear ? 'deep' : 'bright',
-    });
+    blocks.push({ index, id: 'plate-' + index, group, mesh: wall, meshes: { wall, rim, face, back }, emblemGroup });
   }
 
-  // Authored dark reflective surface slab + soft contact shadow.
-  const surfaceName = 'logo-blocks-stack-surface';
-  const surface = buildSurfaceSlab({
-    spec: spec.surface,
-    name: surfaceName,
-    material: materials.stackFloor,
-    tile: 2,
+  const shadows = [];
+  const flags = { spread: true };
+  const update = (t) => {
+    for (const block of blocks) {
+      const pose = platesPose(block.index, t, plates, flags.spread);
+      block.group.position.set(pose.x, centreY, pose.z);
+      block.group.rotation.set(0, degToRad(pose.yawDeg), 0);
+      block.pose = pose;
+      const shadow = shadows[block.index];
+      if (shadow) shadow.position.set(pose.x, platformConfig.topY + spec.shadow.raise, pose.z);
+    }
+  };
+  update(plates.cycle);
+  const platform = createPlatformSpec(platformConfig, compositionBox(root));
+
+  shadows.push(...addPlatformShadows(
+    root,
     recorder,
     geometrySet,
-  });
-  root.add(surface);
-
-  const shadowGeometry = buildContactShadowGeometry(spec.shadow, geometrySet);
-  const shadowMesh = new THREE.Mesh(shadowGeometry, materials.contactShadow);
-  shadowMesh.name = 'logo-blocks-stack-contact-shadow';
-  shadowMesh.castShadow = false;
-  shadowMesh.receiveShadow = false;
-  shadowMesh.renderOrder = 2;
-  shadowMesh.position.set(spec.shadow.centerX, spec.surface.topY + spec.shadow.raise, spec.shadow.centerZ);
-  shadowMesh.userData = { role: 'soft contact shadow' };
-  root.add(shadowMesh);
-  recorder.add(shadowMesh, 'soft contact shadow');
-
-  // Composition bounds (the blocks), camera fit points (blocks + table lip).
-  for (const block of blocks) {
-    block.group.updateMatrixWorld(true);
-    blockBox.setFromObject(block.group);
-    bounds.union(blockBox);
-  }
-  // The accent shell stands ~0.002 proud of the block silhouette; snap the
-  // resting plane so bounds.min.y is exactly the surface the stack stands on.
-  if (Math.abs(bounds.min.y - spec.surface.topY) < 0.02) bounds.min.y = spec.surface.topY;
-  const fitPoints = buildSceneFitPoints(blocks, spec);
-
-  const accentInfo = {
-    count: blocks.filter((block) => block.accentMesh).length,
-    colorSrgb: hexString(spec.accent.brightColor),
-    deepSrgb: hexString(spec.accent.deepColor),
-    emissiveSrgb: hexString(spec.accent.emissiveColor),
-    emissiveIntensity: spec.accent.emissiveIntensity,
-    bandHeight: spec.accent.zEnd - spec.accent.zStart,
-    frontBlockAccent: spec.accent.frontBand,
-    blocks: blocks.map((block) => ({
-      index: block.index,
-      tone: block.accentTone,
-      colorSrgb:
-        block.accentTone === 'deep'
-          ? hexString(spec.accent.deepColor)
-          : block.accentTone === 'bright'
-            ? hexString(spec.accent.brightColor)
-            : null,
-      material: block.accentMesh ? block.accentMesh.material.name : null,
-    })),
-  };
+    materials,
+    { ...spec.shadow, topY: platform.topY },
+    'logo-blocks-plates',
+    blocks.map((block) => ({ x: block.group.position.x, z: block.group.position.z })),
+  ));
 
   const scene = {
-    name: 'stack',
+    name: 'plates',
     group: root,
     blocks,
-    bounds: boundsObject(bounds),
-    fitPoints,
-    stats: aggregateStats(root, recorder),
-    emblem: emblemTemplate ? emblemDebug(emblemTemplate) : emptyEmblemDebug(STACK_SPEC, context.logoSource),
-    accent: accentInfo,
-    surface: { name: surfaceName + '-top', topY: spec.surface.topY, frontLipZ: spec.surface.frontTopZ + spec.surface.lipRadius },
+    animation: { duration: plates.cycle, spec: plates },
+    update,
+    /** Spread on/off (default on); caller re-runs update(t) afterwards. */
+    setSpread(on) { flags.spread = Boolean(on); },
+    getSpread() { return flags.spread; },
+    platform,
+    emblem: emblemTemplate ? emblemDebug(emblemTemplate) : emptyEmblemDebug(spec, context.logoSource),
+    shadows: shadows.map((mesh) => mesh.name),
   };
-  return scene;
+  return finishPlayScene(scene, root, recorder, update, [plates.expand.start - 0.2, 7, plates.cycle], platform, platformConfig.probeHalfWidth);
 }
 
-/* ------------------------------------------------------------- scene: bank */
-
-function buildBankScene(context) {
-  const { spec, materials, emblemTemplate, geometrySet, panelStats, surfaceStats } = context;
+function buildLinkScene(context) {
+  const { spec, materials, emblemTemplate, geometrySet, textureSet, platformSpec } = context;
+  const link = LINK_SPEC;
   const root = new THREE.Group();
-  root.name = 'logo-blocks-bank';
+  root.name = 'logo-blocks-link';
   const recorder = createRecorder();
   const shell = buildBankShellGeometries(spec, geometrySet);
   const blocks = [];
+  const euler = new THREE.Euler(degToRad(link.tiltDownDeg), degToRad(link.yawRightDeg), 0, 'YXZ');
+  const platformTopY = platformSpec.platform.topY;
 
-  const definitions = [
-    { id: 'bank', layout: spec.layout.bank, panelMaterial: materials.bankPanel, panelRole: 'recessed fluted + dotted procedural panel' },
-    { id: 'logo', layout: spec.layout.logo, panelMaterial: materials.bankFace, panelRole: 'recessed bright silver face panel' },
-  ];
-
-  for (let index = 0; index < definitions.length; index += 1) {
-    const definition = definitions[index];
+  const makeBlock = (id, place, index) => {
     const group = new THREE.Group();
-    group.name = 'bank-block-' + definition.id;
-
-    const wall = addMesh(group, shell.wall, materials.bankBody, group.name + '-wall', 'bright silver wall', recorder, index);
-    const rim = addMesh(group, shell.rim, materials.bankRim, group.name + '-rim', 'bright rolled edge', recorder, index);
-    const panelMesh = addMesh(group, shell.face, definition.panelMaterial, group.name + '-panel', definition.panelRole, recorder, index);
-    const back = addMesh(group, shell.back, materials.bankBody, group.name + '-back', 'back plate', recorder, index, { castShadow: false });
-
-    group.position.set(definition.layout.x, definition.layout.y, definition.layout.z);
-    group.rotation.y = degToRad(definition.layout.yawDeg);
-
-    const block = { index, id: definition.id, group, mesh: wall, panelMesh, meshes: { wall, rim, panel: panelMesh, back } };
-
-    if (definition.id === 'logo') {
-      const ringMesh = addMesh(
-        group,
-        shell.ring,
-        materials.goldEdge,
-        group.name + '-gold-ring',
-        'thin gold accent ring around the face edge',
-        recorder,
-        index,
-        { receiveShadow: false },
-      );
-      block.accentMesh = ringMesh;
-      if (emblemTemplate) {
-        const emblemGroup = emblemTemplate.group.clone(true);
-        emblemGroup.name = group.name + '-emblem';
-        group.add(emblemGroup);
-        block.emblemGroup = emblemGroup;
-        recorder.aggregate(
-          emblemGroup.name,
-          'TEKO arrow emboss (silver/graphite, 3 shapes)',
-          'emblemSilver+emblemGraphite+socket',
-          emblemTemplate.triangleCount,
-          index,
-        );
-      }
-    } else {
-      const icon = buildBankIcon({
-        spec: spec.bankIcon,
-        faceSize: spec.faceSize,
-        materials,
-        geometrySet,
-        panelZ: spec.faceZ - spec.thickness / 2,
-      });
-      group.add(icon.group);
-      block.bankIcon = {
-        group: icon.group,
-        parts: icon.parts,
-        shadowParts: icon.shadowParts,
-        shapeCount: icon.shapeCount,
-        shadowShapeCount: icon.shadowShapeCount,
-        relief: icon.relief,
-        width: icon.width,
-        measuredWidth: icon.measuredWidth,
-        measuredHeight: icon.measuredHeight,
-        triangleCount: icon.parts.reduce((sum, part) => sum + part.triangles, 0),
-        shadowTriangleCount: icon.shadowParts.reduce((sum, part) => sum + part.triangles, 0),
-      };
-      recorder.aggregate(group.name + '-bank-icon', 'classical bank icon relief (12 rounded shapes)', 'bankIcon+bankIconEdge',
-        icon.parts.reduce((sum, part) => sum + part.triangles, 0), index);
-      recorder.aggregate(group.name + '-bank-icon-shadow', 'bank icon shadow/separation plates (12)', 'bankShadow',
-        icon.shadowParts.reduce((sum, part) => sum + part.triangles, 0), index);
-    }
-
+    group.name = 'link-block-' + id;
+    const wall = addMesh(group, shell.wall, materials.frameSatin, group.name + '-wall', 'satin metal middle frame', recorder, index);
+    const rim = addMesh(group, shell.rim, materials.frameSatin, group.name + '-rim', 'satin metal frame edge', recorder, index);
+    const panel = addMesh(group, shell.face, materials.coinFace, group.name + '-panel', 'coin-style satin face', recorder, index);
+    const back = addMesh(group, shell.back, materials.frameSatin, group.name + '-back', 'back plate', recorder, index, { castShadow: false });
+    const glow = addMesh(group, shell.ring, materials.goldGlow, group.name + '-gold-glow', 'theme-gold glow ring between face and frame', recorder, index, { receiveShadow: false });
+    group.position.set(place.x, 0, place.z);
+    group.rotation.copy(euler);
     root.add(group);
-    blocks.push(block);
-  }
+    return { index, id, group, mesh: wall, panelMesh: panel, accentMesh: glow, meshes: { wall, rim, panel, back, glow } };
+  };
 
-  // Authored light concrete surface slab + soft contact shadows under both plaques.
-  const surfaceName = 'logo-blocks-bank-surface';
-  const surface = buildSurfaceSlab({
-    spec: spec.surface,
-    name: surfaceName,
-    material: materials.concrete,
-    tile: spec.surface.textureTile,
-    recorder,
+  const logoBlock = makeBlock('logo', link.logo, 0);
+  const bankBlock = makeBlock('bank', link.bank, 1);
+  blocks.push(logoBlock, bankBlock);
+  if (emblemTemplate) {
+    const emblemGroup = emblemTemplate.group.clone(true);
+    emblemGroup.name = 'link-block-logo-emblem';
+    logoBlock.group.add(emblemGroup);
+    logoBlock.emblemGroup = emblemGroup;
+    recorder.aggregate(emblemGroup.name, 'TEKO arrow emboss', 'emblemSilver+emblemGraphite+socket', emblemTemplate.triangleCount, 0);
+  }
+  const icon = buildBankIcon({
+    spec: spec.bankIcon,
+    faceSize: spec.faceSize,
+    materials,
     geometrySet,
+    panelZ: spec.faceZ - spec.thickness / 2,
   });
-  root.add(surface);
+  bankBlock.group.add(icon.group);
+  bankBlock.bankIcon = { shapeCount: icon.shapeCount };
+  recorder.aggregate('link-block-bank-icon', 'classical bank icon relief', 'bankIcon+bankIconEdge',
+    icon.parts.reduce((sum, part) => sum + part.triangles, 0), 1);
 
-  const shadowGeometry = buildContactShadowGeometry(spec.shadow, geometrySet);
-  for (const block of blocks) {
-    const shadowMesh = new THREE.Mesh(shadowGeometry, materials.contactShadow);
-    shadowMesh.name = 'logo-blocks-bank-shadow-' + block.id;
-    shadowMesh.castShadow = false;
-    shadowMesh.receiveShadow = false;
-    shadowMesh.renderOrder = 2;
-    shadowMesh.position.set(block.group.position.x, spec.surface.topY + spec.shadow.raise, block.group.position.z + spec.shadow.offsetZ);
-    shadowMesh.userData = { role: 'soft contact shadow' };
-    root.add(shadowMesh);
-    recorder.add(shadowMesh, 'soft contact shadow');
-  }
-
-  const bounds = new THREE.Box3();
-  const blockBox = new THREE.Box3();
+  // Rev22: no pillars — seat every block so its lowest point is exactly
+  // the satin column top (measured from the real world box, so the yaw
+  // cannot leave a float or a sink).
   for (const block of blocks) {
     block.group.updateMatrixWorld(true);
-    blockBox.setFromObject(block.group);
-    bounds.union(blockBox);
+    const box = new THREE.Box3().setFromObject(block.group);
+    block.group.position.y += platformTopY - box.min.y;
+    block.group.updateMatrixWorld(true);
+    block.seatOffset = block.group.position.y;
   }
-  // Float32 vertex precision makes the resting plane a few 1e-8 off; snap it to
-  // the authored slab top so the previewer's studio floor aligns exactly.
-  if (Math.abs(bounds.min.y - spec.surface.topY) < 0.02) bounds.min.y = spec.surface.topY;
-  const fitPoints = buildSceneFitPoints(blocks, spec);
+  root.updateMatrixWorld(true);
 
-  const texturesRuntime = {
-    panel: {
-      albedo: context.panelMaps.textures.albedo,
-      normal: context.panelMaps.textures.normal,
-      roughness: context.panelMaps.textures.roughness,
-      size: panelStats.size,
-      faceSize: panelStats.faceSize,
-      flutePeriod: spec.panel.flutePeriod,
-      flutePeriodPx: panelStats.flutePeriodPx,
-      dotSpacing: spec.panel.dotSpacing,
-      dotSpacingPx: panelStats.dotSpacingPx,
-      dotCount: panelStats.dotCount,
-      dotSeed: panelStats.dotSeed,
-    },
-    surface: {
-      albedo: context.surfaceMaps.textures.albedo,
-      normal: context.surfaceMaps.textures.normal,
-      roughness: null,
-      size: surfaceStats.size,
-      tileWorld: surfaceStats.tileWorld,
-      meanLuma: surfaceStats.meanLuma,
-    },
-    dotSeed: panelStats.dotSeed,
-    dotSpacing: spec.panel.dotSpacing,
-    flutePeriod: spec.panel.flutePeriod,
-  };
+  // Dotted particle rays: logo block BACK edge ring -> bank block FRONT edge ring.
+  const half = spec.faceSize / 2 - link.ringInset;
+  const ring = roundedRectPoints(half, spec.cornerRadius - link.ringInset, spec.cornerSegments, spec.edgeSegments);
+  const ringPoints = resampleClosed(ring, link.rays.count);
+  const backZ = -spec.thickness / 2 - 0.004;
+  const frontZ = spec.crestZ - spec.thickness / 2 + 0.004;
+  const worldPoint = (block, p, z) => new THREE.Vector3(p.x, p.y, z).applyMatrix4(block.group.matrixWorld);
+  const particles = link.rays.particles;
+  const centre = (particles - 1) / 2;
+  const tiers = { end: [], mid: [], bright: [] };
+  const lines = [];
+  for (let k = 0; k < ringPoints.length; k += 1) {
+    const a = worldPoint(logoBlock, ringPoints[k], backZ);
+    const b = worldPoint(bankBlock, ringPoints[k], frontZ);
+    lines.push({ from: a, to: b });
+    for (let j = 0; j < particles; j += 1) {
+      const u = j / (particles - 1);
+      const d = Math.round(Math.abs(j - centre));
+      const weight = d < link.weights.length ? link.weights[d] : 0;
+      const tier = weight >= 1 ? 'bright' : weight > 0 ? 'mid' : 'end';
+      // the outer particles fade toward the darkest tone at the very ends
+      const fade = 0.55 + 0.45 * Math.min(1, Math.min(u, 1 - u) * 6);
+      tiers[tier].push({
+        x: a.x + (b.x - a.x) * u,
+        y: a.y + (b.y - a.y) * u,
+        z: a.z + (b.z - a.z) * u,
+        w: tier === 'end' ? fade : 1,
+      });
+    }
+  }
+  const sprite = buildRoundSprite(textureSet);
+  const rays = new THREE.Group();
+  rays.name = 'link-rays';
+  const tierCounts = {};
+  for (const tier of ['end', 'mid', 'bright']) {
+    const list = tiers[tier];
+    const positions = new Float32Array(list.length * 3);
+    const colors = new Float32Array(list.length * 3);
+    const base = workingColorFromHex(link.colors[tier]);
+    list.forEach((p, i) => {
+      positions.set([p.x, p.y, p.z], i * 3);
+      const c = base.clone().multiplyScalar(p.w);
+      colors.set([c.r, c.g, c.b], i * 3);
+    });
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometrySet.add(geometry);
+    const material = new THREE.PointsMaterial({
+      name: 'logo-blocks-ray-' + tier,
+      size: link.sizes[tier],
+      sizeAttenuation: true,
+      map: sprite,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    materials['ray_' + tier] = material;
+    const points = new THREE.Points(geometry, material);
+    points.name = 'link-rays-' + tier;
+    points.frustumCulled = false;
+    points.renderOrder = 4;
+    points.userData = { role: 'particle rays (' + tier + ')' };
+    rays.add(points);
+    tierCounts[tier] = list.length;
+  }
+  root.add(rays);
+
+  const platform = createPlatformSpec(platformSpec.platform, compositionBox(root));
+  const shadows = addPlatformShadows(
+    root,
+    recorder,
+    geometrySet,
+    materials,
+    { ...platformSpec.shadow, topY: platform.topY },
+    'logo-blocks-link',
+    blocks.map((block) => ({ x: block.group.position.x, z: block.group.position.z })),
+  );
 
   const scene = {
-    name: 'bank',
+    name: 'link',
     group: root,
     blocks,
-    bounds: boundsObject(bounds),
-    fitPoints,
-    stats: aggregateStats(root, recorder),
-    emblem: emblemTemplate ? emblemDebug(emblemTemplate) : emptyEmblemDebug(BANK_SPEC, context.logoSource),
-    bankIcon: blocks.find((block) => block.bankIcon) ? bankIconDebug(blocks.find((block) => block.bankIcon).bankIcon, spec) : null,
-    textures: texturesRuntime,
-    surface: { name: surfaceName + '-top', topY: spec.surface.topY, frontLipZ: spec.surface.frontTopZ + spec.surface.lipRadius },
+    rays: { group: rays, count: ringPoints.length, particlesPerRay: particles, tiers: tierCounts, lines },
+    platform,
+    shadows: shadows.map((mesh) => mesh.name),
+    emblem: emblemTemplate ? emblemDebug(emblemTemplate) : emptyEmblemDebug(spec, context.logoSource),
   };
-  return scene;
+  return finishPlayScene(scene, root, recorder, () => {}, [0], platform, platformSpec.platform.probeHalfWidth);
 }
+
 
 /* ----------------------------------------------------------- debug helpers */
 
@@ -2520,21 +2012,6 @@ function emptyEmblemDebug(spec, source) {
     triangleCount: 0,
     parts: [],
     note: 'logo SVG not supplied to createLogoBlocksModel',
-  };
-}
-
-function bankIconDebug(bankIcon, spec) {
-  return {
-    shapeCount: bankIcon.shapeCount,
-    shadowShapeCount: bankIcon.shadowShapeCount || 0,
-    parts: bankIcon.parts.map((part) => ({ name: part.name, triangles: Math.round(part.triangles) })),
-    relief: bankIcon.relief,
-    width: bankIcon.width,
-    measuredWidth: bankIcon.measuredWidth,
-    measuredHeight: bankIcon.measuredHeight,
-    triangleCount: Math.round(bankIcon.triangleCount),
-    shadowTriangleCount: Math.round(bankIcon.shadowTriangleCount || 0),
-    panelWidth: spec.faceSize,
   };
 }
 
@@ -2570,112 +2047,34 @@ function materialDebug(key, material, spec) {
   };
 }
 
-function sceneDebug(scene, spec) {
-  const sceneSurface = spec.surface;
-  const base = {
+function extraSceneDebug(scene) {
+  const out = {
     name: scene.name,
     blockCount: scene.blocks.length,
-    blocks: scene.blocks.map((block) => {
-      const position = block.group.position;
-      return {
-        index: block.index,
-        id: block.id,
-        position: { x: position.x, y: position.y, z: position.z },
-        rotationYDeg: Math.round((block.group.rotation.y / DEG) * 1000) / 1000,
-        faceSize: spec.faceSize,
-        thickness: spec.thickness,
-        cornerRadius: spec.cornerRadius,
-        triangles: Math.round(triangleCountOf(block.mesh.geometry)),
-        accentTone: block.accentTone || null,
-        accentMaterial: block.accentMesh ? block.accentMesh.material.name : null,
-        emblemShapes: block.emblemGroup ? 3 : 0,
-        panel: block.panelMesh ? block.panelMesh.material.name : null,
-        bankIconShapes: block.bankIcon ? block.bankIcon.shapeCount : 0,
-      };
-    }),
-    layout: {
-      frontBlockAtPositiveXZ: scene.name === 'stack',
-      stepX: scene.name === 'stack' ? STACK_SPEC.layout.stepX : null,
-      stepZ: scene.name === 'stack' ? STACK_SPEC.layout.stepZ : null,
-      stepY: scene.name === 'stack' ? STACK_SPEC.layout.stepY : null,
-      stepYawDeg: scene.name === 'stack' ? STACK_SPEC.layout.stepYawDeg : null,
-      plaqueY: scene.name === 'bank' ? BANK_SPEC.layout.plaqueY : null,
-    },
+    blocks: scene.blocks.map((block) => ({
+      index: block.index,
+      id: block.id,
+      position: { x: block.group.position.x, y: block.group.position.y, z: block.group.position.z },
+      rotationDeg: {
+        x: Math.round((block.group.rotation.x / DEG) * 1000) / 1000,
+        y: Math.round((block.group.rotation.y / DEG) * 1000) / 1000,
+        z: Math.round((block.group.rotation.z / DEG) * 1000) / 1000,
+      },
+    })),
     bounds: scene.bounds,
-    fitPoints: {
-      count: scene.fitPoints.length / 3,
-      min: minOfPoints(scene.fitPoints),
-      max: maxOfPoints(scene.fitPoints),
-    },
     stats: scene.stats,
-    emblem: scene.emblem,
-    surface: {
-      topY: scene.surface.topY,
-      frontLipZ: scene.surface.frontLipZ,
-      slabWidth: sceneSurface.width,
-      slabFrontTopZ: sceneSurface.frontTopZ,
-      slabBackZ: sceneSurface.backZ,
-    },
+    animation: scene.animation ? { duration: scene.animation.duration } : null,
+    rays: scene.rays ? { count: scene.rays.count, particlesPerRay: scene.rays.particlesPerRay, tiers: scene.rays.tiers } : null,
+    platform: scene.platform || null,
+    shadows: Array.isArray(scene.shadows) ? scene.shadows : [],
   };
-  if (scene.accent) base.accent = scene.accent;
-  if (scene.bankIcon) base.bankIcon = scene.bankIcon;
-  if (scene.textures) {
-    base.textures = {
-      panel: {
-        size: scene.textures.panel.size,
-        albedo: textureDebug(scene.textures.panel.albedo),
-        normal: textureDebug(scene.textures.panel.normal),
-        roughness: textureDebug(scene.textures.panel.roughness),
-        flutePeriod: scene.textures.panel.flutePeriod,
-        flutePeriodPx: scene.textures.panel.flutePeriodPx,
-        dotSpacing: scene.textures.panel.dotSpacing,
-        dotSpacingPx: scene.textures.panel.dotSpacingPx,
-        dotCount: scene.textures.panel.dotCount,
-        dotSeed: scene.textures.panel.dotSeed,
-      },
-      surface: {
-        size: scene.textures.surface.size,
-        albedo: textureDebug(scene.textures.surface.albedo),
-        normal: textureDebug(scene.textures.surface.normal),
-        roughness: null,
-        tileWorld: scene.textures.surface.tileWorld,
-        meanLuma: scene.textures.surface.meanLuma,
-      },
-      dotSeed: scene.textures.dotSeed,
-      dotSpacing: scene.textures.dotSpacing,
-      flutePeriod: scene.textures.flutePeriod,
-    };
-  }
-  return base;
-}
-
-function minOfPoints(points) {
-  let x = Infinity;
-  let y = Infinity;
-  let z = Infinity;
-  for (let i = 0; i < points.length; i += 3) {
-    if (points[i] < x) x = points[i];
-    if (points[i + 1] < y) y = points[i + 1];
-    if (points[i + 2] < z) z = points[i + 2];
-  }
-  return { x, y, z };
-}
-
-function maxOfPoints(points) {
-  let x = -Infinity;
-  let y = -Infinity;
-  let z = -Infinity;
-  for (let i = 0; i < points.length; i += 3) {
-    if (points[i] > x) x = points[i];
-    if (points[i + 1] > y) y = points[i + 1];
-    if (points[i + 2] > z) z = points[i + 2];
-  }
-  return { x, y, z };
+  if (scene.bankIcon) out.bankIcon = { shapeCount: scene.bankIcon.shapeCount };
+  return out;
 }
 
 /* ------------------------------------------------------------------ model */
 
-function createMaterials(textures) {
+function createMaterials() {
   const materials = {};
   for (const [key, config] of Object.entries(MATERIAL_SPEC)) {
     if (config.kind === 'shadow') {
@@ -2705,31 +2104,27 @@ function createMaterials(textures) {
       material.emissive = workingColorFromHex(config.emissive);
       material.emissiveIntensity = config.emissiveIntensity === undefined ? 1 : config.emissiveIntensity;
     }
-    if (key === 'bankPanel' && textures && textures.panel) {
-      material.map = textures.panel.albedo;
-      material.normalMap = textures.panel.normal;
-      material.roughnessMap = textures.panel.roughness;
-      // The roughness map carries the 0.14..0.46 range; material.roughness is a
-      // multiplier in three, so it stays at 1.0.
-      material.roughness = 1.0;
-    }
-    if (key === 'bankIcon' && textures && textures.panel) {
-      // Same projected fluted/dotted field continues across the raised icon, but
-      // the icon stays polished (scalar roughness) so its chamfer catches the key
-      // light and reads as a raised classical bank, not engraved lines.
-      material.map = textures.panel.albedo;
-      material.normalMap = textures.panel.normal;
-    }
-    if (key === 'concrete' && textures && textures.surface) {
-      material.map = textures.surface.albedo;
-      material.normalMap = textures.surface.normal;
-    }
     material.userData = {
       role: config.role,
       specColorHex: hexString(config.color),
       procedural: true,
       local: true,
     };
+    if (key === 'coinFace') {
+      const physical = new THREE.MeshPhysicalMaterial({
+        name: material.name,
+        color: material.color.clone(),
+        metalness: config.metalness,
+        roughness: config.roughness,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.34,
+        envMapIntensity: config.envMapIntensity,
+      });
+      physical.userData = material.userData;
+      material.dispose();
+      materials[key] = physical;
+      continue;
+    }
     materials[key] = material;
   }
   return materials;
@@ -2742,9 +2137,8 @@ function createMaterials(textures) {
  * @param {string} options.logoSvgText  UTF-8 text of assets/logo-blocks/teko2_icon.svg
  * @param {string} [options.logoSourcePath] provenance path reported by getDebug()
  * @param {number} [options.seed] override for the fixed SEED (QA only; keep default)
- * @param {string} [options.quality] 'hero' (default) or 'preview'; geometry and
- *   texture resolution are fixed, so both qualities are byte-identical — the
- *   option is recorded for the previewer's layer rail but never changes output.
+ * @param {string} [options.quality] 'hero' (default) or 'preview'; geometry is
+ *   fixed, so both qualities are byte-identical after the Rev22 scene removal.
  * @returns {object} model
  */
 export function createLogoBlocksModel(options = {}) {
@@ -2756,35 +2150,28 @@ export function createLogoBlocksModel(options = {}) {
   const warnings = [];
   const geometrySet = new Set();
   const textureSet = new Set();
-
-  // Two procedural surface texture families, both fixed 1024^2 and seeded.
-  const panelMaps = buildPanelMaps(BANK_SPEC.panel, BANK_SPEC.faceSize, seed);
-  const surfaceMaps = buildConcreteMaps(BANK_SPEC.surface, seed);
-  for (const texture of Object.values(panelMaps.textures)) textureSet.add(texture);
-  for (const texture of Object.values(surfaceMaps.textures)) textureSet.add(texture);
-  const textures = { panel: panelMaps.textures, surface: surfaceMaps.textures };
-  const materials = createMaterials(textures);
+  const materials = createMaterials();
 
   let parsedLogo = null;
-  let stackEmblem = null;
-  let bankEmblem = null;
+  let plateEmblem = null;
+  let linkEmblem = null;
   if (logoSvgText) {
     try {
-      parsedLogo = parseTekoLogoSvg(logoSvgText, { curveSegments: STACK_SPEC.emblem.curveSegments });
-      stackEmblem = buildEmblem({
+      parsedLogo = parseTekoLogoSvg(logoSvgText, { curveSegments: PLATE_SPEC.emblem.curveSegments });
+      plateEmblem = buildEmblem({
         parsed: parsedLogo,
-        spec: STACK_SPEC.emblem,
-        faceSize: STACK_SPEC.faceSize,
-        surfaceZ: STACK_SPEC.faceZ - STACK_SPEC.thickness / 2,
+        spec: PLATE_SPEC.emblem,
+        faceSize: PLATE_SPEC.faceSize,
+        surfaceZ: PLATE_SPEC.faceZ - PLATE_SPEC.thickness / 2,
         materials,
         geometrySet,
         source: logoSource,
       });
-      bankEmblem = buildEmblem({
+      linkEmblem = buildEmblem({
         parsed: parsedLogo,
-        spec: BANK_SPEC.emblem,
-        faceSize: BANK_SPEC.faceSize,
-        surfaceZ: BANK_SPEC.faceZ - BANK_SPEC.thickness / 2,
+        spec: LINK_BLOCK_SPEC.emblem,
+        faceSize: LINK_BLOCK_SPEC.faceSize,
+        surfaceZ: LINK_BLOCK_SPEC.faceZ - LINK_BLOCK_SPEC.thickness / 2,
         materials,
         geometrySet,
         source: logoSource,
@@ -2792,39 +2179,38 @@ export function createLogoBlocksModel(options = {}) {
     } catch (error) {
       warnings.push('emblem export failed: ' + (error && error.message ? error.message : error));
       parsedLogo = null;
-      stackEmblem = null;
-      bankEmblem = null;
+      plateEmblem = null;
+      linkEmblem = null;
     }
   } else {
-    warnings.push('no logo SVG source supplied; logo blocks built without the TEKO emblem');
+    warnings.push('no logo SVG source supplied; the logo blocks are built without the TEKO emblem');
   }
 
-  const stackScene = buildStackScene({
-    spec: STACK_SPEC,
+  const platesScene = buildPlatesScene({
+    spec: PLATE_SPEC,
     materials,
-    emblemTemplate: stackEmblem,
+    emblemTemplate: plateEmblem,
     geometrySet,
     logoSource,
   });
-  const bankScene = buildBankScene({
-    spec: BANK_SPEC,
+  const linkScene = buildLinkScene({
+    spec: LINK_BLOCK_SPEC,
+    platformSpec: PLATE_SPEC,
     materials,
-    emblemTemplate: bankEmblem,
+    emblemTemplate: linkEmblem,
     geometrySet,
+    textureSet,
     logoSource,
-    panelMaps,
-    surfaceMaps,
-    panelStats: panelMaps.stats,
-    surfaceStats: surfaceMaps.stats,
   });
+
+  let platformAttachment = null;
 
   const model = {
     version: MODEL_VERSION,
     seed,
     quality,
-    spec: { stack: STACK_SPEC, bank: BANK_SPEC },
+    spec: { plates: PLATE_SPEC, link: LINK_BLOCK_SPEC },
     materials,
-    textures,
     logo: {
       source: logoSource,
       pngPath: LOGO_PNG_PATH,
@@ -2832,8 +2218,65 @@ export function createLogoBlocksModel(options = {}) {
       fills: parsedLogo ? Array.from(new Set(parsedLogo.shapes.map((shape) => shape.fill))) : [],
       bbox: parsedLogo ? parsedLogo.bbox : null,
     },
-    scenes: { stack: stackScene, bank: bankScene },
+    scenes: { plates: platesScene, link: linkScene },
     warnings,
+    /**
+     * Mount the real Columns deliverable column as each scene's platform.
+     *
+     * `columnBank` is the object resolved by \`loadColumnBank()\` in
+     * src/columns-model.js (read-only import on the page). The satin material
+     * object from that bank is reused verbatim (same maps/params — it is not
+     * rebuilt), and the \`satin-large-long\` column geometry (600 px long,
+     * 140 x 140 px cross-section) is kept while the other 26 column geometries
+     * are disposed. The platform mesh is rotated -90 deg about Z so its length
+     * runs along world X with its top face at PLATE_SPEC.platform.topY.
+     *
+     * @param {object} columnBank result of loadColumnBank()
+     * @returns {{columnId:string, material:object, materialName:string, geometry:object, meshes:object}}
+     */
+    attachColumnPlatforms(columnBank) {
+      if (platformAttachment) return platformAttachment;
+      if (!columnBank || !columnBank.materials || !columnBank.materials.satin) {
+        throw new Error('attachColumnPlatforms requires the columns bank resolved by loadColumnBank() (materials.satin missing)');
+      }
+      const columns = createColumns(columnBank, { quality: 'hero', patternDivisor: COLUMN_GEOMETRY_RATIO });
+      const column = columns.columnsById[PLATE_SPEC.platform.columnId];
+      if (!column) throw new Error('the columns bank has no "' + PLATE_SPEC.platform.columnId + '" column');
+      const geometry = column.mesh.geometry;
+      // Keep only the satin-large-long geometry; free the other 26.
+      for (const other of columns.columns) {
+        if (other === column) continue;
+        try {
+          other.mesh.geometry.dispose();
+        } catch (error) {
+          /* best effort */
+        }
+      }
+      geometrySet.add(geometry);
+      const material = columnBank.materials.satin;
+      const meshes = {};
+      for (const [key, sceneModel] of Object.entries({ plates: platesScene, link: linkScene })) {
+        if (!sceneModel.platform) continue;
+        const mesh = mountPlatformMesh(sceneModel, geometry, material);
+        meshes[key] = mesh;
+        const parts = sceneModel.stats.parts.concat([{
+          name: mesh.name,
+          role: 'satin columns platform',
+          material: material.name,
+          triangles: Math.round(triangleCountOf(geometry)),
+        }]);
+        sceneModel.stats = aggregateStats(sceneModel.group, { parts });
+      }
+      platformAttachment = {
+        columnId: PLATE_SPEC.platform.columnId,
+        material,
+        materialName: material.name,
+        geometry,
+        meshes,
+        columns,
+      };
+      return platformAttachment;
+    },
     getDebug() {
       return {
         version: MODEL_VERSION,
@@ -2855,18 +2298,31 @@ export function createLogoBlocksModel(options = {}) {
               }
             : null,
         },
-        scenes: { stack: sceneDebug(stackScene, STACK_SPEC), bank: sceneDebug(bankScene, BANK_SPEC) },
+        scenes: {
+          plates: extraSceneDebug(platesScene),
+          link: extraSceneDebug(linkScene),
+        },
+        platform: {
+          columnId: PLATE_SPEC.platform.columnId,
+          materialId: PLATE_SPEC.platform.materialId,
+          source: PLATE_SPEC.platform.source || './src/columns-model.js',
+          attached: Boolean(platformAttachment),
+          materialName: platformAttachment ? platformAttachment.materialName : null,
+          meshes: platformAttachment
+            ? Object.fromEntries(Object.entries(platformAttachment.meshes).map(([key, mesh]) => [key, { name: mesh.name, columnId: mesh.userData.columnId, laidHorizontal: mesh.userData.laidHorizontal, scale: mesh.userData.scale }]))
+            : {},
+          scenes: {
+            plates: platesScene.platform,
+            link: linkScene.platform,
+          },
+        },
         camera: CAMERA_SPEC,
         materials: Object.fromEntries(
           Object.entries(materials).map(([key, material]) => [key, materialDebug(key, material, MATERIAL_SPEC[key])]),
         ),
-        textureFamilies: {
-          panel: { size: panelMaps.stats.size, maps: ['albedo', 'normal', 'roughness'], ...panelMaps.stats },
-          surface: { size: surfaceMaps.stats.size, maps: ['albedo', 'normal'], ...surfaceMaps.stats },
-        },
         totals: {
-          triangles: stackScene.stats.triangles + bankScene.stats.triangles,
-          meshes: stackScene.stats.meshes + bankScene.stats.meshes,
+          triangles: platesScene.stats.triangles + linkScene.stats.triangles,
+          meshes: platesScene.stats.meshes + linkScene.stats.meshes,
           geometries: geometrySet.size,
           textures: textureSet.size,
         },

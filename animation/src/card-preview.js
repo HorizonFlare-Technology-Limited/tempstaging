@@ -6,13 +6,14 @@
  * card behind-right) on a dark studio backdrop, both cards edged with the
  * Revision-8 thin mirror-chrome middle frame.
  *
- * Lighting contract (round 7): exactly ONE key PointLight, placed to the RIGHT of
- * the live default camera (screen-right at the 45°/20° view), aimed at the
- * composition centre, castShadow. The metal highlight therefore reads from the
- * camera's right and the authored soft shadow is offset to camera-left (the user
- * requirement). Overall brightness is tuned down (key intensity, exposure,
- * ambient fill and PMREM panel radiance) while keeping the print, bevel rims and
- * mirror reflections legible. No second shadow caster and no side/rim key.
+ * Lighting contract (Revision 21): the page is lit ONLY by the shared room-photo
+ * image-based lighting in `src/env-room.js` — assets/env/modern-empty-room.jpg
+ * filtered through a PMREM and assigned to `scene.environment`. There are no
+ * THREE light objects and no procedural studio environment. The
+ * card materials are metal (metalness 1, low roughness), so they mirror the dark
+ * room with its bright ceiling downlights; brightness is balanced with the shared
+ * env intensity plus `toneMappingExposure`. Reflection and shadow are computed
+ * from the real scene (mirrored-camera planar reflection + projected contact shadow).
  *
  * The card meshes themselves (geometry + textures + PBR materials) come from
  * ./card-model.js through the frozen API; this module never builds card
@@ -20,6 +21,7 @@
  * source PNGs, exactly like the coin page's static fallback.
  */
 import * as THREE from 'three';
+import { applyEnvRoom } from './env-room.js';
 const VERSION = '1.0.0';
 
 // Dynamic on purpose: a missing / broken model module must degrade gracefully.
@@ -30,6 +32,9 @@ const SOURCE_DUO = Object.freeze({
   light: './assets/textures/card/source/novocard-default-light.png',
 });
 
+// Card-set edge row (vertical orientation, ported from the standalone page):
+// pitch is the spacing along the camera-right row axis.
+const CARD_SET = Object.freeze({ count: 9, pitch: 0.62, raisedIndex: 4, raise: 1.1 });
 const DEFAULT_POSE = Object.freeze({ yawDeg: 0, pitchDeg: 0 });
 // Interactive drag is clamped to ±60° / ±28° (contract §4.3). The QA hook
 // setPose() may go further so an inspection view of the backs is possible
@@ -60,57 +65,27 @@ const CAMERA_AXIS = (() => {
 })();
 const FIT = Object.freeze({ margin: 1.04, pad: 0.18 });
 const BACKDROP = Object.freeze({ radius: 90 });
-// Contract §4.2 (Revision 6): the key is still exactly ONE shadow-casting
-// PointLight aimed at the composition centre, but it no longer sits at the
-// camera. It is offset toward the camera's RIGHT by KEY_LIGHT.rightDeg (screen-
-// right at the default 45°/20° view) plus a small upward lift, and placed on a
-// CLOSER radius around the composition (distanceScale < 1). The closer, right-
-// side key is what makes the falloff read across each face from screen-right to
-// screen-left instead of lighting them flat like a lens light; the intensity is
-// lowered accordingly (the accepted camera-coincident key was 7.0 at the full
-// camera radius).
-// Round 7 (user requirement): the whole rig is dimmer than the round-5 build —
-// the key is 7.0 -> 3.7 at 0.62x the camera radius, exposure 0.92 -> 0.89, the
-// ambient fill 0.17 -> 0.13 and the PMREM panel radiance is scaled down (the
-// right panel stays the brightest so the reflective sheen also reads from the
-// right) — with print/bevel/mirror detail still legible.
-const KEY_LIGHT = Object.freeze({
-  color: 0xfff2e2,
-  intensity: 3.7,
-  decay: 2,
-  distance: 20,
-  // Directional offset from the camera axis, in degrees: +right is the camera's
-  // screen-right side, +up lifts the light slightly above the camera axis.
-  rightDeg: 20,
-  upDeg: 5,
-  // Light radius as a fraction of the live camera distance. < 1 pulls the key
-  // closer to the pair, which strengthens the right-to-left falloff across the
-  // cards (and offsets the lower intensity value above).
-  distanceScale: 0.62,
-});
-// Fraction of the projected key offset applied to the authored soft-shadow
-// decals (1 = physically projected by the key angle, >1 exaggerates it so the
-// cast shadow still reads on the backdrop with the key held to a modest angle).
+// Revision 21: the page is lit ONLY by the shared room-photo IBL
+// (src/env-room.js -> assets/env/modern-empty-room.jpg PMREM). No THREE light
+// object exists any more, so the old single right-side key PointLight rig and the
+// purpose-built softbox PMREM studio (their constants, builders and shadow map)
+// are gone. `ENV_INTENSITY.on` is the tuned room-radiance multiplier (r151 applies
+// it through each material's own envMapIntensity, so the model's authored values
+// are preserved); the light toggle reuses the old ?light=0|1 / L API as a room
+// light level: ON = normal env intensity, OFF = dimmed (ENV_INTENSITY.off).
+const ENV_ROOM_REPORT = 'assets/env/modern-empty-room.jpg (PMREM, env-room)';
+const ENV_INTENSITY = Object.freeze({ on: 1, off: 0.45 });
+// Highlight expansion of the LDR room photo (see env-room.js applyHighlightBoost).
+const ENV_BOOST = 7;
+// Rev5 s30: env Euler XYZ rotation (deg; default rolls the ceiling lights onto the card's right side) so the brightest reflection sits on the card's side, not its top. ?envrot=<deg> overrides for tuning.
+const ENV_ROTATION_DEG = (() => { try { const q = new URLSearchParams(location.search).get('envrot'); if (q != null) { const v = q.split(',').map(Number); if (v.every(Number.isFinite)) return v.length === 3 ? v : [0, v[0] || 0, 0]; } } catch (e) { /* default */ } return [0, 0, -90]; })();
+// Fraction of the projected authored-shadow offset applied to the soft-shadow
+// decals (>1 exaggerates it so the soft shadow still reads on the backdrop).
 const SHADOW_SHIFT = 1.9;
-const AMBIENT = Object.freeze({ color: 0xa8bcd6, intensity: 0.13 });
-// Round 2: purpose-built PMREM studio environment. Only reflections (env is
-// reflection fill, not a direct light); the room below the camera axis is bright
-// so every rounded corner/bevel picks up a continuous bright rim arc. The back
-// panel is the soft face sheen, the four side/ceiling/floor panels are the rim
-// sources; the camera-facing wall behind the subject stays dark.
-// Round 7: every panel is dimmed and the right panel is the strongest, so the
-// reflective sheen (like the key highlight) reads from the camera's right.
-const ENV = Object.freeze({
-  room: 0x05070a,
-  panels: Object.freeze([
-    { name: 'env-back', color: 0xfff1e2, intensity: 0.72, width: 34, height: 20, position: [0, 2.2, 14], gradient: true },
-    { name: 'env-ceiling', color: 0xd9e6f6, intensity: 1.8, width: 34, height: 34, position: [0, 9.6, 0], gradient: true },
-    { name: 'env-floor', color: 0xe8dcc6, intensity: 1.35, width: 34, height: 34, position: [0, -9.6, 0], gradient: true },
-    { name: 'env-left', color: 0xcfdff2, intensity: 1.2, width: 30, height: 20, position: [-14.5, 0.4, 0], gradient: true },
-    { name: 'env-right', color: 0xffffff, intensity: 2.5, width: 30, height: 20, position: [14.5, 0.4, 0], gradient: true },
-    { name: 'env-front', color: 0x223044, intensity: 0.06, width: 34, height: 20, position: [0, 0, -14.5], gradient: false },
-  ]),
-});
+// Authored direction of the visible soft-shadow decals, in degrees relative to
+// the live camera axis (the room's bright ceiling downlights sit above/behind the
+// camera, so the shadow is displaced toward camera-left and slightly down).
+const SHADOW_OFFSET = Object.freeze({ rightDeg: 20, upDeg: 5 });
 const DRAG = Object.freeze({ yawPerPx: 0.26, pitchPerPx: 0.2, minVelocity: 5 });
 
 // Slot transforms (degrees) — light card front-left (larger), dark card
@@ -124,51 +99,21 @@ const SLOTS = Object.freeze({
 const SWAP_DURATION = 0.9;
 const AUTO = Object.freeze({ speed: 0.52, yawAmplitude: 19, pitchAmplitude: 2.4 });
 const FLOAT = Object.freeze({ y: 0.014, tilt: 0.0016, speed: 0.82 });
-// Round 3 "reflection" presentation mode: a dark glass table below the floating
-// pair mirrors both cards (mirrored clone layer + gradient glass sheet), and the
-// card materials' environment response is boosted. OFF is the no-floor,
-// base-env render (the accepted round-2 look updated by the later material
-// rounds; Revision 8 boosts/clamps the mirror bezel instead of the old per-card
-// satin/polished edge values).
+// "Reflection" presentation mode: a glass table below the floating pair shows a
+// REAL planar reflection of the page scene (re-rendered from the mirrored camera,
+// see CardStudio._renderMirror) plus a real projected contact shadow. Nothing is
+// painted; the card materials' env response is boosted in this mode.
 const REFLECTION = Object.freeze({
-  // The pair floats just above the dark glass table; the mirror image starts
-  // right below the lowest card and is framed with a visible, fading band.
   floorY: -1.90,
-  // The far edge sits exactly at the backdrop plane (z = -1.35) so the glass
-  // table meets the backdrop without a visible seam; the near edge is behind the
-  // camera and therefore never visible.
-  // At the 45-degree default view the visible floor region spans x ~-18..5.4
-  // (desktop) so the plane must be wider than the old frontal framing; the
-  // authored alphaMap still fades the borders so no plane edge can appear.
   floorWidth: 48,
-  floorDepth: 12,
-  floorCenterZ: -1.35 + 6,
-  // glass coverage is authored directly in the alphaMap; this opacity is a
-  // global multiplier driven by the ON/OFF weight
-  floorOpacity: 1,
-  // Round 5 iteration: instead of a separate black fade overlay (which turned
-  // the large near floor region into a hard-edged black slab at 45 degrees), the
-  // glass alphaMap itself carries the fade: a subtle semi-transparent mirror
-  // band (so the reflection reads), a nearly opaque dark-glass surface on the
-  // near/bottom part (so the deeper mirrored geometry dissolves and the table
-  // reads as a continuous surface), and a soft dissolve at the far edge.
-  mirrorCoverage: 0.12,
-  nearCoverage: 0.95,
-  fadeNearV: 0.69,
-  mirrorFadeTopV: 0.74,
-  farFadeStart: 0.92,
-  glassCoverage: 0.12,
-  cloneOpacity: 0.92,
-  // ghost (mirror) materials are dimmed/tinted/roughened so the reflection reads
-  // as a soft 15-30 % echo of the cards instead of a crisp duplicate
-  ghostTint: 1.0,
-  ghostRoughnessLift: 0.18,
-  ghostEnvMax: 0.55,
-  ghostSpecularMax: 0.4,
+  floorDepth: 24,
+  floorCenterZ: 0,
+  // shader constants: base reflectance (plus analytic Fresnel) and the radial
+  // falloff radius (world units) that fades the mirror image out with distance.
+  strength: 0.22,
+  fadeRadius: 4.6,
   transitionSeconds: 0.25,
-  // How much of the mirrored card image is framed below the pair when ON. The
-  // cards' own transforms are untouched; only the camera refits to include the
-  // glass table, exactly like the auto-fit already frames the pair.
+  // How much of the mirrored card image is framed below the pair when ON.
   frameBand: 0.8,
   // Round 3 reflection boost: shared front/back values plus the mirror-bezel
   // boost. Revision 8 (round 8): BOTH cards' bezels are mirror chrome, so the
@@ -179,7 +124,7 @@ const REFLECTION = Object.freeze({
   // Revision 15: the dark frame is a near-black metal mirror (its F0 reflects
   // much less than chrome), so reflection ON lifts the dark edge above the light
   // chrome edge; both stay clamped so neither rim clips to flat white.
-  envOn: Object.freeze({ front: 1.6, edge: 1.75, edgeDark: 3.0, edgeLight: 1.75, back: 0.8, backLight: 2.95 }),
+  envOn: Object.freeze({ front: 1.6, frontDark: 1.0, edge: 1.75, edgeDark: 3.0, edgeLight: 1.75, back: 0.8, backLight: 2.95 }),
   // Revision 6: the backs are per-card reconstructed artwork with their own OFF
   // envMapIntensity (dark 0.70 / light 2.40). The shared R3 value 0.8 is still
   // the dark back's ON target; the light back needs its own slightly higher ON
@@ -188,7 +133,15 @@ const REFLECTION = Object.freeze({
   edgeOnMin: 1.45,
   edgeOnMax: 2.0,
 });
+// Projected contact shadow: real card geometry rendered from above onto the table.
+const CONTACT_SHADOW = Object.freeze({ width: 16, depth: 12, resolution: 512, range: 4.5, darkness: 1, blur: 2.2, opacity: 0.6 });
 const PLANE_Z = new THREE.Vector3(0, 0, 1);
+const CARD_SET_EDGE_YAW_DEG = 90 + CAMERA_SPEC.azimuthDeg;
+const CARD_SET_ROW_AXIS = new THREE.Vector3(
+  Math.cos((CAMERA_SPEC.azimuthDeg * Math.PI) / 180),
+  0,
+  -Math.sin((CAMERA_SPEC.azimuthDeg * Math.PI) / 180)
+);
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -224,6 +177,7 @@ const dom = {
   btnAuto: document.getElementById('btn-auto'),
   btnReflection: document.getElementById('btn-reflection'),
   btnLight: document.getElementById('btn-light'),
+  btnSet: document.getElementById('btn-cardset'),
   infoFootState: document.getElementById('info-foot-state'),
   specDark: document.getElementById('spec-dark'),
   specLight: document.getElementById('spec-light'),
@@ -271,6 +225,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 const state = {
+  cardSet: false,
   ready: false,
   failed: false,
   booting: true,
@@ -286,8 +241,9 @@ const state = {
   frozen: false,
   autoRotate: false,
   reflection: urlParams.get('reflection') !== '0',
-  // Revision 15 (R15-1): the key PointLight can be switched off while the
-  // environment/reflection studio and the ambient fill stay on (?light=0|1).
+  // Revision 21: there is no key light any more. The existing light toggle API
+  // survives as a room env-intensity toggle: light ON = the tuned env intensity,
+  // light OFF = dimmed env (?light=0|1, L key, setLight()).
   lightOn: urlParams.get('light') !== '0',
   pose: { yawDeg: 0, pitchDeg: 0 },
   swapFront: 'light',
@@ -360,7 +316,7 @@ function syncSwappedUi() {
   const swapped = state.swapFront === 'dark';
   if (dom.btnSwap) dom.btnSwap.setAttribute('aria-pressed', String(swapped));
   if (dom.btnAuto) dom.btnAuto.setAttribute('aria-pressed', String(state.autoRotate));
-  if (dom.stageName) dom.stageName.textContent = swapped ? 'Light + Dark' : 'Dark + Light';
+  if (dom.stageName) dom.stageName.textContent = state.cardSet ? 'Card set · 9' : swapped ? 'Light + Dark' : 'Dark + Light';
   if (dom.stageCode) dom.stageCode.textContent = swapped ? 'SWAP' : 'DUO';
   if (dom.infoFootState) dom.infoFootState.textContent = swapped ? 'Swapped · dark in front' : 'Default view';
   if (dom.stageHint) dom.stageHint.textContent = swapped ? 'Drag to rotate · F to swap back · L light' : 'Drag to rotate · L light';
@@ -393,13 +349,19 @@ function syncReflectionUi() {
 function syncLightUi() {
   if (!dom.btnLight) return;
   const on = Boolean(state.lightOn);
+  // Revision 21: the toolbar button was purely light-based (it switched the old
+  // key PointLight), so it is hidden from the layout. The env-intensity toggle it
+  // used to expose stays fully reachable through the L key, `?light=0|1` and the
+  // public setLight() API, and its state is still reported in the QA attributes.
+  dom.btnLight.hidden = true;
+  dom.btnLight.setAttribute('hidden', '');
   dom.btnLight.disabled = !state.ready || state.failed;
   dom.btnLight.setAttribute('aria-pressed', String(on));
   const label = document.getElementById('btn-light-label');
   if (label) label.textContent = on ? 'Light ON' : 'Light OFF';
   dom.btnLight.title = on
-    ? 'Key light on — click or press L to switch the direct key off (environment stays).'
-    : 'Key light off — click or press L to switch the direct key back on.';
+    ? 'Room environment at full intensity — press L or load ?light=0 for dimmed room light.'
+    : 'Room environment dimmed — press L or load ?light=1 for full room light.';
 }
 
 function syncPoseUi() {
@@ -416,7 +378,8 @@ function publishState() {
   body.dataset.qaCards = state.specs.map((spec) => spec.id).join(',');
   const pose = state.studio ? state.studio.getPose() : state.pose;
   body.dataset.qaPose = round(pose.yawDeg, 1) + ',' + round(pose.pitchDeg, 1);
-  body.dataset.qaComposition = 'duo';
+  body.dataset.qaComposition = state.cardSet ? 'set' : 'duo';
+  body.dataset.qaCardCount = state.cardSet ? '9' : '2';
   body.dataset.fallback = state.failed ? '1' : '0';
   body.dataset.swapped = state.swapFront === 'dark' ? '1' : '0';
   body.dataset.frozen = state.frozen || state.still ? '1' : '0';
@@ -568,25 +531,25 @@ function buildDebug() {
       aspect: 1,
     },
     keyLight: {
-      type: 'PointLight',
+      type: 'none',
       position: [0, 0, 0],
       target: [0, 0, 0],
       intensity: 0,
       castShadow: false,
       shadowMapSize: [0, 0],
-      positionMode: 'camera-right-offset',
-      offsetDeg: { right: KEY_LIGHT.rightDeg, up: KEY_LIGHT.upDeg },
+      positionMode: 'environment-only',
+      offsetDeg: { right: SHADOW_OFFSET.rightDeg, up: SHADOW_OFFSET.upDeg },
     },
-    lights: { directional: 0, shadowCasters: 0, ambient: 0 },
-    // Revision 15: live light-source state. Ambient/environment are reflection /
-    // fill sources and stay on; only the key PointLight is switchable.
+    // Revision 21: zero light objects — the room photo PMREM is the only light.
+    lights: { directional: 0, point: 0, ambient: 0, hemisphere: 0, shadowCasters: 0, total: 0 },
     light: {
       enabled: Boolean(state.lightOn),
-      keyType: 'PointLight',
+      keyType: 'none',
       keyIntensity: 0,
-      ambientIntensity: AMBIENT.intensity,
-      environment: 'pmrem',
+      ambientIntensity: 0,
+      environment: ENV_ROOM_REPORT,
       mode: state.lightOn ? 'on' : 'off',
+      intensity: state.lightOn ? ENV_INTENSITY.on : ENV_INTENSITY.off,
     },
     materials: [],
     edgeMaterials: [],
@@ -614,14 +577,7 @@ function buildDebug() {
     debug.camera = camera;
     debug.keyLight = studio.getKeyLightDebug();
     debug.lights = studio.getLightCounts();
-    debug.light = {
-      enabled: Boolean(studio.getKeyLightEnabled ? studio.getKeyLightEnabled() : state.lightOn),
-      keyType: 'PointLight',
-      keyIntensity: round(studio.keyLight ? studio.keyLight.intensity : 0, 4),
-      ambientIntensity: AMBIENT.intensity,
-      environment: 'pmrem',
-      mode: (studio.getKeyLightEnabled && studio.getKeyLightEnabled()) ? 'on' : 'off',
-    };
+    debug.light = studio.getEnvironmentDebug();
     debug.materials = ['dark', 'light'].map(materialDebug).filter(Boolean);
     debug.edgeMaterials = ['dark', 'light'].map(edgeMaterialDebug).filter(Boolean);
     debug.backMaterials = ['dark', 'light'].map(backMaterialDebug).filter(Boolean);
@@ -669,173 +625,10 @@ function buildDebug() {
 }
 
 /* =========================================================================
-   Studio — renderer, scene, lights, backdrop, composition, interactions.
+   Studio — renderer, scene, image-based room light, backdrop, composition,
+   interactions. Revision 21: the scene light is assets/env/modern-empty-room.jpg
+   filtered through src/env-room.js; no THREE light is ever constructed.
    ========================================================================= */
-
-/* --------------------------------------------------- studio environment */
-/* A purpose-built PMREM room: dark cyclorama shell + large emissive softboxes.
-   PMREM renders it with tone mapping disabled, so the panel colours are true
-   HDR radiance values. Only the environment map is produced - no scene light. */
-
-function makeEnvSoftboxTexture() {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, size, size);
-  const gradient = ctx.createRadialGradient(size * 0.5, size * 0.45, size * 0.03, size * 0.5, size * 0.5, size * 0.62);
-  gradient.addColorStop(0, 'rgba(255,255,255,1)');
-  gradient.addColorStop(0.4, 'rgba(255,255,255,0.82)');
-  gradient.addColorStop(0.75, 'rgba(255,255,255,0.30)');
-  gradient.addColorStop(1, 'rgba(255,255,255,0.02)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.encoding = THREE.sRGBEncoding;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function createStudioEnvironment() {
-  const scene = new THREE.Scene();
-  const room = new THREE.Mesh(
-    new THREE.BoxGeometry(36, 22, 36),
-    new THREE.MeshBasicMaterial({ color: ENV.room, side: THREE.BackSide })
-  );
-  room.name = 'env-room';
-  scene.add(room);
-  const textures = [makeEnvSoftboxTexture()];
-  for (const panel of ENV.panels) {
-    const material = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(panel.color).multiplyScalar(panel.intensity),
-      map: panel.gradient ? textures[0] : null,
-      side: THREE.FrontSide,
-    });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(panel.width, panel.height), material);
-    mesh.name = panel.name;
-    mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-    mesh.lookAt(0, 0, 0);
-    scene.add(mesh);
-  }
-  return { scene, textures };
-}
-
-function disposeEnvironmentScene(scene, textures) {
-  scene.traverse((object) => {
-    if (object.isMesh) {
-      if (object.geometry) object.geometry.dispose();
-      if (object.material) object.material.dispose();
-    }
-  });
-  for (const texture of textures || []) texture.dispose();
-}
-
-/* ----------------------------------------------------- reflection helpers */
-/* The glass table is a horizontal plane whose alphaMap is authored in canvas
-   space: the mirror layer is visible under the cards, the glass becomes more
-   opaque with distance (so the reflection fades out toward the horizon) and the
-   near/outer edges dissolve so the plane never shows a hard edge. */
-
-// Glass coverage as a function of the floor plane's v coordinate (v = 1 at the
-// far/backdrop edge, v = 0 at the near camera-side edge). Low coverage in the
-// mirror band lets the reflection read; coverage rises to near-opaque towards
-// the viewer so the deeper mirrored geometry fades into a dark glass surface
-// (no cut, no hard-edged overlay); the far edge dissolves to 0.
-function reflectionFloorCoverage(v) {
-  if (v >= REFLECTION.farFadeStart) {
-    return REFLECTION.mirrorCoverage * (1 - smoothstep(REFLECTION.farFadeStart, 1, v));
-  }
-  if (v >= REFLECTION.mirrorFadeTopV) return REFLECTION.mirrorCoverage;
-  if (v > REFLECTION.fadeNearV) {
-    return lerp(
-      REFLECTION.mirrorCoverage,
-      REFLECTION.nearCoverage,
-      smoothstep(REFLECTION.fadeNearV, REFLECTION.mirrorFadeTopV, v)
-    );
-  }
-  return REFLECTION.nearCoverage;
-}
-
-function makeReflectionFloorAlphaTexture() {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const image = ctx.createImageData(size, size);
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const u = x / (size - 1);
-      // Canvas rows are flipped by the default texture flipY: map the row index
-      // to the plane's v coordinate (v = 1 at the far edge that meets the
-      // backdrop, v = 0 at the near camera-side edge).
-      const v = 1 - y / (size - 1);
-      const coverage = reflectionFloorCoverage(v);
-      const sideFade = smoothstep(0, 0.05, u) * smoothstep(0, 0.05, 1 - u);
-      const alpha = clamp(coverage * sideFade, 0, 1);
-      const index = (y * size + x) * 4;
-      // alphaMap samples the GREEN channel in three.js
-      const value = Math.round(alpha * 255);
-      image.data[index] = value;
-      image.data[index + 1] = value;
-      image.data[index + 2] = value;
-      image.data[index + 3] = 255;
-    }
-  }
-  ctx.putImageData(image, 0, 0);
-  const texture = new THREE.CanvasTexture(canvas);
-  // alphaMap is read as a linear coverage value (green channel) - keep the
-  // default linear encoding so the authored alpha gradient is not gamma-shifted.
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function makeReflectionFloorTintTexture() {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, size);
-  // v = 1 at the far edge (top of the canvas row 0), v = 0 near the viewer.
-  gradient.addColorStop(0, '#090d13');
-  gradient.addColorStop(0.22, '#0b1017');
-  gradient.addColorStop(0.5, '#10161f');
-  gradient.addColorStop(0.78, '#151c26');
-  gradient.addColorStop(1, '#1a222e');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.encoding = THREE.sRGBEncoding;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function makeReflectionGhostMaterial(source) {
-  const material = source.clone();
-  material.transparent = true;
-  material.opacity = 0;
-  material.depthWrite = false;
-  // mirrored geometry flips the winding; keep both sides visible
-  material.side = THREE.DoubleSide;
-  // The mirror must be a soft, dim echo: tint it down, kill the sharp clearcoat
-  // highlight and roughen it so no crisp logo text/edge survives.
-  if (material.color) material.color.multiplyScalar(REFLECTION.ghostTint);
-  material.clearcoat = 0;
-  material.clearcoatRoughness = 1;
-  material.roughness = Math.min(1, (typeof material.roughness === 'number' ? material.roughness : 0.5) + REFLECTION.ghostRoughnessLift);
-  material.envMapIntensity = Math.min(
-    typeof material.envMapIntensity === 'number' ? material.envMapIntensity : 1,
-    REFLECTION.ghostEnvMax
-  );
-  if (typeof material.specularIntensity === 'number') {
-    material.specularIntensity = Math.min(material.specularIntensity, REFLECTION.ghostSpecularMax);
-  }
-  material.needsUpdate = true;
-  return material;
-}
 
 /**
  * Round 5: the frontal backdrop plane no longer covers the frame at the
@@ -894,58 +687,6 @@ function makeStudioBackdropTexture(renderer) {
   return texture;
 }
 
-/**
- * Soft card-shaped silhouette shadow used as the *visible* soft shadow.
- *
- * Why a decal: the key light is a single point light that now sits to the
- * camera's right (round 7), so the physically traced shadow of a card is
- * partially visible but the large soft penumbra the page design relies on is
- * still authored here. The decal is a feathered silhouette placed behind the card
- * along the view axis and displaced toward camera-left by the projected distance
- * of the right-side key (see _updateShadowDecals) — i.e. the shadow reads on the
- * side away from the light.
- *
- * The blurred silhouette is inset 40/512 of the texture (blur never clips at
- * the plane edge); the plane is scaled so the visible penumbra reads at
- * ~1.04-1.10× the card footprint.
- */
-function makeCardShadowTexture() {
-  const width = 512;
-  const height = Math.round((width * 2.30028) / 3.36);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  const inset = 40;
-  const radius = 20;
-  ctx.clearRect(0, 0, width, height);
-  ctx.save();
-  ctx.filter = 'blur(18px)';
-  ctx.fillStyle = 'rgba(0,0,0,0.95)';
-  ctx.beginPath();
-  const x = inset;
-  const y = Math.round((inset * height) / width);
-  const w = width - 2 * x;
-  const h = height - 2 * y;
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + w - radius, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-  ctx.lineTo(x + w, y + h - radius);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-  ctx.lineTo(x + radius, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.encoding = THREE.sRGBEncoding;
-  texture.needsUpdate = true;
-  texture.userData = { role: 'soft-card-shadow' };
-  return texture;
-}
-
 class CardStudio {
   constructor(options) {
     this.canvas = options.canvas;
@@ -974,7 +715,6 @@ class CardStudio {
     this._floatTilt = 0;
     this._lastYaw = 0;
     this._lastPitch = 0;
-    this._shadowDirty = true;
     this._halfX = 2.7;
     this._halfY = 1.8;
     this._halfZ = 0.4;
@@ -995,14 +735,15 @@ class CardStudio {
     // Round 3 reflection state (default ON unless the page passes ?reflection=0)
     this.reflectionEnabled = options.reflection === undefined ? true : Boolean(options.reflection);
     this.reflectionWeight = this.reflectionEnabled ? 1 : 0;
-    // Revision 15: key PointLight on/off (environment + ambient always stay on).
+    // Revision 21: the light toggle is a room env-intensity toggle (the old
+    // key PointLight no longer exists).
     this.keyLightEnabled = options.light === undefined ? true : Boolean(options.light);
+    this.envIntensity = ENV_INTENSITY.on;
     this._reflectionFloor = null;
-    this._reflectionRoot = null;
-    this._reflectionClones = {};
-    this._reflectionAlphaTexture = null;
     this._reflectionEnvBase = null;
-    this._mirrorMatrix = null;
+    this._mirrorTarget = null;
+    this._shadowPlane = null;
+    this.decalsEnabled = true;
     this._onPointerDown = (event) => this._handlePointerDown(event);
     this._onPointerMove = (event) => this._handlePointerMove(event);
     this._onPointerUp = (event) => this._handlePointerUp(event);
@@ -1017,7 +758,7 @@ class CardStudio {
 
   /* ---------------------------------------------------------------- boot */
 
-  init() {
+  async init() {
     const renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -1028,10 +769,14 @@ class CardStudio {
     renderer.setClearColor(0x000000, 0);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // Round 7: exposure 0.92 -> 0.89 (part of the overall brightness reduction).
-    renderer.toneMappingExposure = 0.89;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Revision 21: the room photo is a dark interior with bright ceiling
+    // downlights, so the exposure is lifted well above the old key-light value
+    // (0.89) to keep the mirrored card faces off black while the downlight
+    // streaks stay below clipping.
+    renderer.toneMappingExposure = 1.2;
+    // No lights exist any more, so there are no shadow casters: the visible
+    // soft shadow is the authored camera-angle decal.
+    renderer.shadowMap.enabled = false;
     this.renderer = renderer;
 
     this.scene = new THREE.Scene();
@@ -1039,8 +784,12 @@ class CardStudio {
     this.camera.position.copy(CAMERA_AXIS).multiplyScalar(9);
     this.camera.lookAt(0, 0, 0);
 
-    this._buildLights();
-    this._buildEnvironment();
+    // Revision 21: the ONLY light. Awaited here (init() is awaited by boot())
+    // so the page can never publish ready before the room env is applied. The
+    // per-material envMapIntensity scaling is re-applied once the card materials
+    // exist (setCards) and is re-derived from those authored values on a toggle.
+    this.envRoom = await applyEnvRoom(THREE, renderer, this.scene, { intensity: this.envIntensity, boost: ENV_BOOST, rotation: ENV_ROTATION_DEG.map(degToRad) });
+
     this._buildBackdrop();
 
     this.floatGroup = new THREE.Group();
@@ -1059,8 +808,8 @@ class CardStudio {
     this.holders.light.name = 'holder-light';
     this.holders.dark.name = 'holder-dark';
     this.composition.add(this.holders.light, this.holders.dark);
-    this._buildShadowDecals();
     this._buildReflection();
+    this._buildContactShadow();
 
     this._resizeObserver = new ResizeObserver(() => this._resize());
     this._resizeObserver.observe(this.stage);
@@ -1084,47 +833,11 @@ class CardStudio {
     return this;
   }
 
-  _buildLights() {
-    const ambient = new THREE.AmbientLight(AMBIENT.color, AMBIENT.intensity);
-    ambient.name = 'ambient-fill';
-    this.scene.add(ambient);
-    this.ambient = ambient;
-
-    // Exactly one shadow-casting key light, offset toward the camera's right
-    // (contract §4.2 Revision 6): _syncKeyLight() derives its position from the
-    // live camera fit, and the authored shadow decals are offset to camera-left.
-    const key = new THREE.PointLight(KEY_LIGHT.color, this.keyLightEnabled === false ? 0 : KEY_LIGHT.intensity, KEY_LIGHT.distance, KEY_LIGHT.decay);
-    key.name = 'key-light';
-    key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
-    key.shadow.camera.near = 1.5;
-    key.shadow.camera.far = 30;
-    key.shadow.bias = -0.0012;
-    key.shadow.normalBias = 0.04;
-    key.shadow.radius = 5;
-    key.shadow.autoUpdate = false;
-    key.shadow.needsUpdate = true;
-    key.shadow.camera.updateProjectionMatrix();
-    this.scene.add(key);
-    this.keyLight = key;
-    this._shadowDirty = true;
-    this._syncKeyLight();
-  }
-
-  _buildEnvironment() {
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    const built = createStudioEnvironment();
-    this._envRT = pmrem.fromScene(built.scene, 0.04);
-    this.scene.environment = this._envRT.texture;
-    disposeEnvironmentScene(built.scene, built.textures);
-    pmrem.dispose();
-  }
-
   _buildBackdrop() {
     // Seamless studio: a large unlit gradient sphere around the whole scene
     // (see makeStudioBackdropTexture). No finite backdrop edges can appear at
     // the 45-degree default view or any aspect ratio, and the glass floor fades
-    // into it. The visible soft shadow is still the authored key-side decal.
+    // into it. The visible soft shadow is the authored camera-angle decal.
     this._backdropTexture = makeStudioBackdropTexture(this.renderer);
     const material = new THREE.MeshBasicMaterial({
       map: this._backdropTexture,
@@ -1139,44 +852,257 @@ class CardStudio {
   }
 
   /* ---------------------------------------------------------- reflection */
+  /* Real planar reflection + real contact shadow, both computed from the page
+     scene every render (nothing is painted into a canvas):
+       - mirror: the scene (cards lit by the room env) is re-rendered from the
+         camera mirrored about the glass-table plane into a render target; the
+         table samples it as a projective texture, weighted by an analytic Fresnel
+         term and a distance falloff computed in the shader.
+       - contact shadow: the real card geometry is rendered from above with a
+         height-above-floor shader, max-blended, blurred and drawn on the floor. */
 
   _buildReflection() {
-    const alphaMap = makeReflectionFloorAlphaTexture();
-    const tintMap = makeReflectionFloorTintTexture();
-    this._reflectionAlphaTexture = alphaMap;
-    this._reflectionTintTexture = tintMap;
-    const material = new THREE.MeshBasicMaterial({
-      map: tintMap,
-      alphaMap,
+    this._mirrorTarget = new THREE.WebGLRenderTarget(512, 512, { type: THREE.HalfFloatType, samples: 4 });
+    this._mirrorCamera = new THREE.PerspectiveCamera();
+    this._mirrorMatrixTex = new THREE.Matrix4();
+    this._mirrorUniforms = {
+      tMirror: { value: this._mirrorTarget.texture },
+      uTextureMatrix: { value: this._mirrorMatrixTex },
+      uWeight: { value: 0 },
+      uCenter: { value: new THREE.Vector3(0, REFLECTION.floorY, 0) },
+      uFadeRadius: { value: REFLECTION.fadeRadius },
+      uStrength: { value: REFLECTION.strength },
+    };
+    const material = new THREE.ShaderMaterial({
+      uniforms: this._mirrorUniforms,
+      vertexShader: [
+        'uniform mat4 uTextureMatrix;',
+        'varying vec4 vProj;',
+        'varying vec3 vWorld;',
+        'void main() {',
+        '  vProj = uTextureMatrix * vec4(position, 1.0);',
+        '  vec4 world = modelMatrix * vec4(position, 1.0);',
+        '  vWorld = world.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * world;',
+        '}',
+      ].join('\n'),
+      fragmentShader: [
+        'uniform sampler2D tMirror;',
+        'uniform float uWeight;',
+        'uniform float uFadeRadius;',
+        'uniform float uStrength;',
+        'uniform vec3 uCenter;',
+        'varying vec4 vProj;',
+        'varying vec3 vWorld;',
+        'void main() {',
+        '  vec3 mirror = texture2DProj(tMirror, vProj).rgb;',
+        '  vec3 viewDir = normalize(cameraPosition - vWorld);',
+        '  float cosTheta = clamp(viewDir.y, 0.0, 1.0);',
+        '  float fresnel = 0.04 + 0.96 * pow(1.0 - cosTheta, 5.0);',
+        '  vec2 d = vWorld.xz - uCenter.xz;',
+        '  float falloff = exp(-dot(d, d) / (uFadeRadius * uFadeRadius));',
+        '  float k = clamp(uStrength + fresnel * 0.5, 0.0, 1.0) * falloff * uWeight;',
+        '  gl_FragColor = vec4(mirror * k, 1.0);',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}',
+      ].join('\n'),
       transparent: true,
-      opacity: 0,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
-      toneMapped: false,
     });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(REFLECTION.floorWidth, REFLECTION.floorDepth), material);
     floor.name = 'reflection-floor';
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, REFLECTION.floorY, REFLECTION.floorCenterZ);
     floor.renderOrder = 3;
-    floor.castShadow = false;
-    floor.receiveShadow = false;
     floor.visible = false;
     this.scene.add(floor);
     this._reflectionFloor = floor;
-
-    this._reflectionRoot = new THREE.Group();
-    this._reflectionRoot.name = 'reflection-layer';
-    this._reflectionRoot.visible = false;
-    this.scene.add(this._reflectionRoot);
-
-    // Mirror about the horizontal plane y = floorY.
-    this._mirrorMatrix = new THREE.Matrix4().set(
-      1, 0, 0, 0,
-      0, -1, 0, 2 * REFLECTION.floorY,
-      0, 0, 1, 0,
-      0, 0, 0, 1
-    );
+    this._resizeMirrorTarget();
     this._applyReflectionState();
+  }
+
+  _resizeMirrorTarget() {
+    if (!this._mirrorTarget || !this.renderer) return;
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    this._mirrorTarget.setSize(Math.max(2, Math.round(size.x * 0.75)), Math.max(2, Math.round(size.y * 0.75)));
+  }
+
+  _buildContactShadow() {
+    const spec = CONTACT_SHADOW;
+    const height = Math.round(spec.resolution * (spec.depth / spec.width));
+    const opts = { type: THREE.UnsignedByteType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false };
+    this._shadowRtA = new THREE.WebGLRenderTarget(spec.resolution, height, opts);
+    this._shadowRtB = new THREE.WebGLRenderTarget(spec.resolution, height, opts);
+    this._shadowCamera = new THREE.OrthographicCamera(-spec.width / 2, spec.width / 2, spec.depth / 2, -spec.depth / 2, 0.01, 40);
+    this._shadowCamera.up.set(0, 0, -1);
+    this._shadowCamera.position.set(0, REFLECTION.floorY + 20, 0);
+    this._shadowCamera.lookAt(0, REFLECTION.floorY, 0);
+    this._shadowCamera.updateMatrixWorld(true);
+    // Height-above-floor shader: nearer the floor = darker; max-blended so the
+    // lowest surface of the real card geometry wins at every texel.
+    this._shadowDepthMaterial = new THREE.ShaderMaterial({
+      uniforms: { uFloorY: { value: REFLECTION.floorY }, uRange: { value: spec.range }, uDarkness: { value: spec.darkness } },
+      vertexShader: 'varying float vH; uniform float uFloorY;\nvoid main() { vec4 w = modelMatrix * vec4(position, 1.0); vH = w.y - uFloorY; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: 'varying float vH; uniform float uRange; uniform float uDarkness;\nvoid main() { float a = vH < 0.0 ? 0.0 : uDarkness * (1.0 - smoothstep(0.0, uRange, vH)); gl_FragColor = vec4(0.0, 0.0, 0.0, a); }',
+      side: THREE.DoubleSide,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.MaxEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor,
+    });
+    this._shadowBlurMaterial = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uDir: { value: new THREE.Vector2() } },
+      vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: [
+        'uniform sampler2D tDiffuse; uniform vec2 uDir; varying vec2 vUv;',
+        'void main() {',
+        '  float a = texture2D(tDiffuse, vUv).a * 0.2270270270;',
+        '  a += (texture2D(tDiffuse, vUv + uDir * 1.3846153846).a + texture2D(tDiffuse, vUv - uDir * 1.3846153846).a) * 0.3162162162;',
+        '  a += (texture2D(tDiffuse, vUv + uDir * 3.2307692308).a + texture2D(tDiffuse, vUv - uDir * 3.2307692308).a) * 0.0702702703;',
+        '  gl_FragColor = vec4(0.0, 0.0, 0.0, a);',
+        '}',
+      ].join('\n'),
+      depthTest: false,
+      depthWrite: false,
+    });
+    this._shadowQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this._shadowBlurMaterial);
+    this._shadowQuad.frustumCulled = false;
+    this._shadowQuadScene = new THREE.Scene();
+    this._shadowQuadScene.add(this._shadowQuad);
+    this._shadowQuadCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(spec.width, spec.depth),
+      new THREE.MeshBasicMaterial({ map: this._shadowRtA.texture, transparent: true, opacity: spec.opacity, depthWrite: false, toneMapped: false })
+    );
+    plane.name = 'contact-shadow';
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set(0, REFLECTION.floorY + 0.004, 0);
+    plane.renderOrder = 2;
+    plane.visible = false;
+    this.scene.add(plane);
+    this._shadowPlane = plane;
+  }
+
+  _withHidden(list, fn) {
+    const saved = list.map((object) => (object ? object.visible : false));
+    list.forEach((object) => { if (object) object.visible = false; });
+    try { fn(); } finally { list.forEach((object, i) => { if (object) object.visible = saved[i]; }); }
+  }
+
+  _renderContactShadow() {
+    const plane = this._shadowPlane;
+    if (!plane || !this.cards.light || !this.cards.dark) return;
+    const show = this.decalsEnabled !== false && !this.setMode;
+    plane.visible = show;
+    if (!show) return;
+    const renderer = this.renderer;
+    const prevTarget = renderer.getRenderTarget();
+    const prevAlpha = renderer.getClearAlpha();
+    const prevColor = renderer.getClearColor(new THREE.Color());
+    this.scene.updateMatrixWorld(true);
+    this._withHidden([this.backdrop, this._reflectionFloor, plane], () => {
+      renderer.setClearColor(0x000000, 0);
+      renderer.setRenderTarget(this._shadowRtA);
+      renderer.clear();
+      this.scene.overrideMaterial = this._shadowDepthMaterial;
+      renderer.render(this.scene, this._shadowCamera);
+      this.scene.overrideMaterial = null;
+    });
+    const spec = CONTACT_SHADOW;
+    const passes = [
+      [this._shadowRtA, this._shadowRtB, 1, 0],
+      [this._shadowRtB, this._shadowRtA, 0, 1],
+      [this._shadowRtA, this._shadowRtB, 1, 0],
+      [this._shadowRtB, this._shadowRtA, 0, 1],
+    ];
+    for (const [from, to, dx, dy] of passes) {
+      this._shadowBlurMaterial.uniforms.tDiffuse.value = from.texture;
+      this._shadowBlurMaterial.uniforms.uDir.value.set((dx * spec.blur) / from.width, (dy * spec.blur) / from.height);
+      renderer.setRenderTarget(to);
+      renderer.clear();
+      renderer.render(this._shadowQuadScene, this._shadowQuadCamera);
+    }
+    renderer.setRenderTarget(prevTarget);
+    renderer.setClearColor(prevColor, prevAlpha);
+  }
+
+  _renderMirror() {
+    const floor = this._reflectionFloor;
+    if (!floor) return;
+    const weight = this._mirrorUniforms.uWeight.value;
+    if (!floor.visible || !(weight > 0.001)) return;
+    const camera = this.camera;
+    const vc = this._mirrorCamera;
+    const normal = new THREE.Vector3(0, 1, 0);
+    const point = new THREE.Vector3(0, REFLECTION.floorY, 0);
+    const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+    if (camPos.y <= point.y) return;
+    const view = new THREE.Vector3().subVectors(point, camPos).reflect(normal).negate().add(point);
+    const rot = new THREE.Matrix4().extractRotation(camera.matrixWorld);
+    const lookAt = new THREE.Vector3(0, 0, -1).applyMatrix4(rot).add(camPos);
+    const target = new THREE.Vector3().subVectors(point, lookAt).reflect(normal).negate().add(point);
+    vc.position.copy(view);
+    vc.up.set(0, 1, 0).applyMatrix4(rot).reflect(normal);
+    vc.lookAt(target);
+    vc.far = camera.far;
+    vc.near = camera.near;
+    vc.updateMatrixWorld(true);
+    vc.projectionMatrix.copy(camera.projectionMatrix);
+    floor.updateMatrixWorld(true);
+    this._mirrorMatrixTex.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+    this._mirrorMatrixTex.multiply(vc.projectionMatrix).multiply(vc.matrixWorldInverse).multiply(floor.matrixWorld);
+    // Oblique near plane = the table plane, so geometry below the table never shows.
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, point).applyMatrix4(vc.matrixWorldInverse);
+    const clip = new THREE.Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant);
+    const pm = vc.projectionMatrix;
+    const q = new THREE.Vector4(
+      (Math.sign(clip.x) + pm.elements[8]) / pm.elements[0],
+      (Math.sign(clip.y) + pm.elements[9]) / pm.elements[5],
+      -1,
+      (1 + pm.elements[10]) / pm.elements[14]
+    );
+    clip.multiplyScalar(2 / clip.dot(q));
+    pm.elements[2] = clip.x;
+    pm.elements[6] = clip.y;
+    pm.elements[10] = clip.z + 1 - 0.003;
+    pm.elements[14] = clip.w;
+
+    const renderer = this.renderer;
+    const prevTarget = renderer.getRenderTarget();
+    const prevAlpha = renderer.getClearAlpha();
+    const prevColor = renderer.getClearColor(new THREE.Color());
+    this._withHidden([this.backdrop, floor, this._shadowPlane], () => {
+      renderer.setClearColor(0x000000, 0);
+      renderer.setRenderTarget(this._mirrorTarget);
+      renderer.clear();
+      renderer.render(this.scene, vc);
+    });
+    renderer.setRenderTarget(prevTarget);
+    renderer.setClearColor(prevColor, prevAlpha);
+  }
+
+  _disposeReflection() {
+    if (this._reflectionFloor) {
+      this.scene.remove(this._reflectionFloor);
+      this._reflectionFloor.geometry.dispose();
+      this._reflectionFloor.material.dispose();
+      this._reflectionFloor = null;
+    }
+    if (this._mirrorTarget) { this._mirrorTarget.dispose(); this._mirrorTarget = null; }
+    if (this._shadowPlane) {
+      this.scene.remove(this._shadowPlane);
+      this._shadowPlane.geometry.dispose();
+      this._shadowPlane.material.dispose();
+      this._shadowPlane = null;
+    }
+    for (const key of ['_shadowRtA', '_shadowRtB']) { if (this[key]) { this[key].dispose(); this[key] = null; } }
+    for (const key of ['_shadowDepthMaterial', '_shadowBlurMaterial']) { if (this[key]) { this[key].dispose(); this[key] = null; } }
+    if (this._shadowQuad) { this._shadowQuad.geometry.dispose(); this._shadowQuad = null; }
   }
 
   _reflectionEnvForCard(card) {
@@ -1190,92 +1116,39 @@ class CardStudio {
     };
   }
 
-  // Reflection-ON environment values per card. Front/back keep the shared
-  // round-3/6 boosts; Revision 8 makes both edge materials mirror chrome, so the
-  // same clamped edge boost applies to both cards (the R4.2 dark-edge clamp was
-  // tied to the retired satin frame).
+  // Reflection-ON environment values per card (see REFLECTION.envOn).
   _reflectionOnEnv(id, base) {
     const on = REFLECTION.envOn;
-    // Revision 15: per-card mirror edges — the black metal mirror needs a higher
-    // environment response than the chrome frame to read as a dark mirror band.
     const edgeTarget = id === 'dark' ? (Number(on.edgeDark) || on.edge) : (Number(on.edgeLight) || on.edge);
     const edgeMin = id === 'dark' ? 2.2 : REFLECTION.edgeOnMin;
     const edgeMax = id === 'dark' ? 3.4 : REFLECTION.edgeOnMax;
     return {
-      front: on.front,
+      // Rev 11 s38: black face is a light-absorbing dielectric; reflection ON must not boost its env (white face keeps on.front).
+      front: id === 'dark' ? (Number(on.frontDark) || base.front) : on.front,
       edge: clamp(edgeTarget, edgeMin, edgeMax),
       back: id === 'dark' ? on.back : (Number(on.backLight) || on.back),
     };
   }
 
-  _buildReflectionClones() {
-    if (!this._reflectionRoot) return;
-    this._disposeReflectionClones();
+  _captureReflectionEnvBase() {
     // Base (OFF) env values are read from each card's live materials so the page
     // does not hard-code the modeler's mirror-edge numbers.
     this._reflectionEnvBase = {
       light: this._reflectionEnvForCard(this.cards.light),
       dark: this._reflectionEnvForCard(this.cards.dark),
     };
-    for (const id of ['light', 'dark']) {
-      const card = this.cards[id];
-      if (!card || !card.group) continue;
-      const clone = card.group.clone(true);
-      clone.name = 'reflection-card-' + id;
-      const ghosts = [];
-      clone.traverse((object) => {
-        if (!object.isMesh) return;
-        const source = object.material;
-        const ghost = Array.isArray(source)
-          ? source.map((material) => makeReflectionGhostMaterial(material))
-          : makeReflectionGhostMaterial(source);
-        object.material = ghost;
-        object.castShadow = false;
-        object.receiveShadow = false;
-        object.renderOrder = 1;
-        for (const material of Array.isArray(ghost) ? ghost : [ghost]) ghosts.push(material);
-      });
-      clone.matrixAutoUpdate = false;
-      this._reflectionRoot.add(clone);
-      this._reflectionClones[id] = { group: clone, ghosts };
-    }
-    this._updateReflectionClones();
-    this._applyReflectionState();
-  }
-
-  _disposeReflectionClones() {
-    if (!this._reflectionRoot) return;
-    for (const entry of Object.values(this._reflectionClones)) {
-      this._reflectionRoot.remove(entry.group);
-      for (const material of entry.ghosts) material.dispose();
-    }
-    this._reflectionClones = {};
-  }
-
-  _updateReflectionClones() {
-    if (!this._reflectionRoot || !this._mirrorMatrix) return;
-    if (!(this.reflectionWeight > 0.001) || !this._reflectionRoot.visible) return;
-    this.floatGroup.updateMatrixWorld(true);
-    for (const id of ['light', 'dark']) {
-      const entry = this._reflectionClones[id];
-      const card = this.cards[id];
-      if (!entry || !card) continue;
-      entry.group.matrix.copy(card.group.matrixWorld).premultiply(this._mirrorMatrix);
-      entry.group.matrixWorldNeedsUpdate = true;
-    }
   }
 
   _applyReflectionState() {
     const weight = clamp(this.reflectionWeight, 0, 1);
+    // The room env intensity scales BOTH states, so the reflection ON/OFF targets
+    // stay proportional when the env level changes.
+    const envIntensity = Number(this.envIntensity) || 1;
     const cardsReady = Boolean(this.cards && this.cards.light && this.cards.dark);
     const active = weight > 0.001 && cardsReady;
     if (this._reflectionFloor) {
-      this._reflectionFloor.visible = active;
-      this._reflectionFloor.material.opacity = weight * REFLECTION.floorOpacity;
-    }
-    if (this._reflectionRoot) this._reflectionRoot.visible = active;
-    for (const entry of Object.values(this._reflectionClones)) {
-      for (const material of entry.ghosts) material.opacity = weight * REFLECTION.cloneOpacity;
+      this._reflectionFloor.visible = active && !this.setMode;
+      this._mirrorUniforms.uWeight.value = weight;
     }
     if (this._reflectionEnvBase) {
       for (const id of ['light', 'dark']) {
@@ -1283,12 +1156,11 @@ class CardStudio {
         const base = this._reflectionEnvBase[id];
         if (!card || !card.materials || !base) continue;
         const on = this._reflectionOnEnv(id, base);
-        card.materials.front.envMapIntensity = lerp(base.front, on.front, weight);
-        card.materials.edge.envMapIntensity = lerp(base.edge, on.edge, weight);
-        card.materials.back.envMapIntensity = lerp(base.back, on.back, weight);
+        card.materials.front.envMapIntensity = lerp(base.front, on.front, weight) * envIntensity;
+        card.materials.edge.envMapIntensity = lerp(base.edge, on.edge, weight) * envIntensity;
+        card.materials.back.envMapIntensity = lerp(base.back, on.back, weight) * envIntensity;
       }
     }
-    this._updateReflectionClones();
   }
 
   /* --------------------------------------------------------------- cards */
@@ -1302,15 +1174,8 @@ class CardStudio {
       const group = card.group;
       group.name = 'card-' + id;
       group.rotation.order = 'YXZ';
-      for (const part of [card.front, card.back, card.edge]) {
-        if (!part) continue;
-        part.castShadow = true;
-        part.receiveShadow = true;
-      }
       group.traverse((object) => {
         if (!object.isMesh) return;
-        object.castShadow = true;
-        object.receiveShadow = true;
         // The card plates are single-sided ShapeGeometry surfaces. Three's
         // shadow pass defaults to `shadowSide = BackSide` for FrontSide materials,
         // which culls a flat plate seen from the light and therefore casts *no*
@@ -1329,8 +1194,70 @@ class CardStudio {
     this._applyLayout(0);
     this._applyPose();
     this._fitCamera();
-    this._buildReflectionClones();
+    // Revision 21: the card materials only exist now (the model creates them), so
+    // re-apply the room env to the new meshes before the reflection clones copy
+    // their envMapIntensity values (r151 has no scene-level env intensity).
+    this._refreshEnvRoom();
+    this._captureReflectionEnvBase();
+    this._applyReflectionState();
     this.requestRender();
+  }
+
+  /**
+   * Rev19 card-set option: nine equal cards in an upright edge row (edges toward the
+   * fixed 45-degree camera, faces toward their neighbours), the fifth card raised above the others. Replaces the
+   * duo in the composition (the duo holders are detached, not rebuilt).
+   */
+  setCardSet(on, bank) {
+    const next = Boolean(on);
+    if (next === Boolean(this.setMode)) return this.setMode;
+    if (next) {
+      if (!this.setGroup) {
+        if (!bank || typeof bank.createCard !== 'function') throw new Error('card set needs the card bank');
+        this.setGroup = new THREE.Group();
+        this.setGroup.name = 'card-set';
+        this.setCards = [];
+        const spec = CARD_SET;
+        for (let i = 0; i < spec.count; i += 1) {
+          const cardSpec = bank.specs.find((s) => s.id === (i % 2 === 0 ? 'dark' : 'light')) || bank.specs[0];
+          const card = bank.createCard(cardSpec, { quality: 'gallery' });
+          const group = card.group;
+          group.name = 'card-set-' + (i + 1);
+          group.rotation.order = 'YXZ';
+          // Vertical edge-row orientation (from the retired standalone cardsets
+          // page): a pure Y yaw of 90deg + camera azimuth turns each card's face
+          // normal onto the camera-right row axis (edge to camera, upright);
+          // alternate cards flip 180deg so neighbouring faces face each other.
+          // Rev5: every card faces the white (light) card's direction (yaw EDGE+180),
+          // then rolls 90deg counter-clockwise (seen from the front, Rev9 s36) about its own z.
+          group.rotation.y = degToRad(CARD_SET_EDGE_YAW_DEG + 180);
+          group.rotation.z = Math.PI / 2;
+          const along = (i - (spec.count - 1) / 2) * spec.pitch;
+          group.position.set(CARD_SET_ROW_AXIS.x * along, i === spec.raisedIndex ? spec.raise : 0, CARD_SET_ROW_AXIS.z * along);
+          group.traverse((object) => {
+            if (!object.isMesh) return;
+          });
+          this.setGroup.add(group);
+          this.setCards.push(card);
+        }
+      }
+      this.composition.remove(this.holders.light, this.holders.dark);
+      this.composition.add(this.setGroup);
+    } else {
+      this.composition.remove(this.setGroup);
+      this.composition.add(this.holders.light, this.holders.dark);
+    }
+    this.setMode = next;
+    // Revision 21: the nine gallery cards are created lazily here, so give their
+    // materials the room env intensity too (r151 applies it per material).
+    this._refreshEnvRoom();
+    this._computeCompositionBounds();
+    if (next) this._reflectionFrame = null;
+    this._applyReflectionState();
+    this._fitCamera();
+    this._applyPose();
+    this.requestRender();
+    return this.setMode;
   }
 
   _computeCompositionBounds() {
@@ -1397,7 +1324,6 @@ class CardStudio {
     }
     this.swapProgress = p;
     this.orderFront = p < 0.5 ? 'light' : 'dark';
-    this._markShadowDirty();
   }
 
   _applyPose() {
@@ -1407,138 +1333,13 @@ class CardStudio {
     if (Math.abs(yaw - this._lastYaw) > 1e-4 || Math.abs(pitch - this._lastPitch) > 1e-4) {
       this._lastYaw = yaw;
       this._lastPitch = pitch;
-      this._markShadowDirty();
     }
     this.composition.rotation.y = yaw;
     this.composition.rotation.x = pitch;
     this.floatGroup.position.y = this._floatY;
     this.floatGroup.rotation.z = this._floatTilt;
-    this._updateShadowDecals();
-    this._updateReflectionClones();
   }
 
-
-  /* ------------------------------------------------- key-light soft shadow */
-  /* See makeCardShadowTexture(): the key light sits to the camera's right, so
-     the visible soft shadow is a feathered silhouette placed behind each card
-     along the view axis and displaced toward camera-left (see
-     _updateShadowDecals), i.e. on the side away from the light.  */
-
-  _buildShadowDecals() {
-    this._shadowTexture = makeCardShadowTexture();
-    const baseMaterial = new THREE.MeshBasicMaterial({
-      map: this._shadowTexture,
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false,
-      depthTest: true,
-      toneMapped: false,
-    });
-    this.decalsEnabled = true;
-    this.shadowDecals = [];
-    // Two layers give a shadow that reads like a real soft shadow rather than a
-    // flat vignette: a tight darker core just outside the silhouette plus a wide
-    // soft penumbra. Both are strictly behind the card (depth-extent offset).
-    // Round 7 exposes more of the decal to camera-left (see _updateShadowDecals),
-    // so the authored opacity is lowered to keep the cast shadow a soft presence
-    // instead of a black slab.
-    const layers = [
-      { spread: 1.36, light: 0.24, dark: 0.2 },
-      { spread: 1.22, light: 0.4, dark: 0.32 },
-    ];
-    for (const layer of layers) {
-      for (const id of ['light', 'dark']) {
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), baseMaterial.clone());
-        mesh.name = 'camera-angle-shadow-' + id + '-' + layer.spread;
-        mesh.material.opacity = id === 'light' ? layer.light : layer.dark;
-        mesh.renderOrder = 2;
-        mesh.visible = false;
-        this.scene.add(mesh);
-        this.shadowDecals.push({ id, mesh, spread: layer.spread });
-      }
-    }
-    baseMaterial.dispose();
-  }
-
-  /**
-   * Position the billboarded shadow decals strictly behind their cards: the
-   * offset is the card's exact depth extent along the view axis
-   * (halfW·|x·v| + halfH·|y·v| + halfT·|z·v| + margin), so a transparent decal
-   * can never paint a hard edge over a face. The plane is scaled by
-   * decalDepth/centerDepth so the projected penumbra keeps matching the card
-   * footprint (including foreshortening while dragging) and is spun with the
-   * card's screen-plane tilt so the silhouette lines up at rest.
-   */
-  _updateShadowDecals() {
-    if (!this.shadowDecals || !this.shadowDecals.length) return;
-    if (!this.cards.light || !this.cards.dark || !this.metrics) return;
-    this.floatGroup.updateMatrixWorld(true);
-    // View direction of the live camera (not the origin-to-camera vector): the
-    // decals must stay behind the cards for the 45-degree default view too.
-    const camDir = this._camDir || (this._camDir = new THREE.Vector3());
-    this.camera.getWorldDirection(camDir);
-    const away = this._decalAway || (this._decalAway = new THREE.Vector3());
-    away.copy(camDir);
-    const camRight = this._camRight || (this._camRight = new THREE.Vector3(1, 0, 0));
-    const camUp = this._camUp || (this._camUp = new THREE.Vector3(0, 1, 0));
-    camRight.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    camUp.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
-    const axis = this._decalAxis || (this._decalAxis = new THREE.Vector3());
-    const world = this._decalWorld || (this._decalWorld = new THREE.Vector3());
-    const toPoint = this._decalToPoint || (this._decalToPoint = new THREE.Vector3());
-    const spin = this._decalSpin || (this._decalSpin = new THREE.Quaternion());
-    const halfW = this.metrics.width / 2;
-    const halfH = this.metrics.height / 2;
-    const halfT = this.metrics.thickness / 2;
-    for (const entry of this.shadowDecals) {
-      const holder = this.holders[entry.id];
-      const card = this.cards[entry.id];
-      if (!holder || !card || !card.group) continue;
-      const elements = card.group.matrixWorld.elements;
-      axis.set(elements[0], elements[1], elements[2]).normalize();
-      const axisXdotAway = Math.abs(axis.dot(away));
-      const axisXdotRight = axis.dot(camRight);
-      const axisXdotUp = axis.dot(camUp);
-      const projectedWidth = Math.abs(axisXdotRight);
-      const screenAngle = Math.atan2(axisXdotUp, axisXdotRight);
-      axis.set(elements[4], elements[5], elements[6]).normalize();
-      const axisYdotAway = Math.abs(axis.dot(away));
-      const projectedHeight = Math.abs(axis.dot(camUp));
-      axis.set(elements[8], elements[9], elements[10]).normalize();
-      const axisZdotAway = Math.abs(axis.dot(away));
-      const thicknessWidth = Math.abs(axis.dot(camRight));
-      const thicknessHeight = Math.abs(axis.dot(camUp));
-
-      holder.getWorldPosition(world);
-      toPoint.copy(world).sub(this.camera.position);
-      const centerDepth = toPoint.dot(away);
-      const depthExtent = halfW * axisXdotAway + halfH * axisYdotAway + halfT * axisZdotAway;
-      const margin = 0.055;
-      world.addScaledVector(away, depthExtent + margin);
-      // Round 7: the key light is offset to the camera's right, so the authored
-      // soft shadow is displaced toward camera-left (and slightly down for the
-      // small upward key lift) by the projected distance a real shadow of the
-      // card would move at the decal depth. This keeps the visible shadow
-      // pointing away from the new light instead of sitting zero-offset behind
-      // the card.
-      const shadowDepth = depthExtent + margin;
-      world.addScaledVector(camRight, -shadowDepth * SHADOW_SHIFT * Math.tan(degToRad(KEY_LIGHT.rightDeg)));
-      world.addScaledVector(camUp, -shadowDepth * SHADOW_SHIFT * Math.tan(degToRad(KEY_LIGHT.upDeg)));
-      entry.mesh.position.copy(world);
-      entry.mesh.quaternion.copy(this.camera.quaternion);
-      spin.setFromAxisAngle(PLANE_Z, screenAngle);
-      entry.mesh.quaternion.multiply(spin);
-      const depthScale = (centerDepth + depthExtent + margin) / Math.max(0.001, centerDepth);
-      const scale = holder.scale.x;
-      const spread = entry.spread || 1.3;
-      entry.mesh.scale.set(
-        (this.metrics.width * Math.max(projectedWidth, 0.22) + this.metrics.thickness * thicknessWidth * 2) * scale * spread * depthScale,
-        (this.metrics.height * Math.max(projectedHeight, 0.22) + this.metrics.thickness * thicknessHeight * 2) * scale * spread * depthScale,
-        1
-      );
-      entry.mesh.visible = this.decalsEnabled !== false;
-    }
-  }
 
   _displayPose() {
     const yawOffset = Math.sin(this.autoPhase) * AUTO.yawAmplitude * this.autoWeight;
@@ -1573,6 +1374,7 @@ class CardStudio {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this._resizeMirrorTarget();
     this._fitCamera();
     this.requestRender();
   }
@@ -1638,47 +1440,6 @@ class CardStudio {
     this.camera.position.copy(CAMERA_AXIS).multiplyScalar(distance).add(target);
     this.camera.lookAt(target);
     this.camera.updateMatrixWorld(true);
-    this._syncKeyLight();
-    this._markShadowDirty();
-    // Decals are screen-space relative to the camera: never let them be a frame
-    // stale after a fit/resize (first-load determinism).
-    this._updateShadowDecals();
-  }
-
-  _syncKeyLight() {
-    if (!this.keyLight || !this.camera) return;
-    // Round 7 requirement: the key light sits to the camera's RIGHT (screen-
-    // right), not at the camera. Start from the target->camera direction, rotate
-    // it toward the camera-right basis by KEY_LIGHT.rightDeg and lift it by
-    // KEY_LIGHT.upDeg, then place the light on a closer radius around the
-    // composition target (distanceScale). The highlight therefore falls on the
-    // right of the cards and the visible soft shadow is offset toward camera-left.
-    const forward = this._keyForward || (this._keyForward = new THREE.Vector3());
-    const right = this._keyRight || (this._keyRight = new THREE.Vector3(1, 0, 0));
-    const up = this._keyUp || (this._keyUp = new THREE.Vector3(0, 1, 0));
-    const axis = this._keyAxis || (this._keyAxis = new THREE.Vector3());
-    this.camera.getWorldDirection(forward);
-    right.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    up.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
-    const rightRad = degToRad(KEY_LIGHT.rightDeg);
-    const upRad = degToRad(KEY_LIGHT.upDeg);
-    axis
-      .copy(forward)
-      .multiplyScalar(-Math.cos(rightRad) * Math.cos(upRad))
-      .addScaledVector(right, Math.sin(rightRad) * Math.cos(upRad))
-      .addScaledVector(up, Math.sin(upRad))
-      .normalize();
-    const target =
-      this._cameraTarget || this._keyDefaultTarget || (this._keyDefaultTarget = new THREE.Vector3(0, 0, 0));
-    const distance = this._cameraDistance * KEY_LIGHT.distanceScale;
-    this.keyLight.position.copy(target).addScaledVector(axis, distance);
-    this.keyLight.updateMatrixWorld(true);
-    this._markShadowDirty();
-  }
-
-  _markShadowDirty() {
-    this._shadowDirty = true;
-    if (this.keyLight) this.keyLight.shadow.needsUpdate = true;
   }
 
   /* -------------------------------------------------------------- render */
@@ -1815,6 +1576,8 @@ class CardStudio {
 
   renderNow() {
     if (!this.renderer || !this.scene || !this.camera || this._destroyed) return;
+    this._renderMirror();
+    this._renderContactShadow();
     this.renderer.render(this.scene, this.camera);
     this._needsRender = false;
     this._rendered = true;
@@ -1981,17 +1744,39 @@ class CardStudio {
     return this.autoRotate;
   }
 
-  /** Revision 15 (R15-1): toggle the key PointLight; environment/ambient stay. */
+  /**
+   * Revision 21: the old light toggle is now a room env-intensity toggle.
+   * ON keeps the tuned room intensity; OFF dims the whole environment
+   * through the shared env-room handle (r151 scales each material's
+   * envMapIntensity), then the reflection targets are re-applied proportionally
+   * so the render changes visibly and stays internally consistent.
+   */
   setKeyLightEnabled(enabled) {
     this.keyLightEnabled = Boolean(enabled);
-    if (this.keyLight) {
-      this.keyLight.intensity = this.keyLightEnabled ? KEY_LIGHT.intensity : 0;
-      this.keyLight.updateMatrixWorld(true);
-    }
-    this._markShadowDirty();
+    this.envIntensity = this.keyLightEnabled ? ENV_INTENSITY.on : ENV_INTENSITY.off;
+    if (this.envRoom) this.envRoom.setIntensity(this.envIntensity, this.scene);
+    this._applyReflectionState();
     this.requestRender();
     this.renderNow();
     return this.keyLightEnabled;
+  }
+
+  _refreshEnvRoom() {
+    if (this.envRoom) this.envRoom.refresh(this.scene);
+  }
+
+  getEnvironmentDebug() {
+    const sceneEnvironment = Boolean(this.scene && this.scene.environment);
+    return {
+      enabled: Boolean(this.keyLightEnabled),
+      keyType: 'none',
+      keyIntensity: 0,
+      ambientIntensity: 0,
+      environment: ENV_ROOM_REPORT,
+      mode: this.keyLightEnabled ? 'on' : 'off',
+      intensity: round(this.envIntensity, 3),
+      sceneEnvironment,
+    };
   }
 
   getKeyLightEnabled() {
@@ -2107,7 +1892,6 @@ class CardStudio {
    */
   async settleForReady() {
     this._fitCamera();
-    this._updateShadowDecals();
     this.renderNow();
     await new Promise((resolve) => {
       let frames = 0;
@@ -2129,7 +1913,6 @@ class CardStudio {
       window.setTimeout(finish, 350);
     });
     this._fitCamera();
-    this._updateShadowDecals();
     this.renderNow();
     return true;
   }
@@ -2164,27 +1947,28 @@ class CardStudio {
   }
 
   getKeyLightDebug() {
-    const key = this.keyLight;
+    // Revision 21: no key light object exists; the shape is kept for QA
+    // compatibility and reports the environment-only lighting state instead.
     return {
-      type: key.type,
+      type: 'none',
       enabled: Boolean(this.keyLightEnabled),
-      position: [round(key.position.x, 4), round(key.position.y, 4), round(key.position.z, 4)],
+      position: [0, 0, 0],
       target: [0, 0, 0],
-      intensity: round(key.intensity, 4),
-      decay: key.decay,
-      distance: key.distance,
-      castShadow: Boolean(key.castShadow),
-      shadowMapSize: [key.shadow.mapSize.x, key.shadow.mapSize.y],
-      shadowBias: key.shadow.bias,
-      shadowNormalBias: key.shadow.normalBias,
-      shadowMapAllocated: Boolean(key.shadow.map),
-      shadowType: this.renderer.shadowMap.enabled ? 'PCFSoftShadowMap' : 'disabled',
-      distanceToCamera: round(key.position.distanceTo(this.camera.position), 6),
-      // Round 7: the key is no longer camera-coincident; report the offset so QA
-      // can assert the light is on the camera's right and not at the eye.
-      positionMode: 'camera-right-offset',
-      offsetDeg: { right: KEY_LIGHT.rightDeg, up: KEY_LIGHT.upDeg },
-      distanceScale: KEY_LIGHT.distanceScale,
+      intensity: 0,
+      decay: 0,
+      distance: 0,
+      castShadow: false,
+      shadowMapSize: [0, 0],
+      shadowBias: 0,
+      shadowNormalBias: 0,
+      shadowMapAllocated: false,
+      shadowType: 'disabled',
+      distanceToCamera: 0,
+      positionMode: 'environment-only',
+      offsetDeg: { right: SHADOW_OFFSET.rightDeg, up: SHADOW_OFFSET.upDeg },
+      distanceScale: 0,
+      environment: ENV_ROOM_REPORT,
+      envIntensity: round(this.envIntensity, 3),
     };
   }
 
@@ -2202,28 +1986,22 @@ class CardStudio {
       if (object.isHemisphereLight) hemisphere += 1;
       if (object.castShadow) shadowCasters += 1;
     });
-    return { directional, point, shadowCasters, ambient, hemisphere, total: directional + point + ambient + hemisphere };
+    return {
+      directional,
+      point,
+      shadowCasters,
+      ambient,
+      hemisphere,
+      total: directional + point + ambient + hemisphere,
+      // Revision 21: zero lights — the room photo PMREM is the only light source.
+      environment: ENV_ROOM_REPORT,
+    };
   }
 
   _screenRowForWorldPoint(point) {
     // Project a world point to a CSS-pixel row inside the stage (0 = top).
     const projected = point.clone().project(this.camera);
     return (0.5 - projected.y * 0.5) * this._size.h;
-  }
-
-  _floorVAtScreenRow(row) {
-    // Ray from the camera through the given stage row; intersect the glass plane.
-    if (!this.camera || !this._size.h) return null;
-    const ndcY = 1 - (row / this._size.h) * 2;
-    const tan = Math.tan((this.camera.fov * Math.PI) / 360);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-    const direction = forward.clone().addScaledVector(up, ndcY * tan).normalize();
-    if (Math.abs(direction.y) < 1e-6) return null;
-    const distance = (REFLECTION.floorY - this.camera.position.y) / direction.y;
-    if (distance <= 0) return null;
-    const hit = this.camera.position.clone().addScaledVector(direction, distance);
-    return clamp(0.5 + (REFLECTION.floorCenterZ - hit.z) / REFLECTION.floorDepth, 0, 1);
   }
 
   getReflectionDebug() {
@@ -2242,16 +2020,8 @@ class CardStudio {
     };
     return {
       enabled: Boolean(this.reflectionEnabled),
-      floorVisible: Boolean(
-        this._reflectionFloor && this._reflectionFloor.visible && this.reflectionWeight > 0.001
-      ),
-      reflectionPass: Boolean(
-        this.reflectionEnabled && this.reflectionWeight > 0.5 && this._reflectionRoot && this._reflectionRoot.visible
-      ),
-      // Round-3 shape, kept for QA compatibility: `env` reports the light card's
-      // live values and `envByCard` the per-card values. Revision 8 made both
-      // bezels mirror chrome, so the edge boost is now the same for both cards
-      // (debug().edgeMaterials remains the authoritative live per-card source).
+      floorVisible: Boolean(this._reflectionFloor && this._reflectionFloor.visible && this.reflectionWeight > 0.001),
+      reflectionPass: Boolean(this.reflectionEnabled && this.reflectionWeight > 0.5 && this._reflectionFloor && this._reflectionFloor.visible),
       env: {
         front: round(materials && materials.front ? materials.front.envMapIntensity : 0, 3),
         edge: round(materials && materials.edge ? materials.edge.envMapIntensity : 0, 3),
@@ -2260,32 +2030,40 @@ class CardStudio {
       envByCard: { light: envFor('light'), dark: envFor('dark') },
       mode: this.reflectionEnabled ? 'on' : 'off',
       weight: round(this.reflectionWeight, 3),
-      implementation: 'mirrored-clones',
+      implementation: 'planar-reflector',
+      shadow: 'projected-contact-shadow',
       layers: {
-        mirror: Boolean(this._reflectionRoot && this._reflectionRoot.visible),
+        mirror: Boolean(this._reflectionFloor && this._reflectionFloor.visible),
         glass: Boolean(this._reflectionFloor && this._reflectionFloor.visible),
-        fade: false,
+        contactShadow: Boolean(this._shadowPlane && this._shadowPlane.visible),
       },
-      ghostOpacity: round(this.reflectionWeight * REFLECTION.cloneOpacity, 3),
+      painted: false,
     };
   }
 
   getReflectionScreenDebug() {
+    // Projected screen bbox of the mirror image (the real card bounds mirrored
+    // about the table plane).
     const out = { mirrorScreen: null, samples: [] };
-    if (!this.camera || !this._size.h || !this._reflectionRoot) return out;
-    const box = new THREE.Box3().setFromObject(this._reflectionRoot);
+    if (!this.camera || !this._size.h || !this.cards.light) return out;
+    this.floatGroup.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    for (const id of ['light', 'dark']) {
+      if (this.cards[id] && this.cards[id].group) box.expandByObject(this.cards[id].group);
+    }
     if (box.isEmpty()) return out;
-    const corners = [];
+    const ys = [2 * REFLECTION.floorY - box.max.y, 2 * REFLECTION.floorY - box.min.y];
+    const rows = [];
+    const cols = [];
     for (const x of [box.min.x, box.max.x]) {
-      for (const y of [box.min.y, box.max.y]) {
-        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      for (const y of ys) {
+        for (const z of [box.min.z, box.max.z]) {
+          const corner = new THREE.Vector3(x, y, z);
+          rows.push(this._screenRowForWorldPoint(corner));
+          cols.push((corner.clone().project(this.camera).x * 0.5 + 0.5) * this._size.w);
+        }
       }
     }
-    const rows = corners.map((corner) => this._screenRowForWorldPoint(corner));
-    const cols = corners.map((corner) => {
-      const ndc = corner.clone().project(this.camera);
-      return (ndc.x * 0.5 + 0.5) * this._size.w;
-    });
     out.mirrorScreen = {
       x0: round(Math.min(...cols), 1),
       y0: round(Math.min(...rows), 1),
@@ -2293,21 +2071,6 @@ class CardStudio {
       y1: round(Math.max(...rows), 1),
       stageH: round(this._size.h, 1),
     };
-    for (const [label, row] of [
-      ['mirrorTop', Math.min(...rows)],
-      ['mirrorBottom', Math.max(...rows)],
-      ['stageBottom', this._size.h],
-    ]) {
-      const v = this._floorVAtScreenRow(row);
-      out.samples.push({
-        at: label,
-        row: round(row, 1),
-        v: v === null ? null : round(v, 3),
-        glassAlpha: v === null ? null : round(reflectionFloorCoverage(v), 3),
-        coverage: v === null ? null : round(reflectionFloorCoverage(v), 3),
-        overlayAlpha: 0,
-      });
-    }
     return out;
   }
 
@@ -2317,7 +2080,10 @@ class CardStudio {
       drawCalls: this._stats.drawCalls,
       pixelRatio: round(this.renderer.getPixelRatio(), 3),
       shadowMapEnabled: Boolean(this.renderer.shadowMap.enabled),
-      shadowMapType: this.renderer.shadowMap.type === THREE.PCFSoftShadowMap ? 'PCFSoftShadowMap' : String(this.renderer.shadowMap.type),
+      shadowMapType: 'disabled',
+      toneMappingExposure: round(this.renderer.toneMappingExposure, 3),
+      environment: ENV_ROOM_REPORT,
+      envIntensity: round(this.envIntensity, 3),
       frames: this._frameCount,
       renders: this._renderCount,
       size: { width: this._size.w, height: this._size.h },
@@ -2357,35 +2123,11 @@ class CardStudio {
       this.backdrop.material.map.dispose();
       this.backdrop.material.dispose();
     }
-    if (this.shadowDecals) {
-      for (const entry of this.shadowDecals) {
-        entry.mesh.geometry.dispose();
-        entry.mesh.material.dispose();
-        this.scene.remove(entry.mesh);
-      }
-      this.shadowDecals = [];
+    this._disposeReflection();
+    if (this.envRoom) {
+      this.envRoom.dispose();
+      this.envRoom = null;
     }
-    if (this._shadowTexture) this._shadowTexture.dispose();
-    if (this._reflectionRoot) {
-      this._disposeReflectionClones();
-      this.scene.remove(this._reflectionRoot);
-      this._reflectionRoot = null;
-    }
-    if (this._reflectionFloor) {
-      this.scene.remove(this._reflectionFloor);
-      this._reflectionFloor.geometry.dispose();
-      this._reflectionFloor.material.dispose();
-      this._reflectionFloor = null;
-    }
-    if (this._reflectionAlphaTexture) {
-      this._reflectionAlphaTexture.dispose();
-      this._reflectionAlphaTexture = null;
-    }
-    if (this._reflectionTintTexture) {
-      this._reflectionTintTexture.dispose();
-      this._reflectionTintTexture = null;
-    }
-    if (this._envRT) this._envRT.dispose();
     if (this.renderer) this.renderer.dispose();
   }
 }
@@ -2522,13 +2264,26 @@ function doSetReflection(enabled) {
   return next;
 }
 
+function doSetCardSet(on) {
+  if (!state.studio || !state.bank) return false;
+  const next = state.studio.setCardSet(Boolean(on), state.bank);
+  state.cardSet = next;
+  if (dom.btnSet) dom.btnSet.setAttribute('aria-pressed', String(next));
+  if (dom.stageName) dom.stageName.textContent = next ? 'Card set · 9' : state.swapFront === 'dark' ? 'Light + Dark' : 'Dark + Light';
+  if (dom.btnSwap) dom.btnSwap.disabled = next;
+  if (dom.btnReflection) dom.btnReflection.disabled = next;
+  announce(next ? 'Card set: nine equal cards' : 'Card duo');
+  publishState();
+  return next;
+}
+
 function doSetLight(enabled) {
   if (!state.studio) return false;
   const next = state.studio.setKeyLightEnabled(Boolean(enabled));
   state.lightOn = next;
   syncLightUi();
   syncAllUi();
-  announce(next ? 'Key light on · environment and ambient fill unchanged' : 'Key light off · environment and ambient fill unchanged');
+  announce(next ? 'Room environment at full intensity' : 'Room environment dimmed');
   publishState();
   return next;
 }
@@ -2566,6 +2321,12 @@ function wireUi() {
       doSetReflection(!state.reflection);
     });
   }
+  if (dom.btnSet) {
+    dom.btnSet.addEventListener('click', () => {
+      if (!state.ready) return;
+      doSetCardSet(!state.cardSet);
+    });
+  }
   if (dom.btnLight) {
     dom.btnLight.addEventListener('click', () => {
       if (!state.ready) return;
@@ -2594,6 +2355,9 @@ function wireUi() {
     } else if (key === 'e') {
       event.preventDefault();
       if (state.ready) doSetReflection(!state.reflection);
+    } else if (key === 'g') {
+      event.preventDefault();
+      if (state.ready) doSetCardSet(!state.cardSet);
     } else if (key === 'l') {
       event.preventDefault();
       if (state.ready) doSetLight(!state.lightOn);
@@ -2664,7 +2428,7 @@ const api = {
     publishState();
     return next;
   },
-  /** Revision 15: toggle the key PointLight (environment/ambient stay on). */
+  /** Revision 21: room env-intensity toggle (was the key-light on/off API). */
   setLight(enabled) {
     if (!state.studio) return false;
     const next = doSetLight(Boolean(enabled));
@@ -2690,11 +2454,30 @@ const api = {
     setDecals(visible) {
       if (!state.studio) return false;
       state.studio.decalsEnabled = Boolean(visible);
-      for (const entry of state.studio.shadowDecals || []) entry.mesh.visible = state.studio.decalsEnabled;
+      if (state.studio._shadowPlane) state.studio._shadowPlane.visible = state.studio.decalsEnabled && !state.studio.setMode;
       state.studio.requestRender();
       state.studio.renderNow();
       return state.studio.decalsEnabled;
     },
+    // s39 QA-only: screen-space quad (canvas CSS px) of a card's front face, the
+    // live studio handle for per-term ablation, and a canvas-readback luma probe.
+    faceQuad(id) {
+      const st = state.studio; const card = st && st.cards && st.cards[id];
+      if (!card) return null;
+      card.group.updateWorldMatrix(true, true);
+      st.camera.updateMatrixWorld(true);
+      const geo = card.front.geometry; geo.computeBoundingBox();
+      const b = geo.boundingBox; const z = b.max.z;
+      const rect = st.canvas.getBoundingClientRect();
+      const out = [];
+      for (const [x, y] of [[b.min.x, b.max.y], [b.max.x, b.max.y], [b.max.x, b.min.y], [b.min.x, b.min.y]]) {
+        const v = card.front.localToWorld(card.front.position.clone().set(x, y, z));
+        v.project(st.camera);
+        out.push([(v.x * 0.5 + 0.5) * rect.width, (-v.y * 0.5 + 0.5) * rect.height]);
+      }
+      return out;
+    },
+    studio() { return state.studio; },
     decalsVisible() {
       return Boolean(state.studio && state.studio.decalsEnabled !== false);
     },
@@ -2857,6 +2640,7 @@ async function boot() {
     const pose = parsePoseParam();
     if (pose) state.studio.setPose(pose.yawDeg, pose.pitchDeg);
     if (urlParams.get('swap') === '1') state.studio.swap({ immediate: true });
+    if (urlParams.get('set') === '1') doSetCardSet(true);
     await state.studio.settleForReady();
     await state.studio.waitForIdle();
   } catch (error) {

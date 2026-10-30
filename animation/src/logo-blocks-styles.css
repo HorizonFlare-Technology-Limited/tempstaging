@@ -3,8 +3,9 @@
    Local assets only. No external fonts, icons or images.
 
    Authored for the logo-block deliverable: one canvas, two deterministic
-   compositions (fig 4: four-block silver stack with brand-gold edge bands;
-   fig 5: fluted bank-icon plaque + logo plaque with a gold edge ring).
+   compositions (catalogue 03: silver brand plate parade spreading along a 45°
+   gather line; catalogue 04: logo + bank link with a gold glow ring and dotted
+   rays, on a satin columns platform).
    The collection's editorial grammar is kept — header/nav, stage overlay,
    caption, control bar, object-facts card, layer rail, static fallback — but
    the stage, caption badge, scene segmented control and layer rail are
@@ -306,8 +307,7 @@ kbd {
   min-height: 0;
 }
 
-/* Dark navy studio plate (fig 4 backdrop). The bank composition swaps to the
-   cool-grey fig 5 backdrop so the stage follows the active scene. */
+/* Dark navy studio plate. Both catalogue compositions share this dark stage. */
 .stage {
   position: relative;
   flex: 0 0 auto;
@@ -350,13 +350,6 @@ kbd {
   background:
     radial-gradient(120% 64% at 50% 122%, rgba(126, 143, 166, 0.2), rgba(126, 143, 166, 0) 60%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0) 18%);
-}
-
-body[data-qa-scene='bank'] .stage,
-body[data-scene='bank'] .stage {
-  background:
-    radial-gradient(64% 56% at 50% 32%, #343b45 0%, rgba(39, 44, 53, 0.6) 46%, rgba(12, 14, 18, 0) 78%),
-    radial-gradient(130% 104% at 50% 0%, #2b3038 0%, #171a20 48%, #08090c 100%);
 }
 
 .stage-aura {
@@ -517,53 +510,6 @@ body[data-scene='bank'] .stage {
   color: var(--ink-soft);
   pointer-events: none;
   transition: opacity 0.3s var(--ease);
-}
-
-/* Scene-aware overlay chrome. The bank composition (fig 5) sits on a light
-   concrete stage, so the bottom caption/hint switch to a light plaque with
-   dark ink; the stack composition keeps the light-on-dark treatment. Selectors
-   cover both body[data-scene] and body[data-qa-scene] so either runtime
-   attribute mirrors the switch. */
-body[data-scene='bank'] .stage-caption,
-body[data-qa-scene='bank'] .stage-caption {
-  border-color: rgba(18, 22, 27, 0.12);
-  background: rgba(248, 249, 251, 0.9);
-  box-shadow: 0 12px 26px rgba(10, 14, 20, 0.22);
-}
-
-body[data-scene='bank'] .stage-caption-code,
-body[data-qa-scene='bank'] .stage-caption-code {
-  border-color: rgba(18, 22, 27, 0.16);
-  background: linear-gradient(160deg, #f7f9fb, #dde2e8);
-  box-shadow: inset 0 1px 0 #ffffff, 0 5px 12px rgba(18, 22, 27, 0.16);
-  color: #1c232b;
-}
-
-body[data-scene='bank'] .stage-caption-name,
-body[data-qa-scene='bank'] .stage-caption-name {
-  color: #12161b;
-}
-
-body[data-scene='bank'] .stage-caption-detail,
-body[data-qa-scene='bank'] .stage-caption-detail {
-  color: #59616c;
-}
-
-body[data-scene='bank'] .stage-hint,
-body[data-qa-scene='bank'] .stage-hint {
-  border-color: rgba(18, 22, 27, 0.1);
-  background: rgba(248, 249, 251, 0.9);
-  color: #39414b;
-}
-
-/* The bank studio is neutral grey/gold; keep its aura from bluing the light
-   concrete stage while the stack keeps the navy/cool aura. */
-body[data-scene='bank'] .stage-aura,
-body[data-qa-scene='bank'] .stage-aura {
-  background:
-    radial-gradient(closest-side at 50% 38%, rgba(216, 223, 232, 0.22), rgba(216, 223, 232, 0) 72%),
-    radial-gradient(closest-side at 70% 76%, rgba(255, 214, 10, 0.07), rgba(255, 214, 10, 0) 56%),
-    radial-gradient(closest-side at 26% 60%, rgba(148, 160, 176, 0.18), rgba(148, 160, 176, 0) 64%);
 }
 
 body[data-qa-fallback='1'] .stage-hint,
@@ -1261,39 +1207,39 @@ body[data-still='1'] .stage-hint {
   height: auto;
 }
 
-.fallback-poster .poster-stack {
+.fallback-poster .poster-plates {
   display: block;
 }
 
-.fallback-poster .poster-bank {
+.fallback-poster .poster-link {
   display: none;
 }
 
-body[data-scene='bank'] .fallback-poster .poster-stack,
-body[data-qa-scene='bank'] .fallback-poster .poster-stack {
+body[data-scene='link'] .fallback-poster .poster-plates,
+body[data-qa-scene='link'] .fallback-poster .poster-plates {
   display: none;
 }
 
-body[data-scene='bank'] .fallback-poster .poster-bank,
-body[data-qa-scene='bank'] .fallback-poster .poster-bank {
+body[data-scene='link'] .fallback-poster .poster-link,
+body[data-qa-scene='link'] .fallback-poster .poster-link {
   display: block;
 }
 
 /* Runtime hook: src/logo-blocks-preview.js sets data-scene on #fallback itself,
    so the poster also follows that attribute (highest-priority selector). */
-#fallback[data-scene='stack'] .fallback-poster .poster-bank {
+#fallback[data-scene='plates'] .fallback-poster .poster-link {
   display: none;
 }
 
-#fallback[data-scene='stack'] .fallback-poster .poster-stack {
+#fallback[data-scene='plates'] .fallback-poster .poster-plates {
   display: block;
 }
 
-#fallback[data-scene='bank'] .fallback-poster .poster-stack {
+#fallback[data-scene='link'] .fallback-poster .poster-plates {
   display: none;
 }
 
-#fallback[data-scene='bank'] .fallback-poster .poster-bank {
+#fallback[data-scene='link'] .fallback-poster .poster-link {
   display: block;
 }
 

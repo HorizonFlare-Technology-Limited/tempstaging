@@ -615,9 +615,6 @@ function normalizeMetadata(raw, base, jsonUrl) {
     // cards that do not define them use the shared sleek maps.
     ...raw.cards.map((entry) => entry.faceRoughness).filter(Boolean),
     ...raw.cards.map((entry) => entry.faceNormal).filter(Boolean),
-    raw.sleekMaps.metal.file,
-    raw.sleekMaps.rough.file,
-    raw.sleekMaps.normal.file,
     ...backFiles,
   ];
   for (const file of required) {
@@ -647,11 +644,7 @@ function normalizeMetadata(raw, base, jsonUrl) {
 }
 
 function loadTextureBank(entries, base, sampling, onProgress, total) {
-  const sharedFiles = new Set([
-    entries.raw.sleekMaps.metal.file,
-    entries.raw.sleekMaps.rough.file,
-    entries.raw.sleekMaps.normal.file,
-  ]);
+  const sharedFiles = new Set(); // Rev 5: sleek maps are no longer loaded (procedural microdot instead)
   const entriesByFile = new Map();
   let loaded = 1; // metadata counts as one progress unit
   if (typeof onProgress === 'function') onProgress(0, total);
@@ -669,7 +662,10 @@ function loadTextureBank(entries, base, sampling, onProgress, total) {
         + ' (assetBase="' + base + '"; check assets/textures/card/ exists and card-assets.json lists it)');
     });
   });
-  return Promise.all(jobs).then(() => textures).catch((error) => {
+  return Promise.all(jobs).then(() => {
+    addMicrodotTextures(textures);
+    return textures;
+  }).catch((error) => {
     disposeTextures(textures);
     throw error;
   });
@@ -683,18 +679,105 @@ function disposeTextures(textures) {
   }
 }
 
+/* ------------------------------------------------------------------------- */
+/* Rev 5: procedural micro-dot microdoted grid (replaces sleek.jpg maps)         */
+/* ------------------------------------------------------------------------- */
+
+// Hex-ish (offset-row) lattice of tiny raised dots. One tile = 4 dots x 2 rows;
+// the tile repeats MICRODOT.repeat times over the card face (~128 dots across).
+// Rev 11: front faces are plain (no normal / dot roughness); lightRoughness = the former dotted-map mean.
+const MICRODOT_FACE = { lightRoughness: 0.41, clearcoatRoughness: 0.3 };
+const MICRODOT = Object.freeze({
+  tileW: 64, tileH: 28, pitch: 16, rowPitch: 14, radius: 5.4,
+  repeat: [32, 50],        // u, v tile repeats over the card (square dot pitch on the 3.36 x 2.30 face)
+  normalStrength: 2.6,     // slope multiplier of the bump profile
+});
+
+let microdotTile = null;
+function microdotHeightTile() {
+  if (microdotTile) return microdotTile;
+  const { tileW, tileH, pitch, rowPitch, radius } = MICRODOT;
+  const h = new Float32Array(tileW * tileH);
+  const centres = [];
+  for (let j = 0; j < 2; j += 1) {
+    for (let i = 0; i < 4; i += 1) centres.push([(i + 0.25 + 0.5 * j) * pitch, (j + 0.5) * rowPitch]);
+  }
+  for (let y = 0; y < tileH; y += 1) {
+    for (let x = 0; x < tileW; x += 1) {
+      let best = 0;
+      for (const [cx, cy] of centres) {
+        for (let ox = -1; ox <= 1; ox += 1) {
+          for (let oy = -1; oy <= 1; oy += 1) {
+            const dx = x + 0.5 - (cx + ox * tileW);
+            const dy = y + 0.5 - (cy + oy * tileH);
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < radius) {
+              const c = Math.cos((Math.PI * d) / (2 * radius));
+              best = Math.max(best, c * c);
+            }
+          }
+        }
+      }
+      h[y * tileW + x] = best;
+    }
+  }
+  microdotTile = h;
+  return h;
+}
+
+function makeMicrodotNormal() {
+  const { tileW, tileH, normalStrength } = MICRODOT;
+  const h = microdotHeightTile();
+  const data = new Uint8Array(tileW * tileH * 4);
+  const at = (x, y) => h[((y + tileH) % tileH) * tileW + ((x + tileW) % tileW)];
+  for (let y = 0; y < tileH; y += 1) {
+    for (let x = 0; x < tileW; x += 1) {
+      // DataTexture row 0 = v 0 (up in tangent space), so dh/dv = dh/dy here.
+      const dx = (at(x + 1, y) - at(x - 1, y)) * 0.5 * normalStrength;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * 0.5 * normalStrength;
+      const len = Math.sqrt(dx * dx + dy * dy + 1);
+      const o = (y * tileW + x) * 4;
+      data[o] = Math.round((-dx / len * 0.5 + 0.5) * 255);
+      data[o + 1] = Math.round((-dy / len * 0.5 + 0.5) * 255);
+      data[o + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);
+      data[o + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, tileW, tileH, THREE.RGBAFormat);
+  return finishMicrodotTexture(tex, 'microdot-normal');
+}
+
+function finishMicrodotTexture(tex, name) {
+  tex.name = name;
+  tex.encoding = THREE.LinearEncoding;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(MICRODOT.repeat[0], MICRODOT.repeat[1]);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// Rev 11 (s38): the FRONT faces carry no dot pattern; only the shared clearcoat
+// normal used by the BACK plates remains procedural.
+function addMicrodotTextures(textures) {
+  textures['microdot-normal'] = makeMicrodotNormal();
+}
+
+const BLACK_FACE_SPECULAR = 0.16;
 function buildMaterials(spec, textures, meta) {
   const frontMap = textures[spec.face];
   // Revision 8: `sleek-metal.png` is still part of the validated texture bank
   // (the asset contract and loader keep it), but the mirror bezel no longer
   // samples it - a chrome F0 is the raw metal colour, not the flattened sleek
   // albedo.
-  const sharedRough = textures[meta.sleekMaps.rough.file];
-  const sharedNormal = textures[meta.sleekMaps.normal.file];
+  const sharedNormal = textures['microdot-normal'];
   const cardMeta = meta.cards.find((entry) => entry.id === spec.id);
   const faceMetalness = textures[cardMeta.faceMetalness];
-  const faceRough = cardMeta.faceRoughness ? textures[cardMeta.faceRoughness] : null;
-  const faceNormal = cardMeta.faceNormal ? textures[cardMeta.faceNormal] : null;
+  const faceRough = (cardMeta.faceRoughness && textures[cardMeta.faceRoughness]) || null; // dark: plain ink/field roughness map
   // Revision 6: per-card reconstructed backs.  The file names come from
   // card-assets.json (`back.cards.<id>`) and are validated by normalizeMetadata;
   // the metadata tuning recommendation is recorded in userData for provenance,
@@ -717,28 +800,26 @@ function buildMaterials(spec, textures, meta) {
     metalnessMap: faceMetalness,
     // the same RGBA map carries the dielectric-print specular intensity in its
     // alpha channel (RGB = metalness, three samples .b / .a respectively)
-    specularIntensity: 1.0,
+    // Rev 12 (s39): black face = light-absorbing dielectric; the shared env boost makes a
+    // full F0 .04 lobe read mid-grey (~75/255) at lit poses, so scale the specular down.
+    specularIntensity: smoothBlack ? BLACK_FACE_SPECULAR : 1.0,
     specularIntensityMap: faceMetalness,
-    normalMap: faceNormal || sharedNormal,
-    normalScale: smoothBlack ? new THREE.Vector2(0, 0) : new THREE.Vector2(0.22, 0.22),
-    roughnessMap: faceRough || sharedRough,
-    roughness: smoothBlack ? 0.5 : 0.32,
-    metalness: 0.92,
-    clearcoat: smoothBlack ? 0.42 : 0.45,
-    clearcoatRoughness: smoothBlack ? 0.15 : 0.15,
-    clearcoatNormalMap: smoothBlack ? (faceNormal || sharedNormal) : sharedNormal,
-    clearcoatNormalScale: smoothBlack ? new THREE.Vector2(0, 0) : new THREE.Vector2(0.1, 0.1),
-    envMapIntensity: smoothBlack ? 2.45 : 1.05,
+    roughnessMap: faceRough,
+    roughness: smoothBlack ? 0.5 : MICRODOT_FACE.lightRoughness,
+    metalness: smoothBlack ? 0 : 0.92,
+    clearcoat: smoothBlack ? 0 : 0.45,
+    clearcoatRoughness: MICRODOT_FACE.clearcoatRoughness,
+    envMapIntensity: smoothBlack ? 1.0 : 1.05,
   });
   front.userData = {
     role: 'front',
     cardId: spec.id,
-    finish: smoothBlack ? 'smooth-black-metal' : 'gloss-print-sleek',
-    effectiveMetalnessField: smoothBlack ? 0.92 : 0.506,
+    finish: smoothBlack ? 'plain-black-metal' : 'plain-satin-print',
+    effectiveMetalnessField: smoothBlack ? 0 : 0.506,
     effectiveMetalnessInk: 0.0552,
-    effectiveRoughnessField: smoothBlack ? 0.28 : 0.2944,
-    effectiveRoughnessInk: smoothBlack ? 0.5 : 0.2944,
-    normalScale: smoothBlack ? 0 : 0.22,
+    effectiveRoughnessField: smoothBlack ? 0.28 : 0.41,
+    effectiveRoughnessInk: smoothBlack ? 0.5 : 0.41,
+    normalScale: 0,
   };
 
   // Revision 6 back material.  One linear RGBA ORM texture feeds BOTH

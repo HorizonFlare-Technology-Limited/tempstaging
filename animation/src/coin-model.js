@@ -36,8 +36,10 @@
  * deterministically. No flag images, no coin-bezel pattern, no symbol PNGs.
  *
  * GPU budget (approximate): one shared face albedo texture per bank per
- * faceSize (faceSize² RGBA), one glyph-relief normal map per coin
- * (faceSize² RGBA), shared reeded band geometry/material + roughness/normal
+ * faceSize (faceSize² RGBA), one shared glyph cover + normal map per
+ * spec id + glyph size (rev23 s50: G = clamp(faceSize,1024,2048), G² RGBA
+ * each, 8 MB each pair at 1024; cover is an 8-bit signed distance field
+ * sampled with analytic fwidth alpha), shared reeded band geometry/material + roughness/normal
  * maps, shared frame ring + recess-wall geometry/materials.
  */
 
@@ -73,8 +75,8 @@ const COIN_RADIUS = 1.0;
 const COIN_THICKNESS = 0.16;
 const HALF_THICKNESS = COIN_THICKNESS / 2; // 0.08
 const FRAME_TOP_Y = HALF_THICKNESS; // proud frame ring planes (rev 5 geometry kept)
-const FACE_Y = 0.065; // recessed face planes
-const RECESS = FRAME_TOP_Y - FACE_Y; // 0.015
+const FACE_Y = 0.045; // recessed face planes (rev13 s40: was 0.065; rim lip now stands 0.035 proud, was 0.015)
+const RECESS = FRAME_TOP_Y - FACE_Y; // 0.035
 const FACE_RADIUS = 0.96; // flat face plate radius = inner wall radius
 const FRAME_INNER_RADIUS = 0.96;
 const FRAME_OUTER_RADIUS = COIN_RADIUS;
@@ -87,19 +89,28 @@ const SYMBOL_MAX_HEIGHT_R = 1.16; // ink height in coin-radius units
 const SYMBOL_MAX_WIDTH_R = 1.46;
 const FONT_FAMILY = 'TEKOCoinLexend';
 const FONT_WEIGHT = 560;
-const GLYPH_REFERENCE_SIZE = 900;
+const GLYPH_REFERENCE_SIZE = 1800; // rev23 s50: ink mask rasterised at 2x the old size (scale-invariant: bbox is trimmed + refit) so 1024-2048 glyph maps are not upsampled
+const GLYPH_MAP_MIN = 1024; // rev23 s50: glyph cover/normal maps never below this, regardless of faceSize
+const GLYPH_MAP_MAX = 2048;
 const GLYPH_FONT_SIZE = Math.round(GLYPH_REFERENCE_SIZE * 0.72);
 const GLYPH_BEVEL_PX_REF = 6; // bevel width in px at faceSize 1024 (SPEC R6-3: 4-8)
+const FACE_METALNESS = 0.0; // rev5 s28 diffuse face
+const FACE_ROUGHNESS = 0.8; // rev5 s28: 0.7-0.85
+const FACE_SPECULAR = 0.25; // rev5 s28: low specular
+const RELIEF_HEIGHT = 0.0096; // rev5 s27 0.008, rev13 s40 +20%: raised white symbol layer above the face plane (coin-radius units)
+const RELIEF_COLOR = 0xffffff;
 const GLYPH_RELIEF_STRENGTH = 2.3; // height gradient -> tangent-space normal scale
 
 // face satin + twill (SPEC R6-1)
-const SATIN = Object.freeze({ base: 152, modulation: 3.0, sampleSize: 24 });
-const TWILL = Object.freeze({
-  periodPx: 6.0, // main diagonal weave pitch at faceSize 1024
-  secondaryPeriodPx: 11,
-  albedoContrast: 2.0, // very low contrast albedo variation
-  normalAmplitude: 0.035,
-  normalStrength: 1.2,
+// rev14 s41: modulation 3.0 -> 0. The satin.png sheen levels (z-normalised, heavy-tailed) painted soft light
+// horizontal/diagonal bands and smudges across the dark faces; the face is now flat satin + micro-dots.
+const SATIN = Object.freeze({ base: 152, modulation: 0, sampleSize: 24 });
+// rev13 s40: the dot (quincunx micro-dot) face texture replaces the rev6 twill (user ref 1)
+const DOTS = Object.freeze({
+  pitchPx: 8.5, // lattice pitch along the 45deg axes at faceSize 1024 (nearest-neighbour ~6 px = old twill pitch)
+  sigmaPx: 1.35, // dot radius (gaussian sigma) at faceSize 1024
+  albedoDrop: 26, // dark dot albedo drop (0-255 grey)
+  slope: 0.45, // dot normal slope gain
 });
 
 // reeded middle frame (SPEC R6-2)
@@ -344,6 +355,7 @@ function createCoinBank(images, assetBase) {
       satinLevels: null,
       faceSurfaces: new Map(), // faceSize -> { albedoCanvas, albedoTexture }
       glyphMasks: new Map(),
+      glyphReliefs: new Map(), // spec.id:glyphSize -> { texture, coverTexture, debug } (shared across coins)
       bandGeometry: new Map(),
       bandMaterial: null,
       frameGeometry: null,
@@ -392,6 +404,7 @@ function createCoinBank(images, assetBase) {
       sharedGeometries.clear();
       state.cache.faceSurfaces.clear();
       state.cache.glyphMasks.clear();
+      state.cache.glyphReliefs.clear();
       state.cache.bandGeometry.clear();
       state.cache.bandMaterial = null;
       state.cache.frameGeometry = null;
@@ -561,8 +574,7 @@ function ensureBandMaterial(state) {
     roughnessMap: roughnessTexture,
     normalMap: normalTexture,
     normalScale: new THREE.Vector2(0.24, 0.24),
-    clearcoat: 0.2,
-    clearcoatRoughness: 0.18,
+    clearcoat: 0, // rev5 s28: rim reflects scene.environment only (no extra coat layer)
     envMapIntensity: 0.95,
   });
   material.name = 'coin-band-reeded';
@@ -696,8 +708,7 @@ function ensureFrameMaterial(state) {
     color: 0xd9e1ea,
     metalness: 1.0,
     roughness: 0.18,
-    clearcoat: 0.3,
-    clearcoatRoughness: 0.12,
+    clearcoat: 0, // rev5 s28: env-only reflection
     envMapIntensity: 1.05,
   });
   material.name = 'coin-frame';
@@ -712,8 +723,7 @@ function ensureWallMaterial(state) {
     color: 0x8f9aa6,
     metalness: 0.6,
     roughness: 0.62,
-    clearcoat: 0.05,
-    clearcoatRoughness: 0.4,
+    clearcoat: 0, // rev5 s28: env-only reflection
     envMapIntensity: 0.5,
   });
   material.name = 'coin-recess-wall';
@@ -763,9 +773,9 @@ function ensureGlyphMask(state, spec) {
       const strokeBottom = Math.round(bbox.y + bbox.height * 1.1);
       ctx.fillRect(strokeX, strokeTop, strokeWidth, strokeBottom - strokeTop);
       detailLinesCanvas = createCanvas(reference, reference);
-      const detailCtx = get2d(detailLinesCanvas);
+      const detailCtx = get2d(detailLinesCanvas, true);
       detailCtx.fillStyle = '#ffffff';
-      const lineWidth = Math.max(1.5, Math.round(bbox.height * 0.0035));
+      const lineWidth = Math.max(1.5, Math.round(bbox.height * 0.00435)); // = old 2px at the 900 reference
       detailCtx.fillRect(strokeX, bbox.y, lineWidth, bbox.height);
       detailCtx.fillRect(strokeX + strokeWidth - lineWidth, bbox.y, lineWidth, bbox.height);
     }
@@ -829,12 +839,18 @@ function ensureSatinLevels(state) {
 }
 
 /** twill weave sample (seamless across the face texture) */
-function twillAt(x, y, faceSize) {
-  const period = TWILL.periodPx * (faceSize / 1024);
-  const secondary = TWILL.secondaryPeriodPx * (faceSize / 1024);
-  const a = Math.sin(((x + y) / period) * TAU);
-  const b = Math.sin(((x - y) / secondary) * TAU);
-  return { a, b };
+function dotAt(x, y, faceSize) {
+  const k = faceSize / 1024;
+  const pitch = DOTS.pitchPx * k;
+  const sigma = DOTS.sigmaPx * k;
+  const u = (x + y) / pitch;
+  const v = (x - y) / pitch;
+  const du = u - Math.round(u);
+  const dv = v - Math.round(v);
+  const dx = ((du + dv) * pitch) / 2;
+  const dy = ((du - dv) * pitch) / 2;
+  const h = Math.exp(-(dx * dx + dy * dy) / (sigma * sigma));
+  return { dx, dy, h, sigma };
 }
 
 /**
@@ -854,14 +870,17 @@ function ensureFaceSurfaces(state, faceSize) {
   const data = image.data;
   const pxPerWorld = faceSize / (2 * FACE_RADIUS);
   const edgeFalloff = 0.05; // faint well-edge modulation only
+  const lumStep = 4; // rev25 s50b: sparse luminance grid (debug glyph-vs-field albedo stats)
+  const lumN = Math.floor(faceSize / lumStep);
+  const lumGrid = new Float32Array(lumN * lumN);
 
   for (let y = 0; y < faceSize; y += 1) {
     for (let x = 0; x < faceSize; x += 1) {
       const u = x / faceSize;
       const v = y / faceSize;
       const satinLevel = sampleLevels(satin.levels, satin.width, satin.height, u, v);
-      const twill = twillAt(x, y, faceSize);
-      let value = SATIN.base + satinLevel * SATIN.modulation + TWILL.albedoContrast * (0.65 * twill.a + 0.35 * twill.b);
+      const dot = dotAt(x, y, faceSize);
+      let value = SATIN.base + satinLevel * SATIN.modulation - DOTS.albedoDrop * dot.h;
       const dx = (x + 0.5 - faceSize / 2) / pxPerWorld;
       const dy = (y + 0.5 - faceSize / 2) / pxPerWorld;
       const radiusWorld = Math.sqrt(dx * dx + dy * dy);
@@ -872,14 +891,15 @@ function ensureFaceSurfaces(state, faceSize) {
       data[o + 1] = clamped;
       data[o + 2] = clamped;
       data[o + 3] = 255;
+      if (x % lumStep === 0 && y % lumStep === 0 && x / lumStep < lumN && y / lumStep < lumN) lumGrid[(y / lumStep) * lumN + x / lumStep] = clamped;
     }
   }
   ctx.putImageData(image, 0, 0);
   const albedoTexture = makeColorTexture(canvas);
-  albedoTexture.name = 'coin-face-satin-twill';
+  albedoTexture.name = 'coin-face-satin-dots';
   state.sharedTextures.add(albedoTexture);
 
-  const result = { albedoCanvas: canvas, albedoTexture };
+  const result = { albedoCanvas: canvas, albedoTexture, lumGrid, lumStep, lumN };
   state.cache.faceSurfaces.set(faceSize, result);
   return result;
 }
@@ -888,53 +908,145 @@ function ensureFaceSurfaces(state, faceSize) {
 /* Glyph relief normal map (SPEC R6-3)                                       */
 /* ------------------------------------------------------------------------- */
 
-/** approximate Euclidean distance (px) from the glyph ink boundary, inside only */
-function insideDistanceTransform(solid, width, height, maxDistance) {
-  const count = width * height;
-  const dist = new Float32Array(count);
-  const INF = 1e6;
-  for (let i = 0; i < count; i += 1) dist[i] = solid[i] ? INF : 0;
+/**
+ * Exact squared Euclidean distance transform (Felzenszwalb-Huttenlocher), in
+ * place, over a width x height Float32Array. Input: 0 = feature (outside the
+ * glyph), large (BIG) = background to measure (inside). Output: squared distance
+ * (px) to the nearest feature pixel. Continuous (no octagonal chamfer error), so
+ * the bevel ramp has no terraces/creases.
+ */
+const EDT_BIG = 1e12;
+function edtSquaredInPlace(grid, width, height) {
+  const m = Math.max(width, height);
+  const f = new Float64Array(m);
+  const d = new Float64Array(m);
+  const v = new Int32Array(m);
+  const z = new Float64Array(m + 1);
+  const run = (length) => {
+    let k = 0;
+    v[0] = 0;
+    z[0] = -Infinity;
+    z[1] = Infinity;
+    for (let q = 1; q < length; q += 1) {
+      let s;
+      for (;;) {
+        const p = v[k];
+        s = (f[q] + q * q - (f[p] + p * p)) / (2 * q - 2 * p);
+        if (s <= z[k] && k > 0) k -= 1;
+        else break;
+      }
+      k += 1;
+      v[k] = q;
+      z[k] = s;
+      z[k + 1] = Infinity;
+    }
+    k = 0;
+    for (let q = 0; q < length; q += 1) {
+      while (z[k + 1] < q) k += 1;
+      const dq = q - v[k];
+      d[q] = dq * dq + f[v[k]];
+    }
+  };
+  for (let x = 0; x < width; x += 1) {
+    for (let i = 0; i < height; i += 1) f[i] = grid[i * width + x];
+    run(height);
+    for (let i = 0; i < height; i += 1) grid[i * width + x] = d[i];
+  }
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    for (let i = 0; i < width; i += 1) f[i] = grid[row + i];
+    run(width);
+    for (let i = 0; i < width; i += 1) grid[row + i] = d[i];
+  }
+  return grid;
+}
+/** separable gaussian blur of a Float32Array (edge-clamped), returns a new array */
+function gaussianBlurFloat(source, width, height, sigma) {
+  const radius = Math.max(1, Math.ceil(sigma * 3));
+  const kernel = new Float32Array(radius * 2 + 1);
+  let sum = 0;
+  for (let i = -radius; i <= radius; i += 1) {
+    const w = Math.exp(-(i * i) / (2 * sigma * sigma));
+    kernel[i + radius] = w;
+    sum += w;
+  }
+  for (let i = 0; i < kernel.length; i += 1) kernel[i] /= sum;
+  const tmp = new Float32Array(width * height);
+  const out = new Float32Array(width * height);
   for (let y = 0; y < height; y += 1) {
     const row = y * width;
     for (let x = 0; x < width; x += 1) {
-      const i = row + x;
-      if (dist[i] <= 0) continue;
-      let d = dist[i];
-      if (x > 0) d = Math.min(d, dist[i - 1] + 1);
-      if (y > 0) d = Math.min(d, dist[i - width] + 1);
-      if (x > 0 && y > 0) d = Math.min(d, dist[i - width - 1] + 1.4142);
-      if (x < width - 1 && y > 0) d = Math.min(d, dist[i - width + 1] + 1.4142);
-      dist[i] = d;
+      let acc = 0;
+      for (let k = -radius; k <= radius; k += 1) {
+        const xx = x + k < 0 ? 0 : x + k >= width ? width - 1 : x + k;
+        acc += source[row + xx] * kernel[k + radius];
+      }
+      tmp[row + x] = acc;
     }
   }
-  for (let y = height - 1; y >= 0; y -= 1) {
-    const row = y * width;
-    for (let x = width - 1; x >= 0; x -= 1) {
-      const i = row + x;
-      if (dist[i] <= 0) continue;
-      let d = dist[i];
-      if (x < width - 1) d = Math.min(d, dist[i + 1] + 1);
-      if (y < height - 1) d = Math.min(d, dist[i + width] + 1);
-      if (x < width - 1 && y < height - 1) d = Math.min(d, dist[i + width + 1] + 1.4142);
-      if (x > 0 && y < height - 1) d = Math.min(d, dist[i + width - 1] + 1.4142);
-      dist[i] = d;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k += 1) {
+        const yy = y + k < 0 ? 0 : y + k >= height ? height - 1 : y + k;
+        acc += tmp[yy * width + x] * kernel[k + radius];
+      }
+      out[y * width + x] = acc;
     }
   }
-  for (let i = 0; i < count; i += 1) dist[i] = Math.min(dist[i], maxDistance);
-  return dist;
+  return out;
+}
+
+/** glyph map resolution (rev23 s50): decoupled from faceSize, never below 1024, capped at 2048 */
+function glyphMapSize(faceSize) {
+  return Math.min(GLYPH_MAP_MAX, Math.max(GLYPH_MAP_MIN, faceSize));
+}
+
+/** draw a glyph canvas into a cw x ch canvas at (dx, dy, w, h) and return its alpha as Uint8 */
+function rasterGlyphAlpha(source, cw, ch, dx, dy, w, h, quality) {
+  const canvas = createCanvas(cw, ch);
+  const ctx = get2d(canvas, true);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = quality || 'high';
+  ctx.drawImage(source, dx, dy, w, h);
+  const data = ctx.getImageData(0, 0, cw, ch).data;
+  const alpha = new Uint8Array(cw * ch);
+  for (let i = 0; i < alpha.length; i += 1) alpha[i] = data[i * 4 + 3];
+  return alpha;
 }
 
 /**
- * Build the per-coin tangent-space normal map that turns the Lexend glyph into
- * a beveled embossed relief: flat glyph interior, flat surrounding field and a
- * ~6 px (at faceSize 1024) beveled edge. The satin+twill albedo is untouched —
- * all light/dark comes from this relief under the scene lighting.
+ * Build (cached per spec id + glyph map size) the per-coin tangent-space normal
+ * map that turns the Lexend glyph into a beveled embossed relief (flat glyph
+ * interior, flat field, ~6 px bevel at 1024) plus the glyph SIGNED DISTANCE FIELD
+ * for the raised white relief layer. The satin+twill albedo is untouched — all
+ * light/dark comes from this relief under the scene lighting.
+ *
+ * rev23 s50: maps are glyphSize = clamp(faceSize, 1024, 2048) regardless of the
+ * face albedo resolution.
+ * rev25 s50b: the cover texture is no longer coverage but a signed distance
+ * field (inside +, outside -, texel units, 8-bit, 0.5 = edge, +-spread texels
+ * full range). Exact EDT (inside + outside passes) restricted to the glyph
+ * bounding box (+ spread), subpixel-corrected from the canvas coverage on edge
+ * pixels (sd = coverage - 0.5), so no 2x supersample / full-map EDT is needed.
+ * Detail lines (thb) are folded into the coverage before the SDF. The relief
+ * shader turns sd into an analytic 1 px alpha ramp at any zoom (see
+ * installGlyphSdfShader). The bevel height field is clamp(sd / bevel), so the
+ * bevel's outer edge is exactly sd = 0.
  */
 function buildGlyphNormalMap(state, spec, faceSize) {
-  const S2 = faceSize * 2;
-  const half = S2 / 2;
+  const G = glyphMapSize(faceSize);
+  const cacheKey = spec.id + ':' + G;
+  const cachedRelief = state.cache.glyphReliefs.get(cacheKey);
+  if (cachedRelief) return cachedRelief;
+  const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+  const PH = {};
+  const half = G / 2;
   const mask = ensureGlyphMask(state, spec);
-  const pxPerWorld = S2 / (2 * FACE_RADIUS);
+  PH.mask = performance.now() - t0;
+
+  const pxPerWorld = G / (2 * FACE_RADIUS);
   const maxHeightPx = SYMBOL_MAX_HEIGHT_R * pxPerWorld;
   const maxWidthPx = SYMBOL_MAX_WIDTH_R * pxPerWorld;
   const scale = Math.min(maxHeightPx / mask.height, maxWidthPx / mask.width);
@@ -943,153 +1055,268 @@ function buildGlyphNormalMap(state, spec, faceSize) {
   const x0 = half - drawWidth / 2;
   const y0 = half - drawHeight / 2;
 
-  const maskCanvas = createCanvas(S2, S2);
-  const maskCtx = get2d(maskCanvas, true);
-  maskCtx.imageSmoothingEnabled = true;
-  maskCtx.imageSmoothingQuality = 'high';
-  maskCtx.drawImage(mask.canvas, x0, y0, drawWidth, drawHeight);
-  let detailCanvas = null;
-  if (mask.detailLines) {
-    detailCanvas = createCanvas(S2, S2);
-    const detailCtx = get2d(detailCanvas, true);
-    detailCtx.imageSmoothingEnabled = true;
-    detailCtx.imageSmoothingQuality = 'high';
-    detailCtx.drawImage(mask.detailLines, x0, y0, drawWidth, drawHeight);
+  const bevelPx = Math.max(3, Math.round((GLYPH_BEVEL_PX_REF * G) / 1024));
+  const spread = bevelPx + 6; // SDF half range in texels (>= bevel + 2)
+  const pad = spread + 3;
+  const cx0 = Math.max(0, Math.floor(x0) - pad);
+  const cy0 = Math.max(0, Math.floor(y0) - pad);
+  const cx1 = Math.min(G, Math.ceil(x0 + drawWidth) + pad);
+  const cy1 = Math.min(G, Math.ceil(y0 + drawHeight) + pad);
+  const cw = cx1 - cx0;
+  const ch = cy1 - cy0;
+  const n = cw * ch;
+
+  const alphaC = rasterGlyphAlpha(mask.canvas, cw, ch, x0 - cx0, y0 - cy0, drawWidth, drawHeight);
+  PH.rasterA = performance.now() - t0;
+  const detailC = mask.detailLines ? rasterGlyphAlpha(mask.detailLines, cw, ch, x0 - cx0, y0 - cy0, drawWidth, drawHeight, 'medium') : null;
+
+  PH.raster = performance.now() - t0;
+  // effective coverage (detail lines left open), 0..1
+  const cov = new Float32Array(n);
+  for (let i = 0; i < n; i += 1) {
+    let a = alphaC[i] / 255;
+    if (detailC) a *= 1 - Math.min(1, (detailC[i] / 255) * 1.6);
+    cov[i] = a;
   }
 
-  const down = createCanvas(faceSize, faceSize);
-  const downCtx = get2d(down, true);
-  downCtx.imageSmoothingEnabled = true;
-  downCtx.imageSmoothingQuality = 'high';
-  downCtx.drawImage(maskCanvas, 0, 0, faceSize, faceSize);
-  const alpha = downCtx.getImageData(0, 0, faceSize, faceSize).data;
-  let detailAlpha = null;
-  if (detailCanvas) {
-    const detailDown = createCanvas(faceSize, faceSize);
-    const detailDownCtx = get2d(detailDown, true);
-    detailDownCtx.imageSmoothingEnabled = true;
-    detailDownCtx.imageSmoothingQuality = 'high';
-    detailDownCtx.drawImage(detailCanvas, 0, 0, faceSize, faceSize);
-    detailAlpha = detailDownCtx.getImageData(0, 0, faceSize, faceSize).data;
+  // exact EDT, inside and outside passes (crop only; everything outside the crop is sd = -spread)
+  const gridOut = new Float32Array(n); // inside px: squared distance to nearest outside px
+  const gridIn = new Float32Array(n); // outside px: squared distance to nearest inside px
+  for (let i = 0; i < n; i += 1) {
+    const inside = cov[i] >= 0.5;
+    gridOut[i] = inside ? EDT_BIG : 0;
+    gridIn[i] = inside ? 0 : EDT_BIG;
+  }
+  edtSquaredInPlace(gridOut, cw, ch);
+  edtSquaredInPlace(gridIn, cw, ch);
+  PH.edt = performance.now() - t0;
+
+  // signed distance (texels, inside +), subpixel-corrected from coverage on edge pixels
+  const sd = new Float32Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const a = cov[i];
+    if (a > 0.01 && a < 0.99) sd[i] = a - 0.5;
+    else if (a >= 0.5) sd[i] = Math.sqrt(gridOut[i]) - 0.5;
+    else sd[i] = -(Math.sqrt(gridIn[i]) - 0.5);
   }
 
-  const count = faceSize * faceSize;
-  const solid = new Uint8Array(count);
-  for (let i = 0; i < count; i += 1) solid[i] = alpha[i * 4 + 3] >= 128 ? 1 : 0;
-
-  const bevelPx = Math.max(3, Math.round((GLYPH_BEVEL_PX_REF * faceSize) / 1024));
-  const dist = insideDistanceTransform(solid, faceSize, faceSize, bevelPx + 4);
-  const height = new Float32Array(count);
-  for (let i = 0; i < count; i += 1) height[i] = dist[i] / bevelPx;
-  if (detailAlpha) {
-    for (let i = 0; i < count; i += 1) height[i] -= 0.55 * (detailAlpha[i * 4 + 3] / 255);
+  PH.sd = performance.now() - t0;
+  // height field: bevel ramp from sd (edge = 0), thin detail lines pressed in
+  const heightRaw = new Float32Array(n);
+  const interiorMask = new Uint8Array(G * G);
+  const invBevel = 1 / bevelPx;
+  for (let i = 0; i < n; i += 1) {
+    let h = sd[i] > 0 ? sd[i] * invBevel : 0;
+    if (h > 1) h = 1;
+    if (detailC) h -= 0.55 * (detailC[i] / 255);
+    heightRaw[i] = h < 0 ? 0 : h > 1 ? 1 : h;
+  }
+  const smoothCrop = gaussianBlurFloat(heightRaw, cw, ch, Math.max(0.6, G * 0.0008));
+  const smooth = new Float32Array(G * G);
+  for (let y = 0; y < ch; y += 1) {
+    const rowC = y * cw;
+    const rowG = (cy0 + y) * G + cx0;
+    for (let x = 0; x < cw; x += 1) {
+      smooth[rowG + x] = smoothCrop[rowC + x];
+      if (sd[rowC + x] > bevelPx + 2) interiorMask[rowG + x] = 1;
+    }
   }
 
-  const heightCanvas = createCanvas(faceSize, faceSize);
-  const heightCtx = get2d(heightCanvas, true);
-  const heightImage = heightCtx.createImageData(faceSize, faceSize);
-  const heightData = heightImage.data;
-  for (let i = 0; i < count; i += 1) {
-    const value = Math.round(clamp(height[i], 0, 1) * 255);
-    const o = i * 4;
-    heightData[o] = value;
-    heightData[o + 1] = value;
-    heightData[o + 2] = value;
-    heightData[o + 3] = 255;
-  }
-  heightCtx.putImageData(heightImage, 0, 0);
-  const smoothHeight = blurCanvas(heightCanvas, Math.max(0.6, faceSize * 0.0008));
-  const smoothCtx = get2d(smoothHeight, true);
-  const smoothData = smoothCtx.getImageData(0, 0, faceSize, faceSize).data;
-  const smooth = new Float32Array(count);
-  for (let i = 0; i < count; i += 1) smooth[i] = smoothData[i * 4] / 255;
-
-  const normalCanvas = createCanvas(faceSize, faceSize);
+  PH.blur = performance.now() - t0;
+  const normalCanvas = createCanvas(G, G);
   const normalCtx = get2d(normalCanvas, true);
-  const normalImage = normalCtx.createImageData(faceSize, faceSize);
+  const normalImage = normalCtx.createImageData(G, G);
   const normalData = normalImage.data;
   let maxTilt = 0;
   let interiorTilt = 0;
   let interiorSamples = 0;
 
-  const period = TWILL.periodPx * (faceSize / 1024);
-  const secondary = TWILL.secondaryPeriodPx * (faceSize / 1024);
-  const twillAmp = TWILL.normalAmplitude;
-  const twillFreqX = 0.65 * (TAU / period);
-  const twillFreqY = 0.65 * (TAU / period);
-  const twillSecX = 0.35 * (TAU / secondary);
-  const twillSecY = 0.35 * (TAU / secondary);
-
-  for (let y = 0; y < faceSize; y += 1) {
+  const dotK = G / 1024;
+  const dotPitch = DOTS.pitchPx * dotK;
+  const dotSigma = DOTS.sigmaPx * dotK;
+  const dotInvSigma2 = 1 / (dotSigma * dotSigma);
+  const dotSlopeOverSigma = DOTS.slope / dotSigma;
+  // the dimple lattice (45deg, pitch p) repeats every 2p px in x and y: tabulate one period when 2p is integral
+  const dotPeriod = Math.round(2 * dotPitch);
+  const dotTiled = Math.abs(2 * dotPitch - dotPeriod) < 1e-6 && dotPeriod >= 2 && dotPeriod <= 128;
+  const tileX = dotTiled ? new Float32Array(dotPeriod * dotPeriod) : null;
+  const tileY = dotTiled ? new Float32Array(dotPeriod * dotPeriod) : null;
+  if (dotTiled) {
+    for (let y = 0; y < dotPeriod; y += 1) {
+      for (let x = 0; x < dotPeriod; x += 1) {
+        const du = (x + y) / dotPitch;
+        const dv = (x - y) / dotPitch;
+        const fu = du - Math.round(du);
+        const fv = dv - Math.round(dv);
+        const ddx = ((fu + fv) * dotPitch) / 2;
+        const ddy = ((fu - fv) * dotPitch) / 2;
+        const dh = Math.exp(-(ddx * ddx + ddy * ddy) * dotInvSigma2);
+        tileX[y * dotPeriod + x] = dotSlopeOverSigma * ddx * dh;
+        tileY[y * dotPeriod + x] = dotSlopeOverSigma * ddy * dh;
+      }
+    }
+  }
+  for (let y = 0; y < G; y += 1) {
+    const tileRow = (y % dotPeriod) * dotPeriod;
+    let tileCol = 0;
     const ym = y > 0 ? y - 1 : 0;
-    const yp = y < faceSize - 1 ? y + 1 : faceSize - 1;
-    for (let x = 0; x < faceSize; x += 1) {
+    const yp = y < G - 1 ? y + 1 : G - 1;
+    for (let x = 0; x < G; x += 1) {
       const xm = x > 0 ? x - 1 : 0;
-      const xp = x < faceSize - 1 ? x + 1 : faceSize - 1;
-      const i = y * faceSize + x;
-      const dhdx = (smooth[y * faceSize + xp] - smooth[y * faceSize + xm]) * 0.5;
-      const dhdy = (smooth[yp * faceSize + x] - smooth[ym * faceSize + x]) * 0.5;
-      const phaseMain = ((x + y) / period) * TAU;
-      const phaseSec = ((x - y) / secondary) * TAU;
-      const twillGradX = twillAmp * (Math.cos(phaseMain) * (twillFreqX + twillFreqY) + Math.cos(phaseSec) * (twillSecX - twillSecY));
-      const twillGradY = twillAmp * (Math.cos(phaseMain) * (twillFreqX - twillFreqY) + Math.cos(phaseSec) * (-twillSecX - twillSecY));
-      let nx = -(dhdx * GLYPH_RELIEF_STRENGTH + twillGradX * TWILL.normalStrength);
-      let ny = -(dhdy * GLYPH_RELIEF_STRENGTH + twillGradY * TWILL.normalStrength);
+      const xp = x < G - 1 ? x + 1 : G - 1;
+      const i = y * G + x;
+      const dhdx = (smooth[y * G + xp] - smooth[y * G + xm]) * 0.5;
+      const dhdy = (smooth[yp * G + x] - smooth[ym * G + x]) * 0.5;
+      // dimple (depressed dot): height -h, slope points outward from the dot centre (== dotAt, inlined)
+      let dotX;
+      let dotY;
+      if (dotTiled) {
+        dotX = tileX[tileRow + tileCol];
+        dotY = tileY[tileRow + tileCol];
+        tileCol += 1;
+        if (tileCol === dotPeriod) tileCol = 0;
+      } else {
+        const du = (x + y) / dotPitch;
+        const dv = (x - y) / dotPitch;
+        const fu = du - Math.round(du);
+        const fv = dv - Math.round(dv);
+        const ddx = ((fu + fv) * dotPitch) / 2;
+        const ddy = ((fu - fv) * dotPitch) / 2;
+        const dh = Math.exp(-(ddx * ddx + ddy * ddy) * dotInvSigma2);
+        dotX = dotSlopeOverSigma * ddx * dh;
+        dotY = dotSlopeOverSigma * ddy * dh;
+      }
+      let nx = -(dhdx * GLYPH_RELIEF_STRENGTH) + dotX;
+      let ny = -(dhdy * GLYPH_RELIEF_STRENGTH) + dotY;
       const length = Math.sqrt(nx * nx + ny * ny + 1) || 1;
       nx /= length;
       ny /= length;
       const nz = 1 / length;
       const o = i * 4;
-      normalData[o] = Math.round((nx * 0.5 + 0.5) * 255);
-      normalData[o + 1] = Math.round((ny * 0.5 + 0.5) * 255);
-      normalData[o + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+      normalData[o] = (nx * 127.5 + 128) | 0;
+      normalData[o + 1] = (ny * 127.5 + 128) | 0;
+      normalData[o + 2] = (nz * 127.5 + 128) | 0;
       normalData[o + 3] = 255;
-      const tilt = Math.sqrt(nx * nx + ny * ny);
-      if (tilt > maxTilt) maxTilt = tilt;
-      if (dist[i] >= bevelPx + 2) {
-        interiorTilt += tilt;
+      const tilt2 = nx * nx + ny * ny;
+      if (tilt2 > maxTilt) maxTilt = tilt2;
+      if (interiorMask[i]) {
+        interiorTilt += Math.sqrt(tilt2);
         interiorSamples += 1;
       }
     }
   }
   normalCtx.putImageData(normalImage, 0, 0);
+  PH.normals = performance.now() - t0;
   const normalTexture = makeDataTexture(normalCanvas);
   normalTexture.name = 'coin-face-normal-' + spec.id;
+  state.sharedTextures.add(normalTexture);
 
+  // rev25 s50b: signed distance field in R=G=B (0.5 = glyph edge, +-spread texels = full range, inside > 0.5)
+  const sdCanvas = createCanvas(G, G);
+  const sdCtx = get2d(sdCanvas, true);
+  const sdImage = sdCtx.createImageData(G, G);
+  const sdU32 = new Uint32Array(sdImage.data.buffer);
+  sdU32.fill(0xff000000); // value 0 = sd <= -spread
+  const sdMul = 255 / (2 * spread);
+  for (let y = 0; y < ch; y += 1) {
+    const rowC = y * cw;
+    const rowG = (cy0 + y) * G + cx0;
+    for (let x = 0; x < cw; x += 1) {
+      let v = Math.round(127.5 + sd[rowC + x] * sdMul);
+      v = v < 0 ? 0 : v > 255 ? 255 : v;
+      sdU32[rowG + x] = 0xff000000 | (v << 16) | (v << 8) | v;
+    }
+  }
+  sdCtx.putImageData(sdImage, 0, 0);
+  const coverTexture = makeDataTexture(sdCanvas);
+  coverTexture.name = 'coin-symbol-sdf-' + spec.id;
+  state.sharedTextures.add(coverTexture);
+
+  PH.sdfTex = performance.now() - t0;
+  // albedo vs glyph luminance: sparse (1/16) sample of the face albedo luminance grid
   const surfaces = ensureFaceSurfaces(state, faceSize);
-  const albedoData = get2d(surfaces.albedoCanvas, true).getImageData(0, 0, faceSize, faceSize).data;
+  const lumGrid = surfaces.lumGrid;
+  const lumStep = surfaces.lumStep;
+  const lumN = surfaces.lumN;
   let insideSum = 0;
   let insideCount = 0;
   let fieldSum = 0;
   let fieldCount = 0;
-  for (let i = 0; i < count; i += 1) {
-    const lum = 0.299 * albedoData[i * 4] + 0.587 * albedoData[i * 4 + 1] + 0.114 * albedoData[i * 4 + 2];
-    if (solid[i]) {
-      insideSum += lum;
-      insideCount += 1;
-    } else {
-      fieldSum += lum;
-      fieldCount += 1;
+  for (let j = 0; j < lumN; j += 1) {
+    const gy = Math.min(G - 1, Math.floor(((j * lumStep + 0.5) * G) / faceSize));
+    const ly = gy - cy0;
+    for (let k = 0; k < lumN; k += 1) {
+      const gx = Math.min(G - 1, Math.floor(((k * lumStep + 0.5) * G) / faceSize));
+      const lx = gx - cx0;
+      const inside = lx >= 0 && ly >= 0 && lx < cw && ly < ch && cov[ly * cw + lx] >= 0.5;
+      const lum = lumGrid[j * lumN + k];
+      if (inside) {
+        insideSum += lum;
+        insideCount += 1;
+      } else {
+        fieldSum += lum;
+        fieldCount += 1;
+      }
     }
   }
   const insideMean = insideCount ? insideSum / insideCount : 0;
   const fieldMean = fieldCount ? fieldSum / fieldCount : 0;
   const albedoGlyphDelta = Math.abs(insideMean - fieldMean);
+  const buildMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
 
-  return {
+  const result = {
     texture: normalTexture,
+    coverTexture, // signed distance field (see above)
+    sdfRangeTexels: 2 * spread,
     debug: {
       normalMap: true,
       albedoDarkening: false,
       bevelPx,
-      normalMapSize: faceSize,
-      maxTilt,
+      normalMapSize: G,
+      glyphMapSize: G,
+      glyphSupersample: 1,
+      glyphCoverSdf: true,
+      glyphSdfSpreadPx: spread,
+      glyphCropPx: [cw, ch],
+      glyphMapBytes: 2 * G * G * 4,
+      buildMs,
+      phaseMs: PH,
+      maxTilt: Math.sqrt(maxTilt),
       interiorFlatTilt: interiorSamples ? interiorTilt / interiorSamples : 0,
       albedoGlyphDelta,
       albedoInsideMean: insideMean,
       albedoFieldMean: fieldMean,
     },
   };
+  state.cache.glyphReliefs.set(cacheKey, result);
+  return result;
+}
+
+/**
+ * rev25 s50b: analytic-AA glyph alpha. The relief material keeps `alphaMap`
+ * (= SDF texture) so three.js declares the sampler/uv, but the stock
+ * `diffuseColor.a *= texture(alphaMap).g` is replaced by
+ * alpha = clamp(sd / |grad sd| + 0.5): exactly a 1 px linear ramp at any zoom,
+ * crisp under magnification, independent of MSAA.
+ */
+function installGlyphSdfShader(material, rangeTexels) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.glyphSdRange = { value: rangeTexels };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <alphamap_pars_fragment>', '#include <alphamap_pars_fragment>\nuniform float glyphSdRange;')
+      .replace(
+        '#include <alphamap_fragment>',
+        [
+          '#ifdef USE_ALPHAMAP',
+          '  float gSd = (texture2D( alphaMap, vAlphaMapUv ).g - 0.5) * glyphSdRange;',
+          '  float gW = max( length( vec2( dFdx( gSd ), dFdy( gSd ) ) ), 1e-4 );',
+          '  diffuseColor.a *= clamp( gSd / gW + 0.5, 0.0, 1.0 );',
+          '  if ( diffuseColor.a < 0.003 ) discard;',
+          '#endif',
+        ].join('\n'),
+      );
+  };
+  material.customProgramCacheKey = () => 'coin-glyph-sdf-v1';
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1157,21 +1384,41 @@ function createCoin(state, specOrId, options) {
     normalMap: relief.texture,
     normalScale: new THREE.Vector2(1.0, 1.0),
     color: 0xffffff,
-    metalness: 1.0,
-    roughness: 0.38,
-    clearcoat: 0.12,
-    clearcoatRoughness: 0.34,
-    envMapIntensity: 0.92,
+    // rev5 s28: diffuse faces (not mirror-like): dielectric, high roughness, weak specular.
+    metalness: FACE_METALNESS,
+    roughness: FACE_ROUGHNESS,
+    specularIntensity: FACE_SPECULAR,
+    clearcoat: 0,
+    envMapIntensity: 1.0,
   });
-  faceMaterial.name = 'coin-face-satin-twill';
+  faceMaterial.name = 'coin-face-satin-dots';
   const faceGeometry = new THREE.CircleGeometry(FACE_RADIUS, FACE_SEGMENTS);
   faceGeometry.name = 'coin-face-plate';
-  textures.add(relief.texture);
   materials.add(faceMaterial);
   geometries.add(faceGeometry);
 
+  // rev5 s27: raised white relief — the symbol/text is a real layer RELIEF_HEIGHT above the face plane
+  const reliefMaterial = new THREE.MeshPhysicalMaterial({
+    color: RELIEF_COLOR,
+    metalness: 0,
+    roughness: 0.6,
+    specularIntensity: 0.3,
+    alphaMap: relief.coverTexture, // rev25 s50b: signed distance field -> analytic alpha (installGlyphSdfShader)
+    transparent: true,
+    depthWrite: false, // relief sits RELIEF_HEIGHT above the opaque face; depth-tested against it, never occludes
+    alphaToCoverage: false,
+    normalMap: relief.texture,
+    normalScale: new THREE.Vector2(1.0, 1.0),
+    envMapIntensity: 1.0,
+  });
+  reliefMaterial.name = 'coin-symbol-relief-white';
+  installGlyphSdfShader(reliefMaterial, relief.sdfRangeTexels);
+  materials.add(reliefMaterial);
+
   let faceA = null;
   let faceB = null;
+  let reliefA = null;
+  let reliefB = null;
   if (side === 'both' || side === 'a') {
     faceA = new THREE.Mesh(faceGeometry, faceMaterial);
     faceA.name = 'faceA';
@@ -1180,15 +1427,32 @@ function createCoin(state, specOrId, options) {
     faceA.castShadow = true;
     faceA.receiveShadow = false;
     group.add(faceA);
+    reliefA = new THREE.Mesh(faceGeometry, reliefMaterial);
+    reliefA.name = 'reliefA';
+    reliefA.renderOrder = 1;
+    reliefA.rotation.x = -Math.PI / 2;
+    reliefA.position.y = FACE_Y + RELIEF_HEIGHT;
+    group.add(reliefA);
   }
   if (side === 'both' || side === 'b') {
     faceB = new THREE.Mesh(faceGeometry, faceMaterial);
     faceB.name = 'faceB';
-    faceB.rotation.x = Math.PI / 2;
+    // R18-1: faceB is faceA turned half a turn about the coin's in-plane
+    // vertical (Rz(pi) * Rx(-pi/2)), so the symbol reads un-mirrored after a
+    // left-right (yaw) flip; the up-down (pitch) flip is unconstrained.
+    faceB.rotation.order = 'ZXY';
+    faceB.rotation.set(-Math.PI / 2, 0, Math.PI);
     faceB.position.y = -FACE_Y;
     faceB.castShadow = true;
     faceB.receiveShadow = false;
     group.add(faceB);
+    reliefB = new THREE.Mesh(faceGeometry, reliefMaterial);
+    reliefB.name = 'reliefB';
+    reliefB.renderOrder = 1;
+    reliefB.rotation.order = 'ZXY';
+    reliefB.rotation.set(-Math.PI / 2, 0, Math.PI);
+    reliefB.position.y = -(FACE_Y + RELIEF_HEIGHT);
+    group.add(reliefB);
   }
 
   const geometryInfo = Object.freeze({
@@ -1214,13 +1478,13 @@ function createCoin(state, specOrId, options) {
     frameInnerRadius: FRAME_INNER_RADIUS,
     recess: RECESS,
     geometry: geometryInfo,
-    faceMaterial: 'satin+twill',
+    faceMaterial: 'satin+dots',
     face: {
       baseAsset: 'textures/satin.png',
       fontAsset: 'fonts/Lexend-Variable.ttf',
-      materialPattern: 'satin+twill',
+      materialPattern: 'satin+dots',
       satinReference: 'assets/textures/satin.png (low-frequency modulation)',
-      twill: { periodPx: TWILL.periodPx, albedoContrast: TWILL.albedoContrast, seamless: true, procedural: true },
+      dots: { pitchPx: DOTS.pitchPx, sigmaPx: DOTS.sigmaPx, albedoDrop: DOTS.albedoDrop, procedural: true },
       displaced: false,
       normalMap: true,
       symbol: {
@@ -1233,6 +1497,10 @@ function createCoin(state, specOrId, options) {
       sharedAlbedoAcrossCoins: true,
     },
     symbolRelief: {
+      raised: true,
+      reliefHeight: RELIEF_HEIGHT,
+      albedo: '#ffffff',
+      faceRoughness: FACE_ROUGHNESS,
       normalMap: true,
       albedoDarkening: false,
       bevelPxAt1024: GLYPH_BEVEL_PX_REF,
@@ -1273,7 +1541,11 @@ function createCoin(state, specOrId, options) {
       wall: wallMesh,
       faceA,
       faceB,
+      reliefA,
+      reliefB,
     },
+    reliefA,
+    reliefB,
     debugInfo,
     dispose() {
       if (disposed) return;

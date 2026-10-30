@@ -907,20 +907,20 @@
         }
       },
       "sleekOverlay": {
-        "amplitudeLuma": 4.5,
+        "amplitudeLuma": 0.0,
         "inkAttenuation": 0.76,
         "inkSaturationFull": 0.36,
         "inkSaturationStart": 0.1,
         "method": "flattened sleek.jpg residual added in sRGB space (mean-preserving)",
         "stats": {
-          "amplitudeLuma": 4.5,
-          "flatLumaAfter": 228.082,
+          "amplitudeLuma": 0.0,
+          "flatLumaAfter": 228.071,
           "flatLumaBefore": 228.071,
-          "flatLumaDelta": 0.0109,
+          "flatLumaDelta": 0.0,
           "flatPixels": 553217,
           "mode": "gloss-print-sleek",
-          "residualStdLuma": 3.27,
-          "streakStdLuma": 6.08
+          "residualStdLuma": 0.0,
+          "streakStdLuma": 5.479
         }
       },
       "source": "novocard-default-light.png",
@@ -1019,7 +1019,7 @@
   "faceOverlay": {
     "amplitudesLuma": {
       "dark": 0.0,
-      "light": 4.5
+      "light": 0.0
     },
     "inkAttenuation": 0.76,
     "method": "flattened sleek residual, mean-preserving (light card only; the dark card's smooth black metal field has amplitude 0)",
@@ -1269,7 +1269,7 @@
       "height": 636,
       "mapping": "uv 0..1 over the front plate",
       "role": "front albedo, card 'light' (artwork + flattened sleek overlay)",
-      "sha256": "9aefeb34c48011bcc39b193fb88a931bbe658bde2990c554325fcaedc6c75826",
+      "sha256": "a67c40383a49907a3efe145009b41a935a41a77a0c56430f89278a3c12ac5a62",
       "width": 929
     },
     {

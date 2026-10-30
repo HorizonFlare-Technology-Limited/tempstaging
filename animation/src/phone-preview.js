@@ -2,10 +2,14 @@
  * tekoanimation — iPhone 15 · Model Studio (Revision 8).
  *
  * Adapted from the standalone K:\iPhone-15-ThreeJS app.js (Three.js r0.180.0).
- * The renderer, PMREM/RoomEnvironment lighting, camera, OrbitControls, view
- * presets, display toggle, display-screen selector, screen upload/restore,
- * reset and GLB export are kept. The finish is BLACK ONLY: the finish panel is
- * static and no other finish can be selected through the UI or the public API.
+ * The renderer, camera, OrbitControls, view presets, display toggle,
+ * display-screen selector, screen upload/restore, reset and GLB export are kept.
+ * Rev21: the procedural room-environment studio and both THREE lights are retired — the page
+ * is lit only by `assets/env/modern-empty-room.jpg` PMREM-filtered through the
+ * shared ./env-room.js module (the r180 namespace is passed in, so the PMREM
+ * target belongs to this page's three build). The finish is BLACK ONLY: the
+ * finish panel is static and no other finish can be selected through the UI or
+ * the public API.
  *
  * Public QA API (SPEC R8-3): window.__tekoPhone = { ready, setView, setScreen,
  * screenOptions, setScreenOn, setAutoRotate, resetView, debug } (+ exportModel
@@ -13,12 +17,16 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { applyEnvRoom } from './env-room.js';
 import { createPhone, finishes } from './phone-model.js';
 
 const VERSION = '1.1.0';
 const FINISH = 'Black';
+const ROOM = Object.freeze({
+  intensity: 2.1,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
+});
 const SCREENS = [
   { id: 'accounts', label: 'Accounts at a glance', file: './assets/phone/screens/app-example-01-accounts-at-a-glance.png' },
   { id: 'send-receive', label: 'Send and receive', file: './assets/phone/screens/app-example-02-send-and-receive.png' },
@@ -146,6 +154,8 @@ const api = {
     screenFile: state.screenFile,
     screenOn: state.screenOn,
     autoRotate: state.autoRotate,
+    lights: [],
+    environment: ROOM.label,
     errors: errors.slice(),
   }),
   exportModel: async () => null,
@@ -153,10 +163,12 @@ const api = {
 window.__tekoPhone = api;
 
 if (renderer) {
-  boot(renderer);
+  boot(renderer).catch((error) => {
+    showFallback('The 3D phone could not start (' + (error && error.message ? error.message : String(error)) + ').');
+  });
 }
 
-function boot(webglRenderer) {
+async function boot(webglRenderer) {
   webglRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   webglRenderer.setClearColor(0x000000, 0);
   webglRenderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -166,6 +178,9 @@ function boot(webglRenderer) {
   webglRenderer.domElement.tabIndex = 0;
 
   const scene = new THREE.Scene();
+  // Rev21: the room photograph is the only light source (PMREM via env-room,
+  // r180 namespace so the target is created by this page's three build).
+  const room = await applyEnvRoom(THREE, webglRenderer, scene, { intensity: ROOM.intensity, toggleContainer: () => document.getElementById('screen') && document.getElementById('screen').parentElement });
   const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 10);
   const controls = new OrbitControls(camera, webglRenderer.domElement);
   controls.enableDamping = true;
@@ -174,20 +189,11 @@ function boot(webglRenderer) {
   controls.autoRotateSpeed = 1.2;
   controls.target.set(0, 0, 0);
 
-  const pmrem = new THREE.PMREMGenerator(webglRenderer);
-  const room = new RoomEnvironment();
-  const environment = pmrem.fromScene(room, 0.04);
-  scene.environment = environment.texture;
-  room.dispose();
-  pmrem.dispose();
-
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xaab69e, 2));
-  const light = new THREE.DirectionalLight(0xffffff, 3);
-  light.position.set(-0.1, 0.2, 0.3);
-  scene.add(light);
-
   const phone = createPhone();
   scene.add(phone.root);
+  // r163+: scene.environmentIntensity already covers later materials; refresh
+  // keeps r151-compatible semantics and reports the tuned value in debug.
+  room.refresh(scene);
   phone.screenOn(state.screenOn);
   surfaceFinish();
 
@@ -479,6 +485,9 @@ function boot(webglRenderer) {
     screenFile: state.screenFile,
     screenOn: state.screenOn,
     autoRotate: state.shot ? false : Boolean(controls.autoRotate),
+    lights: [],
+    environment: ROOM.label,
+    envIntensity: room.intensity,
     errors: errors.slice(),
   });
 
@@ -489,6 +498,7 @@ function boot(webglRenderer) {
     camera,
     controls,
     renderer: webglRenderer,
+    envRoom: room,
     ready: readyPromise,
     setView,
     exportModel,

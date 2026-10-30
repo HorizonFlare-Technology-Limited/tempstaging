@@ -28,7 +28,7 @@
   --warm: #e8c39c;
   --danger: #ff9a86;
   --plaster: #d8d2c8;
-  --limestone: #ddcfb6;
+  --reeded-metal: #b9c2cd;
   --satin: #c3ccd7;
   --radius: 14px;
   --font: 'Lexend', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -304,7 +304,7 @@ button {
      wide letterbox rather than the old portrait-ish 1.62 ratio. */
   aspect-ratio: 2.05;
   max-height: calc(100vh - 296px);
-  min-height: 300px;
+  min-height: 420px; /* s47: larger stage = more render pixels */
   overflow: hidden;
   isolation: isolate;
 }
@@ -435,8 +435,8 @@ button {
   --group-dot: var(--plaster);
 }
 
-.group-label[data-group-label='limestone'] {
-  --group-dot: var(--limestone);
+.group-label[data-group-label='reeded-metal'] {
+  --group-dot: var(--reeded-metal);
 }
 
 .group-label[data-group-label='satin'] {
@@ -452,7 +452,7 @@ button {
 }
 
 body[data-material='plaster'] .group-label[data-group-label='plaster'],
-body[data-material='limestone'] .group-label[data-group-label='limestone'],
+body[data-material='reeded-metal'] .group-label[data-group-label='reeded-metal'],
 body[data-material='satin'] .group-label[data-group-label='satin'] {
   border-color: rgba(226, 234, 244, 0.3);
   color: var(--ink);
@@ -841,11 +841,17 @@ kbd {
 .material-tab[data-material='plaster'] {
   --material-dot: var(--plaster);
 }
-.material-tab[data-material='limestone'] {
-  --material-dot: var(--limestone);
+.material-tab[data-material='reeded-metal'] {
+  --material-dot: var(--reeded-metal);
 }
 .material-tab[data-material='satin'] {
   --material-dot: var(--satin);
+}
+.material-tab[data-material='grain-metal'] {
+  --material-dot: #aeb1b6;
+}
+.material-tab[data-material='titanium'] {
+  --material-dot: #8f877d;
 }
 .material-tab[data-material='all'] {
   --material-dot: #8fa6c0;
@@ -1262,17 +1268,32 @@ kbd {
     linear-gradient(152deg, #e4dfd6, #b8b2a7);
 }
 
-.material-swatch--limestone {
+.material-swatch--reeded-metal {
   background:
-    repeating-linear-gradient(174deg, rgba(255, 255, 255, 0.1) 0 2px, rgba(0, 0, 0, 0.05) 2px 5px),
-    radial-gradient(circle at 66% 36%, rgba(255, 255, 255, 0.16) 0 1.4px, rgba(0, 0, 0, 0) 2px),
-    linear-gradient(152deg, #cdbfa6, #a2957d);
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.34) 0 1px, rgba(0, 0, 0, 0.12) 1px 3px),
+    linear-gradient(135deg, #e6ebf1 0 46%, #6c737d 46% 100%);
 }
 
 .material-swatch--satin {
   background:
     linear-gradient(118deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.95) 48%, rgba(255, 255, 255, 0.35) 52%, rgba(255, 255, 255, 0) 60%),
     linear-gradient(152deg, #8e98a4, #ccd5df 58%, #a9b3be);
+}
+
+
+.material-swatch--grain-metal {
+  background:
+    radial-gradient(circle at 24% 30%, rgba(0, 0, 0, 0.22) 0 0.6px, rgba(0, 0, 0, 0) 1.2px),
+    radial-gradient(circle at 66% 62%, rgba(0, 0, 0, 0.2) 0 0.6px, rgba(0, 0, 0, 0) 1.2px),
+    radial-gradient(circle at 80% 26%, rgba(255, 255, 255, 0.22) 0 0.6px, rgba(0, 0, 0, 0) 1.2px),
+    linear-gradient(152deg, #aeb1b6, #8d9095);
+}
+
+.material-swatch--titanium {
+  background:
+    radial-gradient(circle at 24% 30%, rgba(0, 0, 0, 0.24) 0 0.6px, rgba(0, 0, 0, 0) 1.2px),
+    radial-gradient(circle at 66% 62%, rgba(0, 0, 0, 0.22) 0 0.6px, rgba(0, 0, 0, 0) 1.2px),
+    linear-gradient(152deg, #8f877d, #6d665d);
 }
 
 .material-swatch--unit {

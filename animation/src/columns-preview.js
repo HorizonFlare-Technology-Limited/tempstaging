@@ -7,11 +7,12 @@
  * frozen §5 API; this module never builds column geometry or textures.
  *
  * Studio contract:
- *   - PMREM RoomEnvironment image-based lighting for all three materials;
- *   - key / fill / rim directional lights; only the key casts shadows (2048
- *     PCFSoft map over the 27-column envelope);
+ *   - Rev21: the ONLY light is the shared room photograph
+ *     (assets/env/modern-empty-room.jpg) filtered once into a PMREM by
+ *     ./env-room.js and assigned to `scene.environment`; there are no THREE
+ *     lights and no procedural studio / softbox PMREM any more;
  *   - an unlit, deterministic floor pool with alpha falloff, plus a
- *     ShadowMaterial receiver, so the columns read as standing in a dark studio;
+ *     contact-shadow bed, so the columns read as standing in a dark studio;
  *   - camera framing is solved numerically from the real 27 box corners for the
  *     live stage aspect, so all 27 columns fit at 1440x900 and 390x844.
  *
@@ -20,9 +21,13 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
+import { applyEnvRoom } from './env-room.js';
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
+
+/* s48: uniform world scale. Mirrors COLUMN_WORLD_SCALE in columns-model.js (checked at load);
+   page labels keep showing the spec px (world / WORLD_SCALE). */
+const WORLD_SCALE = 200;
 
 const MODEL_URL = new URL('./columns-model.js', import.meta.url);
 const ASSET_BASE = './assets/textures/materials';
@@ -31,23 +36,26 @@ const ASSET_BASE = './assets/textures/materials';
 
 const MATERIALS = Object.freeze([
   Object.freeze({ id: 'plaster', label: 'Plaster', sourceImage: 'plaster.png' }),
-  Object.freeze({ id: 'limestone', label: 'Limestone', sourceImage: 'limestone.png' }),
-  Object.freeze({ id: 'satin', label: 'Satin', sourceImage: 'satin.png' })
+  Object.freeze({ id: 'reeded-metal', label: 'Reeded Metal', sourceImage: 'reeded-metal.png' }),
+  Object.freeze({ id: 'satin', label: 'Satin', sourceImage: 'satin.png' }),
+  // Rev19 (s46): procedural metal groups (generated in the model, no assets).
+  Object.freeze({ id: 'grain-metal', label: 'Natural Grain Metal', sourceImage: null }),
+  Object.freeze({ id: 'titanium', label: 'Titanium Alloy', sourceImage: null })
 ]);
-const MATERIAL_ORDER = Object.freeze(['plaster', 'limestone', 'satin']);
+const MATERIAL_ORDER = Object.freeze(['plaster', 'reeded-metal', 'satin', 'grain-metal', 'titanium']);
 const FOOTPRINT_ORDER = Object.freeze(['large', 'medium', 'small']);
 const HEIGHT_ORDER = Object.freeze(['long', 'medium', 'short']);
 const FOOTPRINTS = Object.freeze({
-  large: Object.freeze({ id: 'large', label: 'Large', px: 140, xOffset: -180 }),
+  large: Object.freeze({ id: 'large', label: 'Large', px: 140, xOffset: -180 * WORLD_SCALE }),
   medium: Object.freeze({ id: 'medium', label: 'Medium', px: 80, xOffset: 0 }),
-  small: Object.freeze({ id: 'small', label: 'Small', px: 40, xOffset: 180 })
+  small: Object.freeze({ id: 'small', label: 'Small', px: 40, xOffset: 180 * WORLD_SCALE })
 });
 const HEIGHTS = Object.freeze({
-  long: Object.freeze({ id: 'long', label: 'Long', px: 600, zOffset: -180 }),
+  long: Object.freeze({ id: 'long', label: 'Long', px: 600, zOffset: -180 * WORLD_SCALE }),
   medium: Object.freeze({ id: 'medium', label: 'Medium', px: 550, zOffset: 0 }),
-  short: Object.freeze({ id: 'short', label: 'Short', px: 500, zOffset: 180 })
+  short: Object.freeze({ id: 'short', label: 'Short', px: 500, zOffset: 180 * WORLD_SCALE })
 });
-const GROUP_SPACING = 700;
+const GROUP_SPACING = 700 * WORLD_SCALE;
 
 /* Local mirror of the frozen spec table. The page needs 27 readable columns in
    the readout, the size-matrix legend and the fallback state even before (or
@@ -55,7 +63,7 @@ const GROUP_SPACING = 700;
 function buildLocalSpecs() {
   const specs = [];
   MATERIALS.forEach((material, groupIndex) => {
-    const groupCentreX = (groupIndex - 1) * GROUP_SPACING;
+    const groupCentreX = (groupIndex - (MATERIALS.length - 1) / 2) * GROUP_SPACING;
     for (const footprintKey of FOOTPRINT_ORDER) {
       const footprint = FOOTPRINTS[footprintKey];
       for (const heightKey of HEIGHT_ORDER) {
@@ -66,10 +74,10 @@ function buildLocalSpecs() {
           material: material.id,
           footprint: footprintKey,
           height: heightKey,
-          width: footprint.px,
-          depth: footprint.px,
-          heightPx: height.px,
-          position: { x: groupCentreX + footprint.xOffset, y: height.px / 2, z: height.zOffset },
+          width: footprint.px * WORLD_SCALE,
+          depth: footprint.px * WORLD_SCALE,
+          heightPx: height.px * WORLD_SCALE,
+          position: { x: groupCentreX + footprint.xOffset, y: (height.px * WORLD_SCALE) / 2, z: height.zOffset },
           label: material.label + ' ' + footprint.label + ' ' + height.label
         });
       }
@@ -106,7 +114,7 @@ const LOCAL_BOUNDS = computeSpecBounds(LOCAL_SPECS);
 // lifts to 24 deg so the squat tiers read in depth, and the preset views keep a
 // little elevation. Values solved against the live 27 boxes (binary-search fit).
 const VIEWS = Object.freeze({
-  hero: Object.freeze({ id: 'hero', label: 'Hero', azimuth: 33, elevation: 24, targetYFactor: 0.367, targetXOffset: 145 }),
+  hero: Object.freeze({ id: 'hero', label: 'Hero', azimuth: 33, elevation: 24, targetYFactor: 0.367, targetXOffset: 145 * WORLD_SCALE }),
   front: Object.freeze({ id: 'front', label: 'Front', azimuth: 0, elevation: 12, targetYFactor: 0.43, targetXOffset: 0 }),
   side: Object.freeze({ id: 'side', label: 'Side', azimuth: 90, elevation: 12, targetYFactor: 0.47, targetXOffset: 0 }),
   top: Object.freeze({ id: 'top', label: 'Top', azimuth: 0, elevation: 68, targetYFactor: 0.5, targetXOffset: 0 })
@@ -116,117 +124,58 @@ const VIEW_ORDER = Object.freeze(['hero', 'front', 'side', 'top']);
 // the desktop 3/4 angle. Swinging the hero azimuth toward the depth axis (and
 // using a slightly tighter fit margin) makes the 27 columns fill the tall stage
 // on phones while all of them stay in frame. Desktop keeps VIEWS.hero.
-const NARROW_VIEW = Object.freeze({ id: 'hero', label: 'Hero', azimuth: 58, elevation: 30, targetYFactor: 0.35, targetXOffset: 145, margin: 0.92 });
+const NARROW_VIEW = Object.freeze({ id: 'hero', label: 'Hero', azimuth: 58, elevation: 30, targetYFactor: 0.35, targetXOffset: 145 * WORLD_SCALE, margin: 0.92 });
 const FOCUS_VIEW = Object.freeze({ azimuth: 31, elevation: 12.5, margin: 0.82 });
 
-const FIT = Object.freeze({ margin: 0.9, minDistance: 40, maxDistance: 240000 });
+const FIT = Object.freeze({ margin: 0.9, minDistance: 40 * WORLD_SCALE, maxDistance: 240000 * WORLD_SCALE });
 
 /* Rendering constants (tuned against the three material sheets in the studio). */
-const RENDERER = Object.freeze({ exposure: 0.95, dprMax: 2 });
-// RoomEnvironment is authored for a ~10-unit model: its point light is intensity
-// 5 and its emissive panels are 17-100. At our 1850-unit scene scale the raw
-// PMREM is a huge, flat ambient wash, so the room is damped before baking (same
-// technique as the coin/card studios) to keep the key light directional and the
-// satin reflecting.
-const ENVIRONMENT = Object.freeze({ lightScale: 0.3, panelScale: 0.26, softboxScale: 1.2, sigma: 0.05 });
-const LIGHTS = Object.freeze({
-  key: { color: 0xfff0df, intensity: 1.45, position: [-1900, 2900, 2300], target: [-120, 300, -80] },
-  fill: { color: 0xa9c3e2, intensity: 0.85, position: [2500, 1600, 1700] },
-  // Rev 5: the satin group needs a low, rear-right rim so its low-roughness /
-  // metalness maps produce the crisp edge highlight of the user reference.
-  rim: { color: 0xe4edf8, intensity: 3.5, position: [1800, 500, -1600] },
-  ambient: { color: 0x3a4552, intensity: 0.28 }
+/* s47 precision: the canvas is supersampled. pixelRatio = min(devicePixelRatio * renderScale, maxPixelRatio);
+   adaptive: if the mean frame time over `adaptWindow` frames exceeds `slowMs`, drop to `fallbackScale` once. */
+const RENDERER = Object.freeze({ exposure: 1.4, renderScale: 2, maxPixelRatio: 3, fallbackScale: 1.5, slowMs: 24, adaptWindow: 30 });
+/* Rev21 — image-based lighting only: the shared room photograph
+   (assets/env/modern-empty-room.jpg) is filtered into a PMREM by ./env-room.js
+   and becomes `scene.environment`. No THREE lights and no procedural studio /
+   softbox PMREM: the photo's dark interior with its bright ceiling downlights
+   is the light. r151 has no scene-level environmentIntensity, so env-room BAKES
+   ROOM.intensity into the PMREM radiance (materials are never scaled by it).
+   s42: every column material is a metal mirror with its own absolute radiance gain
+   (MIRROR), so the bake must stay NEUTRAL (1). s14 baked 4.5 on top of the
+   MIRROR gains and blew plaster/satin out (~27x/22x) and flattened the steel. */
+const ROOM = Object.freeze({
+  intensity: 1,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
 });
-const SHADOW = Object.freeze({
-  mapSize: 1024,
-  camera: { left: -1500, right: 1500, top: 1500, bottom: -1500, near: 200, far: 9000 },
-  bias: -0.0005,
-  normalBias: 2.4
-});
-const FLOOR = Object.freeze({ radius: 9000, shadowRadius: 2600, shadowOpacity: 0.32, shadowY: 0.12 });
+const FLOOR = Object.freeze({ radius: 9000 * WORLD_SCALE });
 // Ghost columns are context silhouettes, not materials: an unlit near-black
 // surface keeps every non-selected group darker than the floor's shadows so the
 // selected group always owns the frame (SPEC §6.2 "fade to a ghost state").
 const GHOST = Object.freeze({ color: 0x0b0f15 });
 const OUTLINE = Object.freeze({ color: 0xcfe4ff, opacity: 0.85 });
 
-/* Rev 6 - satin blurred mirror reflection.
-   One deterministic CubeCamera capture from the satin group centre renders the
-   real studio scene (layer 0) plus reflection-only warm/cool accents (layer 1)
-   that the main camera never draws. The capture is PMREM-filtered and assigned
-   as the satin material's envMap only, so the blur comes from roughness/mip
-   filtering (soft blobs, no sharp mirrored lines) and the page composition is
-   unchanged. */
-const REFLECTION = Object.freeze({
-  layer: 1,
-  cubeSize: 512,
-  near: 20,
-  far: 120000,
-  center: Object.freeze({ x: 700, y: 300, z: 0 }),
-  minEnvIntensity: 2.0,
-  maxEnvIntensity: 2.8,
-  defaultEnvIntensity: 2.4,
-  accents: Object.freeze([
-    // Upper-rear warm halo: soft amber lift on the caps/upper faces.
-    Object.freeze({ position: [1700, 650, -500], size: [700, 450], color: 0xff8a3d, intensity: 4.5 }),
-    // Long amber band behind the group: the reference's warm streak.
-    Object.freeze({ position: [1200, 380, -900], size: [1100, 180], color: 0xff9a4a, intensity: 5.0 }),
-    // Low amber band: dim warm gradient on the lower rear faces.
-    Object.freeze({ position: [600, 180, -1000], size: [900, 140], color: 0xff7a2a, intensity: 3.5 }),
-    // Cool steel-blue panel: keeps the reflection from reading as all-orange.
-    Object.freeze({ position: [-1500, 700, -600], size: [520, 320], color: 0x9fb8d8, intensity: 2.0 }),
-    // Small warm vertical accent for blob variety.
-    Object.freeze({ position: [-700, 600, -1050], size: [160, 400], color: 0xffb066, intensity: 3.0 }),
-    // Floor-level warm patch IN FRONT of the satin group: vertical faces mirror
-    // the floor near the viewer, so this is what puts a blurred orange smudge on
-    // a side face instead of only on the caps. Kept small and dim so it reads as
-    // one localized reflection, not a whole-face tint.
-    Object.freeze({ position: [600, 2, 1000], size: [260, 180], rotation: [-Math.PI / 2, 0, 0], color: 0xff6a10, intensity: 4.0 })
-  ])
-});
-const CAMERA = Object.freeze({ fov: 34, near: 20, far: 120000 });
+/* Rev21 - plaster / satin mirror radiance gains.
+   Plan lim (Rev21 s1): CubeCamera self-reflection captures may stay only if they
+   capture real scene geometry lit by the room env, with NO added emitters. The
+   rev-6/rev-7 reflection-only emitter panels (warm/cool backdrops, banners and
+   floor patches, drawn only for the captures on layers 1/2) are therefore GONE
+   together with their CubeCamera captures: a capture of the emitters-free scene
+   reflected near-black, so both mirrors now sample the shared room-photo PMREM
+   (`scene.environment`) directly, like reeded-metal.
 
-/* Rev 7 - plaster liquid-metal mirror.
-   A second deterministic CubeCamera capture from the plaster group centre
-   renders the studio (layer 0) plus crisp COOL reflection-only panels (layer 2,
-   never drawn by the main camera). PMREM-filtered and assigned only to the
-   plaster material; its effective roughness (~0.09) is much lower than satin's
-   (~0.24), so the plaster reads as a bright silver/chrome mirror where the
-   reflected neighbour columns, softbox-like bands and panel edges stay
-   recognisable instead of becoming soft blobs. Iteration 2 (Lead capture
-   review: first pass read as dark charcoal with cloudy blobs): envMapIntensity
-   raised to the top of the 2.0-3.0 band, brighter/larger accent panels plus a
-   large soft backdrop so the mirror reflects a lit environment rather than
-   near-black. */
-const PLASTER_MIRROR = Object.freeze({
-  layer: 2,
-  cubeSize: 512,
-  near: 20,
-  far: 120000,
-  center: Object.freeze({ x: -700, y: 300, z: 0 }),
-  minEnvIntensity: 2.0,
-  maxEnvIntensity: 3.0,
-  defaultEnvIntensity: 3.0,
-  accents: Object.freeze([
-    // Large soft cool backdrop behind the group: lifts the whole mirror from
-    // near-black to a lit silver/chrome environment (soft gradient, no hard edge).
-    Object.freeze({ position: [-700, 420, -1700], size: [3000, 1500], color: 0x9db0c6, intensity: 1.35 }),
-    // Large soft front fill: keeps side/back faces from reflecting pure black.
-    Object.freeze({ position: [-700, 380, 1650], size: [2600, 1300], color: 0xc6d4e6, intensity: 1.2 }),
-    // Bright overhead strip: sharp reflected highlight band across caps / upper faces.
-    Object.freeze({ position: [-700, 1450, -150], size: [1800, 380], rotation: [-Math.PI / 2, 0, 0], color: 0xf6f9ff, intensity: 3.6 }),
-    // Tall cool banner in front of the group: crisp vertical mirror band on +Z faces.
-    Object.freeze({ position: [-700, 300, 980], size: [900, 950], color: 0xdfe9f7, intensity: 2.6 }),
-    // Bright side panels: read as the reflected neighbouring group axis + studio softboxes.
-    Object.freeze({ position: [260, 480, 240], size: [420, 1150], color: 0xeaf3ff, intensity: 2.8 }),
-    Object.freeze({ position: [-1660, 480, 240], size: [420, 1150], color: 0xd8e6f7, intensity: 2.0 }),
-    // Faint warm key-side panel: the liquid metal keeps a little studio warmth.
-    Object.freeze({ position: [-1480, 520, 700], size: [520, 640], color: 0xffd9b0, intensity: 1.1 }),
-    // Low cool patch in front: the near floor/vertical faces mirror a bright band.
-    Object.freeze({ position: [-700, 2, 1200], size: [620, 420], rotation: [-Math.PI / 2, 0, 0], color: 0xeaf2ff, intensity: 1.6 }),
-  ])
+   A metal mirror samples environment RADIANCE (not the diffuse irradiance the
+   room intensity is tuned for), so the plaster/satin env gain is clamped to the
+   accepted radiance range below. The baked ROOM.intensity (1) multiplies them
+   neutrally; do not raise it without dividing these gains. */
+const MIRROR = Object.freeze({
+  satin: Object.freeze({ envIntensity: 7, envIntensityBand: Object.freeze([4, 12]) }),
+  plaster: Object.freeze({ envIntensity: 3, envIntensityBand: Object.freeze([2, 16]) }),
+  // Rev 5 s32: reeded-metal steel sides + its reeded top plate.
+  'reeded-metal': Object.freeze({ envIntensity: 2.6, topEnvIntensity: 3.2, envIntensityBand: Object.freeze([0.8, 5]) }),
+  // Rev19 s46: procedural metal groups (soft broad gradient, no blown highlights).
+  'grain-metal': Object.freeze({ envIntensity: 3, envIntensityBand: Object.freeze([1, 6]) }),
+  titanium: Object.freeze({ envIntensity: 3.2, envIntensityBand: Object.freeze([1, 6]) })
 });
-
+const CAMERA = Object.freeze({ fov: 34, near: 20 * WORLD_SCALE, far: 120000 * WORLD_SCALE });
 const TAU = Math.PI * 2;
 
 /* three r151 ships with ColorManagement.enabled = false, so Color(hex) values
@@ -244,7 +193,6 @@ function srgbColor(hex) {
   return color;
 }
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const lerp = (from, to, t) => from + (to - from) * t;
 const degToRad = (deg) => (deg * Math.PI) / 180;
 const round = (value, digits) => {
   const d = digits === undefined ? 2 : digits;
@@ -270,8 +218,10 @@ const dom = {
   veilText: document.getElementById('veil-text'),
   groupLabels: {
     plaster: document.querySelector('[data-group-label="plaster"]'),
-    limestone: document.querySelector('[data-group-label="limestone"]'),
-    satin: document.querySelector('[data-group-label="satin"]')
+    'reeded-metal': document.querySelector('[data-group-label="reeded-metal"]'),
+    satin: document.querySelector('[data-group-label="satin"]'),
+    'grain-metal': document.querySelector('[data-group-label="grain-metal"]'),
+    titanium: document.querySelector('[data-group-label="titanium"]')
   },
   btnReset: document.getElementById('btn-reset'),
   btnSpin: document.getElementById('btn-spin'),
@@ -417,7 +367,7 @@ function materialLabel(id) {
 }
 
 function formatDims(spec) {
-  return spec.width + ' x ' + spec.depth + ' x ' + spec.heightPx + ' px';
+  return spec.width / WORLD_SCALE + ' x ' + spec.depth / WORLD_SCALE + ' x ' + spec.heightPx / WORLD_SCALE + ' px';
 }
 
 /* -------------------------------------------------------------- URL state */
@@ -515,9 +465,9 @@ function syncMatrixUi() {
 
 function syncReadout() {
   let kicker = 'Hover a column';
-  let name = 'All 27 columns';
+  let name = 'All 45 columns';
   let dims = '140 / 80 / 40 px footprints - 600 / 550 / 500 px heights';
-  let id = '3 materials x 9 dimensions';
+  let id = '5 materials x 9 dimensions';
   const hovered = state.focusId || state.hoverId;
   const hoveredSpec = specById(hovered);
   const cell = state.matrixCell || state.matrixHover;
@@ -526,7 +476,7 @@ function syncReadout() {
     const height = HEIGHTS[hoveredSpec.height];
     kicker = state.focusId ? 'Focused' : 'Hovered';
     name = materialLabel(hoveredSpec.material) + ' - ' + footprint.label + ' - ' + height.label;
-    dims = hoveredSpec.width + ' x ' + hoveredSpec.depth + ' x ' + hoveredSpec.heightPx + ' px';
+    dims = hoveredSpec.width / WORLD_SCALE + ' x ' + hoveredSpec.depth / WORLD_SCALE + ' x ' + hoveredSpec.heightPx / WORLD_SCALE + ' px';
     id = hoveredSpec.id;
   } else if (cell) {
     const footprint = FOOTPRINTS[cell.footprint];
@@ -567,7 +517,7 @@ function syncReadout() {
     } else if (state.material !== 'all') {
       dom.stageName.textContent = '9 columns - ' + materialLabel(state.material).toLowerCase() + ' group';
     } else {
-      dom.stageName.textContent = 'long cuboids - 3 materials x 9 dimensions';
+      dom.stageName.textContent = 'long cuboids - 5 materials x 9 dimensions';
     }
   }
   if (dom.stageDetail) {
@@ -579,8 +529,8 @@ function syncReadout() {
 function syncSpecUi() {
   const bounds = state.bounds;
   if (dom.specExtent) {
-    dom.specExtent.textContent = Math.round(bounds.size.x) + ' x ' + Math.round(bounds.size.z) + ' x ' +
-      Math.round(bounds.size.y) + ' px';
+    dom.specExtent.textContent = Math.round(bounds.size.x / WORLD_SCALE) + ' x ' + Math.round(bounds.size.z / WORLD_SCALE) + ' x ' +
+      Math.round(bounds.size.y / WORLD_SCALE) + ' px';
   }
 }
 
@@ -620,11 +570,14 @@ function validateModelModule(modelModule) {
   if (typeof modelModule.loadColumnBank !== 'function' || typeof modelModule.createColumns !== 'function') {
     return { ok: false, message: 'The columns model module does not expose loadColumnBank()/createColumns().' };
   }
+  if (modelModule.COLUMN_WORLD_SCALE !== WORLD_SCALE) {
+    return { ok: false, message: 'The columns model world scale (' + modelModule.COLUMN_WORLD_SCALE + ') disagrees with the page (' + WORLD_SCALE + ').' };
+  }
   const specs = modelModule.COLUMN_SPECS;
-  if (!Array.isArray(specs) || specs.length !== 27) {
+  if (!Array.isArray(specs) || specs.length !== 45) {
     return {
       ok: false,
-      message: 'The columns model exposes ' + (Array.isArray(specs) ? specs.length : 'no') + ' COLUMN_SPECS, expected 27.'
+      message: 'The columns model exposes ' + (Array.isArray(specs) ? specs.length : 'no') + ' COLUMN_SPECS, expected 45.'
     };
   }
   for (const spec of specs) {
@@ -637,7 +590,7 @@ function validateModelModule(modelModule) {
     if (!footprint || !height) {
       return { ok: false, message: 'Column "' + check.id + '" has an unknown footprint/height key.' };
     }
-    if (check.width !== footprint.px || check.depth !== footprint.px || check.heightPx !== height.px) {
+    if (check.width !== footprint.px * WORLD_SCALE || check.depth !== footprint.px * WORLD_SCALE || check.heightPx !== height.px * WORLD_SCALE) {
       return {
         ok: false,
         message: 'Column "' + check.id + '" dimensions disagree with SPEC §3 (expected ' +
@@ -747,8 +700,8 @@ function makeFloorTexture(renderer) {
  * plane is transparent black painted at y=0 and never changes model bounds.
  */
 function makeContactShadowTexture(specs, bounds) {
-  const width = bounds.size.x + 900;
-  const depth = bounds.size.z + 900;
+  const width = bounds.size.x + 900 * WORLD_SCALE;
+  const depth = bounds.size.z + 900 * WORLD_SCALE;
   const canvasW = 1024;
   const canvasH = Math.max(256, Math.round((canvasW * depth) / width));
   const canvas = document.createElement('canvas');
@@ -761,7 +714,7 @@ function makeContactShadowTexture(specs, bounds) {
   const toX = (worldX) => ((worldX - (centreX - width / 2)) / width) * canvasW;
   const toY = (worldZ) => ((worldZ - (centreZ - depth / 2)) / depth) * canvasH;
   for (const spec of specs) {
-    const radius = spec.width * 0.9 + 46;
+    const radius = spec.width * 0.9 + 46 * WORLD_SCALE;
     const scaleX = 1;
     const scaleY = (radius * 2) / (radius * 2);
     const x = toX(spec.position.x);
@@ -785,48 +738,6 @@ function makeContactShadowTexture(specs, bounds) {
   texture.needsUpdate = true;
   texture.userData = { role: 'contact-shadows' };
   return { texture: texture, width: width, depth: depth, centreX: centreX, centreZ: centreZ };
-}
-
-function createDampedRoomEnvironment(lightScale, panelScale) {
-  const room = new RoomEnvironment();
-  room.traverse((object) => {
-    if (object.isLight && typeof object.intensity === 'number') {
-      object.intensity *= lightScale;
-    }
-    if (object.isMesh && object.material && object.material.isMeshBasicMaterial &&
-      object.material.color && typeof object.material.color.multiplyScalar === 'function') {
-      object.material.color.multiplyScalar(panelScale);
-    }
-  });
-  return room;
-}
-
-/**
- * The shared studio environment: the damped RoomEnvironment (soft diffuse
- * bounce) plus three HDR softbox panels placed on the key / fill / rim axes.
- * The panels are what give the satin group crisp rectangular edge highlights;
- * their solid angle is small enough that the matte plaster / limestone groups
- * stay diffuse.
- */
-const SOFTBOXES = Object.freeze([
-  Object.freeze({ position: [-14, 10, 11], lookAt: [0, 4, 0], scale: [7, 5], color: 0xfff0df, intensity: 9 }),
-  Object.freeze({ position: [12, 6, 9], lookAt: [0, 3, 0], scale: [5, 6], color: 0xa9c3e2, intensity: 5 }),
-  Object.freeze({ position: [2, 8, -14], lookAt: [0, 4, 0], scale: [13, 2], color: 0xe4edf8, intensity: 12 })
-]);
-
-function createStudioEnvironment(lightScale, panelScale, softboxScale) {
-  const room = createDampedRoomEnvironment(lightScale, panelScale);
-  const panelGeometry = new THREE.PlaneGeometry(1, 1);
-  for (const panel of SOFTBOXES) {
-    const color = srgbColor(panel.color).multiplyScalar(panel.intensity * softboxScale);
-    const material = new THREE.MeshBasicMaterial({ color: color, toneMapped: false });
-    const mesh = new THREE.Mesh(panelGeometry, material);
-    mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-    mesh.lookAt(panel.lookAt[0], panel.lookAt[1], panel.lookAt[2]);
-    mesh.scale.set(panel.scale[0], panel.scale[1], 1);
-    room.add(mesh);
-  }
-  return room;
 }
 
 function viewDirection(azimuthDeg, elevationDeg) {
@@ -870,10 +781,9 @@ class ColumnsStudio {
     this.scene = null;
     this.camera = null;
     this.controls = null;
-    this.envRT = null;
+    // Rev21: the shared room-photo PMREM handle (env-room.js); no envRT/lights.
+    this.room = null;
     this.floor = null;
-    this.shadowPlane = null;
-    this.lights = {};
     this.columnsGroup = null;
     this.overlayGroup = null;
     this.columns = [];
@@ -881,19 +791,12 @@ class ColumnsStudio {
     this.baseMaterials = new Map();
     this.ghostMaterial = null;
     this.contactShadowKey = null;
+    // Rev21: the two metal mirrors read `scene.environment` directly (no
+    // CubeCamera capture, no reflection-only emitter layers).
     this.satinMaterial = null;
-    this.reflectionAccents = null;
-    this.reflectionCubeRT = null;
-    this.reflectionEnvRT = null;
-    this.reflectionCaptured = false;
-    // Rev 7/8 - plaster liquid-metal mirror.  Rev 8: the mirror surface is flat
-    // and clean, so the rev-7 liquid-flow controller/clock is gone; only the
-    // dedicated reflection capture + layer-2 accents remain.
     this.plasterMaterial = null;
-    this.plasterReflectionAccents = null;
-    this.plasterReflectionCubeRT = null;
-    this.plasterReflectionEnvRT = null;
-    this.plasterReflectionCaptured = false;
+    this.reededMaterial = null;
+    this.reededTopMaterial = null;
     this.outlines = new Map();
     this.specs = [];
     this.bounds = null;
@@ -923,12 +826,14 @@ class ColumnsStudio {
       alpha: true,
       powerPreference: 'high-performance'
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, RENDERER.dprMax));
+    this.renderScale = RENDERER.renderScale;
+    this.adaptive = true;
+    this.frameTimes = [];
+    this.qaCamera = false;
+    renderer.setPixelRatio(this.effectivePixelRatio());
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = RENDERER.exposure;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x000000, 0);
     this.renderer = renderer;
 
@@ -936,7 +841,7 @@ class ColumnsStudio {
     this.scene = scene;
 
     const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1.6, CAMERA.near, CAMERA.far);
-    camera.position.set(0, 1500, 4000);
+    camera.position.set(0, 1500 * WORLD_SCALE, 4000 * WORLD_SCALE);
     this.camera = camera;
 
     const controls = new OrbitControls(camera, this.canvas);
@@ -947,54 +852,19 @@ class ColumnsStudio {
     controls.panSpeed = 0.6;
     controls.screenSpacePanning = false;
     controls.enablePan = true;
-    controls.minDistance = 90;
-    controls.maxDistance = 24000;
+    controls.minDistance = 90 * WORLD_SCALE;
+    controls.maxDistance = 24000 * WORLD_SCALE;
     controls.maxPolarAngle = Math.PI * 0.495;
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.5;
-    controls.target.set(0, 500, 0);
+    controls.target.set(0, 500 * WORLD_SCALE, 0);
     controls.update();
     this.controls = controls;
 
-    // PMREM room environment: the shared image-based lighting for all three
-    // materials (satin reflections, plaster/limestone soft bounce).
-    this.buildEnvironment(ENVIRONMENT.lightScale, ENVIRONMENT.panelScale, ENVIRONMENT.softboxScale);
-
-    const key = new THREE.DirectionalLight(LIGHTS.key.color, LIGHTS.key.intensity);
-    key.position.set(LIGHTS.key.position[0], LIGHTS.key.position[1], LIGHTS.key.position[2]);
-    key.target.position.set(LIGHTS.key.target[0], LIGHTS.key.target[1], LIGHTS.key.target[2]);
-    key.castShadow = true;
-    key.shadow.mapSize.set(SHADOW.mapSize, SHADOW.mapSize);
-    key.shadow.camera.left = SHADOW.camera.left;
-    key.shadow.camera.right = SHADOW.camera.right;
-    key.shadow.camera.top = SHADOW.camera.top;
-    key.shadow.camera.bottom = SHADOW.camera.bottom;
-    key.shadow.camera.near = SHADOW.camera.near;
-    key.shadow.camera.far = SHADOW.camera.far;
-    key.shadow.bias = SHADOW.bias;
-    key.shadow.normalBias = SHADOW.normalBias;
-    key.shadow.camera.updateProjectionMatrix();
-    scene.add(key);
-    scene.add(key.target);
-    this.lights.key = key;
-
-    const fill = new THREE.DirectionalLight(LIGHTS.fill.color, LIGHTS.fill.intensity);
-    fill.position.set(LIGHTS.fill.position[0], LIGHTS.fill.position[1], LIGHTS.fill.position[2]);
-    fill.target.position.set(0, 500, 0);
-    scene.add(fill);
-    scene.add(fill.target);
-    this.lights.fill = fill;
-
-    const rim = new THREE.DirectionalLight(LIGHTS.rim.color, LIGHTS.rim.intensity);
-    rim.position.set(LIGHTS.rim.position[0], LIGHTS.rim.position[1], LIGHTS.rim.position[2]);
-    rim.target.position.set(0, 600, 0);
-    scene.add(rim);
-    scene.add(rim.target);
-    this.lights.rim = rim;
-
-    const ambient = new THREE.AmbientLight(LIGHTS.ambient.color, LIGHTS.ambient.intensity);
-    scene.add(ambient);
-    this.lights.ambient = ambient;
+    // Rev21: the room photograph is the whole light rig. It must resolve before
+    // the columns are built (init is awaited by boot, which does not report
+    // ready until it returns).
+    await this.buildEnvironment();
 
     const floorTexture = makeFloorTexture(renderer);
     const floor = new THREE.Mesh(
@@ -1013,18 +883,6 @@ class ColumnsStudio {
     scene.add(floor);
     this.floor = floor;
 
-    const shadowPlane = new THREE.Mesh(
-      new THREE.CircleGeometry(FLOOR.shadowRadius, 96),
-      new THREE.ShadowMaterial({ color: 0x000000, opacity: FLOOR.shadowOpacity, transparent: true, depthWrite: false })
-    );
-    shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = FLOOR.shadowY;
-    shadowPlane.receiveShadow = true;
-    shadowPlane.renderOrder = 1;
-    shadowPlane.name = 'studio-shadow-plane';
-    scene.add(shadowPlane);
-    this.shadowPlane = shadowPlane;
-
     this.overlayGroup = new THREE.Group();
     this.overlayGroup.name = 'studio-overlays';
     scene.add(this.overlayGroup);
@@ -1033,10 +891,6 @@ class ColumnsStudio {
       color: srgbColor(GHOST.color),
       toneMapped: false
     });
-
-    this.buildReflectionAccents();
-    // Rev 7: cool crisp panels on layer 2 for the plaster mirror capture.
-    this.buildPlasterMirrorAccents();
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.stage);
@@ -1070,6 +924,40 @@ class ColumnsStudio {
     }
     this.columnsCreated = created;
     this.buildContactShadows(this.specs, this.bounds);
+    // Rev21: the 27 column materials only exist now. Apply the room intensity
+    // (diffuse groups) and the mirror radiance gains (plaster/satin read the
+    // same `scene.environment`; there is no CubeCamera capture any more).
+    if (this.room) this.room.refresh(this.scene);
+    this.applyMirrorGains();
+  }
+
+  /**
+   * Rev21: record the plaster/satin materials and give them their mirror
+   * radiance gain. `factor` is the QA intensity knob (1 = the tuned page value).
+   */
+  applyMirrorGains(factor) {
+    for (const column of this.columns) {
+      const spec = column && column.spec;
+      const material = column && (column.material || (column.mesh ? column.mesh.material : null));
+      if (!spec || !material) continue;
+      if (spec.material === 'plaster') this.plasterMaterial = material;
+      else if (spec.material === 'satin') this.satinMaterial = material;
+      else if (spec.material === 'reeded-metal') {
+        this.reededMaterial = material;
+        if (column.topPlate && column.topPlate.material) this.reededTopMaterial = column.topPlate.material;
+      }
+    }
+    const scale = clamp(factor === undefined ? 1 : Number(factor) || 1, 0.25, 2);
+    if (this.plasterMaterial) this.plasterMaterial.envMapIntensity = MIRROR.plaster.envIntensity * scale;
+    if (this.satinMaterial) this.satinMaterial.envMapIntensity = MIRROR.satin.envIntensity * scale;
+    if (this.reededMaterial) this.reededMaterial.envMapIntensity = MIRROR['reeded-metal'].envIntensity * scale;
+    if (this.reededTopMaterial) this.reededTopMaterial.envMapIntensity = MIRROR['reeded-metal'].topEnvIntensity * scale;
+    for (const id of ['grain-metal', 'titanium']) {
+      const column = this.columns.find((entry) => entry && entry.spec && entry.spec.material === id);
+      const material = column && (column.material || (column.mesh ? column.mesh.material : null));
+      if (material) material.envMapIntensity = MIRROR[id].envIntensity * scale;
+    }
+    this.requestRender();
   }
 
   buildContactShadows(specs, bounds) {
@@ -1086,200 +974,11 @@ class ColumnsStudio {
       new THREE.MeshBasicMaterial({ map: bed.texture, transparent: true, depthWrite: false, toneMapped: false })
     );
     plane.rotation.x = -Math.PI / 2;
-    plane.position.set(bed.centreX, 0.26, bed.centreZ);
+    plane.position.set(bed.centreX, 0.26 * WORLD_SCALE, bed.centreZ);
     plane.renderOrder = 2;
     plane.name = 'studio-contact-shadows';
     this.scene.add(plane);
     this.contactPlane = plane;
-  }
-
-  /**
-   * Rev 6: build the reflection-only accent panels. They live on layer 1, which
-   * the main camera (layer 0) never renders, so the page composition is
-   * untouched; the satin reflection CubeCamera enables layer 1 and captures
-   * them as the warm/cool blobs seen in the user reference.
-   */
-  buildReflectionAccents(accentDefs) {
-    const defs = Array.isArray(accentDefs) && accentDefs.length ? accentDefs : REFLECTION.accents;
-    const group = new THREE.Group();
-    group.name = 'satin-reflection-accents';
-    const centre = new THREE.Vector3(REFLECTION.center.x, REFLECTION.center.y, REFLECTION.center.z);
-    for (const accent of defs) {
-      const geometry = new THREE.PlaneGeometry(accent.size[0], accent.size[1]);
-      const material = new THREE.MeshBasicMaterial({
-        color: srgbColor(accent.color).multiplyScalar(accent.intensity),
-        toneMapped: false,
-        side: THREE.DoubleSide
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = 'satin-reflection-accent';
-      mesh.position.set(accent.position[0], accent.position[1], accent.position[2]);
-      if (accent.rotation) mesh.rotation.set(accent.rotation[0], accent.rotation[1], accent.rotation[2]);
-      else mesh.lookAt(centre);
-      mesh.layers.set(REFLECTION.layer);
-      mesh.castShadow = false;
-      mesh.receiveShadow = false;
-      group.add(mesh);
-    }
-    this.scene.add(group);
-    this.reflectionAccents = group;
-    return group;
-  }
-
-  /**
-   * Rev 7: build the cool, crisp reflection-only panels for the plaster mirror.
-   * Layer 2 only - the main camera (layer 0) never draws them, so the page
-   * composition is unchanged; the plaster CubeCamera enables layer 2 and captures
-   * them as sharp silver highlights in the mirror.
-   */
-  buildPlasterMirrorAccents(accentDefs) {
-    const defs = Array.isArray(accentDefs) && accentDefs.length ? accentDefs : PLASTER_MIRROR.accents;
-    const group = new THREE.Group();
-    group.name = 'plaster-mirror-accents';
-    const centre = new THREE.Vector3(PLASTER_MIRROR.center.x, PLASTER_MIRROR.center.y, PLASTER_MIRROR.center.z);
-    for (const accent of defs) {
-      const geometry = new THREE.PlaneGeometry(accent.size[0], accent.size[1]);
-      const material = new THREE.MeshBasicMaterial({
-        color: srgbColor(accent.color).multiplyScalar(accent.intensity),
-        toneMapped: false,
-        side: THREE.DoubleSide
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = 'plaster-mirror-accent';
-      mesh.position.set(accent.position[0], accent.position[1], accent.position[2]);
-      if (accent.rotation) mesh.rotation.set(accent.rotation[0], accent.rotation[1], accent.rotation[2]);
-      else mesh.lookAt(centre);
-      mesh.layers.set(PLASTER_MIRROR.layer);
-      mesh.castShadow = false;
-      mesh.receiveShadow = false;
-      group.add(mesh);
-    }
-    this.scene.add(group);
-    this.plasterReflectionAccents = group;
-    return group;
-  }
-
-  /**
-   * Rev 7/8: one-off deterministic CubeCamera capture for the plaster liquid-metal
-   * mirror, taken from the plaster group centre (layers 0 + 2) with the nine
-   * plaster meshes and the outline overlays hidden (no self-reflection). PMREM
-   * filtered and assigned ONLY to the plaster material. Rev 8 keeps the mirror
-   * surface flat and clean (no normal/roughness maps, constant roughness 0.092),
-   * so the material's low effective roughness samples the mip chain near its
-   * sharpest level: the reflected neighbour columns / floor / cool panels stay
-   * recognisable - a deliberately SHARPER mirror than satin's blurred one
-   * (roughness ~0.24).
-   */
-  capturePlasterReflection(plasterMaterial) {
-    if (!plasterMaterial || this.plasterReflectionCaptured || this.destroyed) return false;
-    const hiddenMeshes = [];
-    for (const column of this.columns) {
-      if (!column || !column.spec || !column.mesh) continue;
-      if (!column.mesh.visible) continue;
-      if (column.spec.material === 'plaster') {
-        hiddenMeshes.push(column.mesh);
-        column.mesh.visible = false;
-      }
-    }
-    const hiddenOutlines = [];
-    for (const line of this.outlines.values()) {
-      if (line.visible) {
-        line.visible = false;
-        hiddenOutlines.push(line);
-      }
-    }
-    const cubeRT = new THREE.WebGLCubeRenderTarget(PLASTER_MIRROR.cubeSize, {
-      type: THREE.HalfFloatType,
-      generateMipmaps: true,
-      minFilter: THREE.LinearMipmapLinearFilter,
-      magFilter: THREE.LinearFilter
-    });
-    cubeRT.texture.name = 'plaster-mirror-cube';
-    const cubeCamera = new THREE.CubeCamera(PLASTER_MIRROR.near, PLASTER_MIRROR.far, cubeRT);
-    cubeCamera.name = 'plaster-mirror-camera';
-    cubeCamera.position.set(PLASTER_MIRROR.center.x, PLASTER_MIRROR.center.y, PLASTER_MIRROR.center.z);
-    cubeCamera.layers.enable(PLASTER_MIRROR.layer);
-    cubeCamera.update(this.renderer, this.scene);
-    for (const mesh of hiddenMeshes) mesh.visible = true;
-    for (const line of hiddenOutlines) line.visible = true;
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    pmrem.compileCubemapShader();
-    const envRT = pmrem.fromCubemap(cubeRT.texture);
-    pmrem.dispose();
-    const intensity = clamp(
-      Number(plasterMaterial.envMapIntensity) || PLASTER_MIRROR.defaultEnvIntensity,
-      PLASTER_MIRROR.minEnvIntensity,
-      PLASTER_MIRROR.maxEnvIntensity
-    );
-    plasterMaterial.envMap = envRT.texture;
-    plasterMaterial.envMapIntensity = intensity;
-    plasterMaterial.needsUpdate = true;
-    this.plasterMaterial = plasterMaterial;
-    this.plasterReflectionCubeRT = cubeRT;
-    this.plasterReflectionEnvRT = envRT;
-    this.plasterReflectionCaptured = true;
-    this.requestRender();
-    return true;
-  }
-
-  /**
-   * Rev 6: one-off deterministic CubeCamera capture of the studio from the satin
-   * group centre (layers 0+1), PMREM-filtered and assigned as the satin
-   * material's envMap. Satin meshes are hidden during the capture (no
-   * self-reflection) but kept in the graph; all other staging stays visible.
-   * Blur is produced by the PMREM mip chain + the material's roughness, so the
-   * reflected shapes are soft blobs rather than a sharp mirror.
-   */
-  captureSatinReflection(satinMaterial) {
-    if (!satinMaterial || this.reflectionCaptured || this.destroyed) return false;
-    const hiddenMeshes = [];
-    for (const column of this.columns) {
-      if (!column || !column.spec || !column.mesh) continue;
-      if (!column.mesh.visible) continue;
-      if (column.spec.material === 'satin') {
-        hiddenMeshes.push(column.mesh);
-        column.mesh.visible = false;
-      }
-    }
-    const hiddenOutlines = [];
-    for (const line of this.outlines.values()) {
-      if (line.visible) {
-        line.visible = false;
-        hiddenOutlines.push(line);
-      }
-    }
-    const cubeRT = new THREE.WebGLCubeRenderTarget(REFLECTION.cubeSize, {
-      type: THREE.HalfFloatType,
-      generateMipmaps: true,
-      minFilter: THREE.LinearMipmapLinearFilter,
-      magFilter: THREE.LinearFilter
-    });
-    cubeRT.texture.name = 'satin-reflection-cube';
-    const cubeCamera = new THREE.CubeCamera(REFLECTION.near, REFLECTION.far, cubeRT);
-    cubeCamera.name = 'satin-reflection-camera';
-    cubeCamera.position.set(REFLECTION.center.x, REFLECTION.center.y, REFLECTION.center.z);
-    cubeCamera.layers.enable(REFLECTION.layer);
-    cubeCamera.update(this.renderer, this.scene);
-    for (const mesh of hiddenMeshes) mesh.visible = true;
-    for (const line of hiddenOutlines) line.visible = true;
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    pmrem.compileCubemapShader();
-    const envRT = pmrem.fromCubemap(cubeRT.texture);
-    pmrem.dispose();
-    const intensity = clamp(
-      Number(satinMaterial.envMapIntensity) || REFLECTION.defaultEnvIntensity,
-      REFLECTION.minEnvIntensity,
-      REFLECTION.maxEnvIntensity
-    );
-    satinMaterial.envMap = envRT.texture;
-    satinMaterial.envMapIntensity = intensity;
-    satinMaterial.needsUpdate = true;
-    this.satinMaterial = satinMaterial;
-    this.reflectionCubeRT = cubeRT;
-    this.reflectionEnvRT = envRT;
-    this.reflectionCaptured = true;
-    this.requestRender();
-    return true;
   }
 
   applyPresentation(presentation) {
@@ -1302,6 +1001,8 @@ class ColumnsStudio {
       column.mesh.receiveShadow = !ghost;
       column.mesh.visible = !(ghost && hideGhosts);
       column.ghost = ghost;
+      // Rev 5 s32: the separate reeded top plate follows the column's ghost state.
+      if (column.topPlate) column.topPlate.visible = !ghost;
     }
     this.syncOutlines(presentation);
     // Staging must follow the same capture-mode rule: an isolated gallery shot
@@ -1379,21 +1080,84 @@ class ColumnsStudio {
     for (const line of this.outlines.values()) line.visible = false;
   }
 
-  /** (Re)build the damped PMREM room environment. Tuning hook for testbeds. */
-  buildEnvironment(lightScale, panelScale, softboxScale) {
-    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const roomEnvironment = createStudioEnvironment(
-      lightScale,
-      panelScale,
-      softboxScale === undefined ? ENVIRONMENT.softboxScale : softboxScale
-    );
-    if (this.envRT) this.envRT.dispose();
-    this.envRT = pmremGenerator.fromScene(roomEnvironment, ENVIRONMENT.sigma);
-    this.scene.environment = this.envRT.texture;
-    roomEnvironment.dispose();
-    pmremGenerator.dispose();
+  /**
+   * Rev21: attach the shared room-photo environment (./env-room.js) as the only
+   * light. `intensity` (optional) lets QA retune the exposure of the IBL, i.e.
+   * it re-applies the per-material envMapIntensity multiplier on r151.
+   */
+  async buildEnvironment(intensity) {
+    if (this.room) {
+      try { this.room.dispose(); } catch (error) { /* best effort */ }
+      this.room = null;
+    }
+    this.room = await applyEnvRoom(THREE, this.renderer, this.scene, {
+      intensity: intensity === undefined ? ROOM.intensity : intensity
+    });
     this.requestRender();
+    return this.room;
+  }
+
+  /**
+   * QA/knob hook: scale the room's IBL multiplier without rebuilding it.
+   * `scale` multiplies ROOM.intensity (clamped 0.25-2 so the page cannot be
+   * washed out or killed). The plaster/satin mirrors sample the same
+   * `scene.environment` with their own radiance gain, so they scale with it.
+   */
+  setEnvIntensity(scale) {
+    if (!this.room) return null;
+    const factor = clamp(Number(scale) || 0, 0.25, 2);
+    this.room.setIntensity(ROOM.intensity * factor, this.scene);
+    this.applyMirrorGains(factor);
+    this.requestRender();
+    return this.room.intensity;
+  }
+
+  effectivePixelRatio() {
+    return Math.min((window.devicePixelRatio || 1) * this.renderScale, RENDERER.maxPixelRatio);
+  }
+
+  /** s47: set the supersampling factor (also locks the adaptive governor off: explicit = QA/user choice). */
+  setRenderScale(scale, fromAdaptive) {
+    if (!this.renderer) return null;
+    this.renderScale = clamp(Number(scale) || 1, 0.5, 4);
+    if (!fromAdaptive) this.adaptive = false;
+    this.renderer.setPixelRatio(this.effectivePixelRatio());
+    this.renderer.setSize(this.stageBox.width || 1, this.stageBox.height || 1, false);
+    this.requestRender();
+    return this.renderScale;
+  }
+
+  /** s47 QA: free camera pose (bypasses controls min/max distance + target clamp until the next normal framing). */
+  setQaCamera(position, target) {
+    if (!this.controls) return false;
+    if (!this.qaCamera) {
+      this.qaSaved = {
+        minDistance: this.controls.minDistance,
+        maxDistance: this.controls.maxDistance,
+        maxPolarAngle: this.controls.maxPolarAngle
+      };
+    }
+    this.qaCamera = true;
+    this.cameraGoal = null;
+    this.controls.minDistance = 0;
+    this.controls.maxDistance = Infinity;
+    this.controls.maxPolarAngle = Math.PI;
+    this.controls.target.set(target[0], target[1], target[2]);
+    this.camera.position.set(position[0], position[1], position[2]);
+    this.camera.lookAt(this.controls.target);
+    this.controls.update();
+    this.requestRender();
+    return true;
+  }
+
+  endQaCamera() {
+    if (!this.qaCamera || !this.controls) return;
+    this.qaCamera = false;
+    if (this.qaSaved) {
+      this.controls.minDistance = this.qaSaved.minDistance;
+      this.controls.maxDistance = this.qaSaved.maxDistance;
+      this.controls.maxPolarAngle = this.qaSaved.maxPolarAngle;
+    }
   }
 
   resize() {
@@ -1406,7 +1170,7 @@ class ColumnsStudio {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    if (this.bounds) this.frameCurrentView(true);
+    if (this.bounds && !this.qaCamera) this.frameCurrentView(true);
     this.requestRender();
   }
 
@@ -1442,14 +1206,14 @@ class ColumnsStudio {
       return true;
     };
     let low = FIT.minDistance;
-    let high = 2000;
+    let high = 2000 * WORLD_SCALE;
     let guard = 0;
     while (!test(high) && guard < 14) {
       high *= 2;
       guard += 1;
     }
     if (guard >= 14) return high;
-    for (let index = 0; index < 54; index += 1) {
+    for (let index = 0; index < 45; index += 1) {
       const mid = (low + high) / 2;
       if (test(mid)) high = mid;
       else low = mid;
@@ -1537,6 +1301,7 @@ class ColumnsStudio {
 
   frameCurrentView(immediate) {
     if (!this.bounds || !this.specs.length) return;
+    this.endQaCamera();
     const goal = this.cameraGoalFor(this.viewId || 'hero', this.materialFilter || 'all');
     this.applyCameraGoal(goal, immediate);
   }
@@ -1558,11 +1323,25 @@ class ColumnsStudio {
       this.raf = window.requestAnimationFrame(tick);
       const dt = this.lastFrameTime ? clamp((now - this.lastFrameTime) / 1000, 0.001, 0.06) : 0.016;
       this.lastFrameTime = now;
+      this.governRenderScale(dt);
       this.step(dt);
       this.renderNow();
       this.frameCount += 1;
     };
     this.raf = window.requestAnimationFrame(tick);
+  }
+
+  /** s47 adaptive governor: sustained slow frames (mean > slowMs over adaptWindow) -> one drop to fallbackScale. */
+  governRenderScale(dt) {
+    if (!this.adaptive || this.frozen || this.renderScale <= RENDERER.fallbackScale) return;
+    this.frameTimes.push(dt * 1000);
+    if (this.frameTimes.length < RENDERER.adaptWindow) return;
+    const mean = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+    this.frameTimes.length = 0;
+    if (mean > RENDERER.slowMs) {
+      this.setRenderScale(RENDERER.fallbackScale, true);
+      this.adaptive = false;
+    }
   }
 
   step(dt) {
@@ -1590,15 +1369,15 @@ class ColumnsStudio {
   }
 
   clampTarget() {
-    if (!this.controls) return;
+    if (!this.controls || this.qaCamera) return;
     const target = this.controls.target;
     const bounds = this.bounds || LOCAL_BOUNDS;
-    const minX = bounds.min.x - 300;
-    const maxX = bounds.max.x + 300;
-    const minZ = bounds.min.z - 300;
-    const maxZ = bounds.max.z + 300;
+    const minX = bounds.min.x - 300 * WORLD_SCALE;
+    const maxX = bounds.max.x + 300 * WORLD_SCALE;
+    const minZ = bounds.min.z - 300 * WORLD_SCALE;
+    const maxZ = bounds.max.z + 300 * WORLD_SCALE;
     const clampedX = clamp(target.x, minX, maxX);
-    const clampedY = clamp(target.y, 0, bounds.max.y + 200);
+    const clampedY = clamp(target.y, 0, bounds.max.y + 200 * WORLD_SCALE);
     const clampedZ = clamp(target.z, minZ, maxZ);
     if (clampedX !== target.x || clampedY !== target.y || clampedZ !== target.z) {
       target.set(clampedX, clampedY, clampedZ);
@@ -1624,7 +1403,7 @@ class ColumnsStudio {
     const bounds = this.bounds || LOCAL_BOUNDS;
     // Top view has no clean silhouette to hang a label on, and a phone-width
     // stage fills its frame with columns - in both cases the material selector
-    // directly under the stage carries the Plaster / Limestone / Satin names.
+    // directly under the stage carries the Plaster / Reeded Metal / Satin names.
     const hideAll = this.viewId === 'top' || this.isNarrowStage();
     const point = new THREE.Vector3();
     for (const material of MATERIALS) {
@@ -1635,8 +1414,8 @@ class ColumnsStudio {
         continue;
       }
       const groupIndex = MATERIAL_ORDER.indexOf(material.id);
-      const x = (groupIndex - 1) * GROUP_SPACING + (bounds.min.x + bounds.max.x) / 2;
-      const anchor = new THREE.Vector3(x, bounds.max.y + 60, 0);
+      const x = (groupIndex - (MATERIALS.length - 1) / 2) * GROUP_SPACING + (bounds.min.x + bounds.max.x) / 2;
+      const anchor = new THREE.Vector3(x, bounds.max.y + 60 * WORLD_SCALE, 0);
       point.copy(anchor).project(this.camera);
       const behind = point.z > 1 || point.z < -1;
       const px = (point.x * 0.5 + 0.5) * width;
@@ -1728,10 +1507,6 @@ class ColumnsStudio {
       if (this.floor.material.map) this.floor.material.map.dispose();
       this.floor.material.dispose();
     }
-    if (this.shadowPlane) {
-      this.shadowPlane.geometry.dispose();
-      this.shadowPlane.material.dispose();
-    }
     if (this.contactPlane) {
       this.contactPlane.geometry.dispose();
       if (this.contactPlane.material.map) this.contactPlane.material.map.dispose();
@@ -1743,27 +1518,10 @@ class ColumnsStudio {
     }
     this.outlines.clear();
     if (this.ghostMaterial) this.ghostMaterial.dispose();
-    if (this.reflectionAccents) {
-      for (const mesh of this.reflectionAccents.children) {
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) mesh.material.dispose();
-      }
-      this.scene.remove(this.reflectionAccents);
-      this.reflectionAccents = null;
+    if (this.room) {
+      try { this.room.dispose(); } catch (error) { /* best effort */ }
+      this.room = null;
     }
-    if (this.reflectionCubeRT) this.reflectionCubeRT.dispose();
-    if (this.reflectionEnvRT) this.reflectionEnvRT.dispose();
-    if (this.plasterReflectionAccents) {
-      for (const mesh of this.plasterReflectionAccents.children) {
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) mesh.material.dispose();
-      }
-      this.scene.remove(this.plasterReflectionAccents);
-      this.plasterReflectionAccents = null;
-    }
-    if (this.plasterReflectionCubeRT) this.plasterReflectionCubeRT.dispose();
-    if (this.plasterReflectionEnvRT) this.plasterReflectionEnvRT.dispose();
-    if (this.envRT) this.envRT.dispose();
     if (this.renderer) this.renderer.dispose();
   }
 }
@@ -1801,7 +1559,7 @@ function showFallback(message, options) {
   // The banner carries the detailed failure; the static summary keeps a short,
   // stable explanation so the two never duplicate the same stack of text.
   const fallbackText = opts.banner
-    ? 'The interactive preview could not start. The 27 long cuboids, their material groups and their exact dimensions are listed below.'
+    ? 'The interactive preview could not start. The 45 long cuboids, their material groups and their exact dimensions are listed below.'
     : message;
   if (dom.fallback) {
     dom.fallback.hidden = false;
@@ -1999,7 +1757,7 @@ function collectMaterialDebug() {
         ao: mapFlag('ao', 'aoMap'),
         height: mapFlag('height', 'bumpMap'),
         // Rev 9: no material samples a normal map ('none' for all three):
-        // plaster is perfectly smooth, limestone grain is albedo colour noise,
+        // plaster is perfectly smooth, reeded-metal grain is albedo colour noise,
         // satin is smooth neutral grey.
         normalSource: hasNormalMap ? 'derived-map' : 'none',
         metalnessSource: modelMaterial && !modelMaterial.metalnessMap ? 'constant' : 'metalness-map'
@@ -2037,13 +1795,28 @@ function countTextureFiles() {
   if (!bank || !bank.textures) return { loaded: 0, total: 18 };
   let loaded = 0;
   for (const material of MATERIALS) {
+    if (!material.sourceImage) continue; // Rev19: procedural groups are not asset files
     const textures = bank.textures[material.id];
     if (!textures) continue;
     for (const channel of ['albedo', 'normal', 'roughness', 'metalness', 'ao', 'height']) {
       if (textures[channel]) loaded += 1;
     }
   }
-  return { loaded: loaded, total: 18 };
+  // s48: per-texture size + estimated GPU MB (RGBA8 + full mip chain) and procedural gen time.
+  const maps = [];
+  let mb = 0;
+  for (const [materialId, set] of Object.entries(bank.textures)) {
+    for (const [channel, tex] of Object.entries(set || {})) {
+      if (!tex) continue;
+      const img = tex.image || {};
+      const w = img.width || (tex.userData && tex.userData.width) || 0;
+      const h = img.height || (tex.userData && tex.userData.height) || 0;
+      const size = (w * h * 4 * 4) / 3 / (1024 * 1024);
+      mb += size;
+      maps.push({ id: materialId, ch: channel, w, h, mb: +size.toFixed(1), genMs: tex.userData && tex.userData.genMs });
+    }
+  }
+  return { loaded: loaded, total: 18, totalMB: +mb.toFixed(1), maps };
 }
 
 /**
@@ -2070,15 +1843,15 @@ function liquidDebug() {
 }
 
 /**
- * Rev 8 QA: describe the plaster mirror SURFACE wiring from the real material.
+ * Rev21 QA: describe the plaster mirror SURFACE wiring from the real material.
  * The expected state is the clean flat mirror: no normalMap (sample-able), a
  * [0, 0] normalScale, no roughnessMap and the constant 0.092 roughness, while
- * the reflective kit is untouched (CubeCamera→PMREM mirror envMap captured,
- * PLASTER_MIRROR layer-2 accents, envMapIntensity 3.0).  Nothing animates.
+ * the reflective response comes from the shared room-photo PMREM
+ * (`scene.environment`, radiance gain MIRROR.plaster.envIntensity) -- there is
+ * no CubeCamera capture and no reflection-only emitter panel. Nothing animates.
  */
 function plasterSurfaceDebug() {
   const plasterMaterial = state.bank && state.bank.materials ? state.bank.materials.plaster : null;
-  const studio = state.studio;
   const data = plasterMaterial && plasterMaterial.userData ? plasterMaterial.userData : null;
   const params = data && data.params ? data.params : null;
   const normalScale = plasterMaterial && plasterMaterial.normalScale ? plasterMaterial.normalScale : null;
@@ -2087,9 +1860,10 @@ function plasterSurfaceDebug() {
     normalScale: normalScale ? [round(normalScale.x, 3), round(normalScale.y, 3)] : null,
     roughnessMap: Boolean(plasterMaterial && plasterMaterial.roughnessMap),
     roughness: params ? round(params.roughnessEffective, 4) : null,
-    mirrorEnvMap: Boolean(studio && studio.plasterReflectionCaptured) || Boolean(plasterMaterial && plasterMaterial.envMap),
+    mirrorEnvMap: Boolean(plasterMaterial && plasterMaterial.envMap),
+    envMap: 'scene.environment',
     envMapIntensity: plasterMaterial ? round(plasterMaterial.envMapIntensity, 3) : null,
-    accents: PLASTER_MIRROR.accents.length,
+    accents: 0,
     animated: false
   };
 }
@@ -2132,7 +1906,7 @@ function buildDebug() {
         depth: spec.depth,
         heightPx: spec.heightPx,
         position: { x: spec.position.x, y: spec.position.y, z: spec.position.z },
-        // Rev 9 rounded box: radius in source px (large 10 / medium 5 / small 3)
+        // Rev 9 rounded box: radius in source px (large 2.8 / medium 1.6 / small 1)
         // and the bevel segment count baked into the geometry.
         cornerRadius: geometryData && Number.isFinite(geometryData.cornerRadius) ? geometryData.cornerRadius : null,
         bevelSegments: geometryData && Number.isFinite(geometryData.bevelSegments) ? geometryData.bevelSegments : null,
@@ -2140,9 +1914,22 @@ function buildDebug() {
       };
     }),
     textures: textureInfo,
+    // Rev21: there are zero THREE lights in the scene -- the only light is the
+    // shared room photograph, PMREM-filtered by ./env-room.js.
+    lights: {
+      count: 0,
+      environment: ROOM.label,
+      intensity: studio && studio.room ? round(studio.room.intensity, 3) : null,
+      sceneEnvironment: Boolean(studio && studio.scene && studio.scene.environment)
+    },
+    worldScale: WORLD_SCALE,
     renderer: {
       antialias: true,
-      dpr: studio && studio.renderer ? round(studio.renderer.getPixelRatio(), 3) : 1,
+      dpr: window.devicePixelRatio || 1,
+      pixelRatio: studio && studio.renderer ? round(studio.renderer.getPixelRatio(), 3) : 1,
+      renderScale: studio ? studio.renderScale : null,
+      adaptive: studio ? studio.adaptive : null,
+      canvas: studio && studio.canvas ? { width: studio.canvas.width, height: studio.canvas.height, cssWidth: studio.canvas.clientWidth, cssHeight: studio.canvas.clientHeight } : null,
       drawCalls: studio ? studio.stats.drawCalls : 0
     },
     camera: {
@@ -2153,24 +1940,29 @@ function buildDebug() {
       min: [bounds.min.x, bounds.min.y, bounds.min.z],
       max: [bounds.max.x, bounds.max.y, bounds.max.z]
     },
+    // Rev21: satin mirror -- no CubeCamera capture and no reflection-only
+    // emitter panels; the satin reads the shared room-photo PMREM directly.
     reflection: {
-      captured: Boolean(studio && studio.reflectionCaptured),
-      cubeSize: REFLECTION.cubeSize,
-      layer: REFLECTION.layer,
-      accents: REFLECTION.accents.length,
+      captured: false,
+      cubeSize: 0,
+      layer: 0,
+      accents: 0,
+      envMap: 'scene.environment',
       envMapIntensity: studio && studio.satinMaterial ? round(studio.satinMaterial.envMapIntensity, 3) : null,
-      center: [REFLECTION.center.x, REFLECTION.center.y, REFLECTION.center.z]
+      envIntensityBand: MIRROR.satin.envIntensityBand.slice(),
+      center: null
     },
-    // Rev 7/8: plaster liquid-metal mirror (mirror capture + accents); the
-    // rev-7 liquid-flow state is gone and reported as the disabled `liquid` stub.
+    // Rev21: plaster mirror -- same wiring as satin (shared env, no capture).
+    // The rev-7 liquid-flow state stays reported as the disabled `liquid` stub.
     plasterMirror: {
-      captured: Boolean(studio && studio.plasterReflectionCaptured),
-      cubeSize: PLASTER_MIRROR.cubeSize,
-      layer: PLASTER_MIRROR.layer,
-      accents: PLASTER_MIRROR.accents.length,
+      captured: false,
+      cubeSize: 0,
+      layer: 0,
+      accents: 0,
+      envMap: 'scene.environment',
       envMapIntensity: studio && studio.plasterMaterial ? round(studio.plasterMaterial.envMapIntensity, 3) : null,
-      envIntensityBand: [PLASTER_MIRROR.minEnvIntensity, PLASTER_MIRROR.maxEnvIntensity],
-      center: [PLASTER_MIRROR.center.x, PLASTER_MIRROR.center.y, PLASTER_MIRROR.center.z]
+      envIntensityBand: MIRROR.plaster.envIntensityBand.slice(),
+      center: null
     },
     // Rev 8: live plaster SURFACE wiring - proves the clean flat mirror.
     plasterSurface: plasterSurfaceDebug(),
@@ -2202,6 +1994,29 @@ const api = {
   },
   getColumnScreenRect(id) {
     return state.studio ? state.studio.getColumnScreenRect(id) : null;
+  },
+  /** Rev21 env knob: scale the room-photo IBL (1 = the page's tuned value). */
+  setEnvIntensity(value) {
+    if (!state.studio) return null;
+    const applied = state.studio.setEnvIntensity(value);
+    publishState();
+    return applied;
+  },
+  /** s47 QA: free camera pose {position:[x,y,z], target:[x,y,z]}; bypasses min/max distance; any normal view/reset restores. */
+  setCamera(pose) {
+    if (!state.studio || !pose || !pose.position || !pose.target) return false;
+    const ok = state.studio.setQaCamera(pose.position, pose.target);
+    state.studio.renderNow();
+    return ok;
+  },
+  setRenderScale(value) {
+    return state.studio ? state.studio.setRenderScale(value) : null;
+  },
+  getRenderScale() {
+    return state.studio ? state.studio.renderScale : null;
+  },
+  getEnvIntensity() {
+    return state.studio && state.studio.room ? state.studio.room.intensity : null;
   }
 };
 
@@ -2341,7 +2156,7 @@ function wireUi() {
     const isButton = tag === 'BUTTON';
     if (isButton && (key === ' ' || key === 'enter' || key === 'spacebar')) return;
     if (!state.ready) return;
-    if (key === '1' || key === '2' || key === '3') {
+    if (key === '1' || key === '2' || key === '3' || key === '4' || key === '5') {
       event.preventDefault();
       setMaterial(MATERIAL_ORDER[Number(key) - 1], { animate: true });
     } else if (key === '0' || key === 'a') {
@@ -2440,7 +2255,7 @@ async function boot() {
   state.webgl = Boolean(webglVersion);
   state.webglVersion = webglVersion || '';
   if (!state.webgl) {
-    showFallback('WebGL is not available in this browser, so the interactive columns cannot be rendered. The 27 columns and their exact dimensions are listed below.');
+    showFallback('WebGL is not available in this browser, so the interactive columns cannot be rendered. The 45 columns and their exact dimensions are listed below.');
     resolveReady(false);
     return;
   }
@@ -2450,13 +2265,13 @@ async function boot() {
   try {
     modelModule = await import(MODEL_URL.href);
   } catch (error) {
-    showFallback('The columns model module could not be loaded (' + errorMessage(error) + '). The 27 columns and their exact dimensions are listed below.', { error: error, banner: true });
+    showFallback('The columns model module could not be loaded (' + errorMessage(error) + '). The 45 columns and their exact dimensions are listed below.', { error: error, banner: true });
     resolveReady(false);
     return;
   }
   const validation = validateModelModule(modelModule);
   if (!validation.ok) {
-    showFallback(validation.message + ' The 27 columns and their exact dimensions are listed below.', { banner: true });
+    showFallback(validation.message + ' The 45 columns and their exact dimensions are listed below.', { banner: true });
     resolveReady(false);
     return;
   }
@@ -2496,13 +2311,13 @@ async function boot() {
     }
     if (lastError) throw lastError;
   } catch (error) {
-    showFallback('The material maps could not be loaded (' + errorMessage(error) + '). The 27 columns and their exact dimensions are listed below.', { error: error, banner: true });
+    showFallback('The material maps could not be loaded (' + errorMessage(error) + '). The 45 columns and their exact dimensions are listed below.', { error: error, banner: true });
     resolveReady(false);
     return;
   }
   state.bank = bank;
 
-  curtainProgress(0.74, 'Building the 27 columns', '');
+  curtainProgress(0.74, 'Building the 45 columns', '');
   try {
     state.studio = new ColumnsStudio({
       canvas: dom.canvas,
@@ -2514,17 +2329,14 @@ async function boot() {
     state.studio.captureMode = Boolean(state.shot || state.qaMode);
     await state.studio.init();
     const created = modelModule.createColumns(bank, { quality: 'hero' });
-    if (!created || !created.group || !Array.isArray(created.columns) || created.columns.length !== 27) {
-      throw new Error('createColumns() did not return the expected 27-column scene graph.');
+    if (!created || !created.group || !Array.isArray(created.columns) || created.columns.length !== 45) {
+      throw new Error('createColumns() did not return the expected 45-column scene graph.');
     }
     state.studio.attachColumns(created, state.specs, state.bounds);
-    // Rev 8: the plaster mirror is a static flat surface - there is no liquid
-    // flow controller to hand to the studio any more.
-    // Rev 6: one deterministic reflection capture in the canonical all-visible
-    // scene state, before any material filter/ghost presentation is applied.
-    state.studio.captureSatinReflection(bank.materials ? bank.materials.satin : null);
-    // Rev 7: a second one-off capture for the sharper plaster liquid-metal mirror.
-    state.studio.capturePlasterReflection(bank.materials ? bank.materials.plaster : null);
+    // Rev21: no CubeCamera reflection captures and no reflection-only emitter
+    // layers -- attachColumns already laid the room intensity + mirror gains on
+    // the real materials. Rev 8: the plaster mirror is a static flat surface, so
+    // there is no liquid-flow controller either.
     state.studio.spin = state.spin;
     applyUrlCameraState(true);
   } catch (error) {
@@ -2532,7 +2344,7 @@ async function boot() {
       try { state.studio.dispose(); } catch (disposeError) { /* best effort */ }
       state.studio = null;
     }
-    showFallback('The column studio could not start (' + errorMessage(error) + '). The 27 columns and their exact dimensions are listed below.', { error: error, banner: true });
+    showFallback('The column studio could not start (' + errorMessage(error) + '). The 45 columns and their exact dimensions are listed below.', { error: error, banner: true });
     resolveReady(false);
     return;
   }
@@ -2554,7 +2366,7 @@ async function boot() {
   state.ready = true;
   state.bootStartedAt = 0;
   window.clearTimeout(state.watchdog);
-  if (dom.infoFootState) dom.infoFootState.textContent = '27 / 27 ready';
+  if (dom.infoFootState) dom.infoFootState.textContent = '45 / 45 ready';
   if (dom.footerStatus) dom.footerStatus.textContent = 'Ready';
   syncAllUi();
   announce('Material columns ready');
@@ -2574,14 +2386,14 @@ publishState();
 
 boot().catch((error) => {
   if (!state.failed) {
-    showFallback('The preview failed to start (' + errorMessage(error) + '). The 27 columns and their exact dimensions are listed below.', { error: error, banner: true });
+    showFallback('The preview failed to start (' + errorMessage(error) + '). The 45 columns and their exact dimensions are listed below.', { error: error, banner: true });
   }
   resolveReady(false);
 });
 
 state.watchdog = window.setTimeout(() => {
   if (!state.ready && !state.failed) {
-    showFallback('The interactive preview did not start within 20 seconds. The 27 columns and their exact dimensions are listed below.', { banner: true });
+    showFallback('The interactive preview did not start within 20 seconds. The 45 columns and their exact dimensions are listed below.', { banner: true });
     resolveReady(false);
   }
 }, 20000);

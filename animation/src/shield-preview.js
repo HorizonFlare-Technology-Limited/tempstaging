@@ -4,9 +4,10 @@
  * Standalone collection page controller for `shield.html`
  * (docs/props-contract.md 禮P1): a dark-gunmetal Revolut-style shield with a
  * polished bevelled rim, a recessed convex face and the TEKO arrow emblem
- * embossed in two-tone gold, presented in a NEUTRAL light studio (the reference
- * product shot sits on a white/neutral backdrop, so the page keeps the
- * collection editorial layout but inverts the studio to light).
+ * embossed in two-tone gold. Rev21 lighting: the shield is lit ONLY by the
+ * shared room photograph `assets/env/modern-empty-room.jpg`, filtered once
+ * through PMREM by ./env-room.js (no THREE lights, no procedural studio); the
+ * metal's whole look is the dark interior reflected through its albedo.
  *
  * Camera: fixed three-quarter default pose (azimuth 26簞, elevation 12簞),
  * numerically fitted to the shield at every stage size (1440x900 / 1200x900 /
@@ -33,6 +34,7 @@
  */
 import * as THREE from 'three';
 import * as ShieldModel from './shield-model.js';
+import { applyEnvRoom } from './env-room.js';
 
 const VERSION = '1.1.0';
 
@@ -52,45 +54,21 @@ const LOGO_ASSET_BASE = new URL('../assets/shield/logo/', import.meta.url);
 
 /* ------------------------------------------------------------ render tuning */
 
-const RENDERER = Object.freeze({ exposure: 1.0, dprMax: 2 });
+const RENDERER = Object.freeze({ exposure: 3.4, dprMax: 2 });
 
 /**
- * Neutral light-studio environment, rendered once through a PMREM generator.
- * A smooth vertical-gradient dome supplies the satin, glass-free sheen (a dark
- * floor, brighter horizon and soft sky, plus a gentle front lift), and a few
- * large, low-contrast panels give the polished bevel its bright arcs. Values are
- * LINEAR radiance (panels may exceed 1.0); the shield is a metal, so its whole
- * look is this environment reflected through the albedo.
+ * Rev21 image-based lighting (the only light source on the page).
+ *
+ * `assets/env/modern-empty-room.jpg` is a dark interior with bright ceiling
+ * downlights; ./env-room.js filters it into a PMREM and assigns it to
+ * `scene.environment`. On r151 the requested intensity multiplies each
+ * material's own `envMapIntensity` (the shield's body/bevel/logo finishes keep
+ * their authored ratios), so the gunmetal reads through the room's reflection
+ * instead of being lit directly. No THREE light objects exist on this page.
  */
-const ENVIRONMENT = Object.freeze({
-  sigma: 0.035,
-  dome: Object.freeze({
-    radius: 12,
-    sky: 0.94,
-    horizon: 0.78,
-    floor: 0.1,
-    frontBoost: 0.14,
-    horizonGlow: 0.06,
-    warmTint: 0.05,
-    coolTint: 0.04,
-  }),
-  panels: Object.freeze([
-    // Warm key softbox above-left (broad, low contrast: satin, not mirror).
-    Object.freeze({ position: [-3.4, 4.0, 3.2], lookAt: [0, 0.1, 0], size: [4.4, 3.2], color: [1.0, 0.95, 0.88], intensity: 1.4 }),
-    // Cool right rim card.
-    Object.freeze({ position: [3.8, 2.6, 1.4], lookAt: [0, 0.2, 0], size: [2.8, 3.8], color: [0.86, 0.92, 1.0], intensity: 1.15 }),
-    // Overhead softbox for the top bevel.
-    Object.freeze({ position: [0.2, 5.2, 0.8], lookAt: [0, 0, 0], size: [4.6, 2.8], color: [1.0, 1.0, 1.0], intensity: 1.3 }),
-    // Very broad front fill (keeps the gunmetal face readable without a mirror streak).
-    Object.freeze({ position: [0.8, 1.6, 5.0], lookAt: [0, 0.1, 0], size: [7.5, 4.6], color: [1.0, 0.985, 0.96], intensity: 0.9 }),
-  ]),
-});
-
-/** Direct lights only add a soft specular sheen to the metal (no diffuse). */
-const LIGHTS = Object.freeze({
-  key: Object.freeze({ color: 0xfff3e4, intensity: 1.1, position: [-3.4, 5.0, 4.4], target: [0, 0.05, 0] }),
-  fill: Object.freeze({ color: 0xdfe8f3, intensity: 0.35, position: [4.2, 1.6, 3.2], target: [0, 0.05, 0] }),
-  rim: Object.freeze({ color: 0xffffff, intensity: 1.3, position: [1.4, 3.2, -4.6], target: [0, 0.1, 0] }),
+const ENV_ROOM = Object.freeze({
+  intensity: 4.0,
+  label: 'assets/env/modern-empty-room.jpg (PMREM, env-room)',
 });
 
 /** Baked soft contact shadow under the floating shield (deterministic canvas). */
@@ -107,7 +85,6 @@ const ORBIT = Object.freeze({ damping: 16 });
 
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const lerp = (from, to, t) => from + (to - from) * t;
 const degToRad = (deg) => (deg * Math.PI) / 180;
 const radToDeg = (rad) => (rad * 180) / Math.PI;
 const round = (value, digits = 2) => {
@@ -473,6 +450,23 @@ async function loadPaletteFingerprint(resolved) {
 }
 
 /**
+ * r151: ./env-room.js scaled every material's `envMapIntensity` by the room
+ * intensity at boot. Switching the emblem palette repaints the three logo
+ * materials and resets them to their authored intensities, so the room
+ * multiplier is re-applied here (before the first render of the new palette).
+ * On r163+ the scene-level `environmentIntensity` already covers this.
+ */
+function reapplyEnvIntensityToLogo() {
+  const studio = state.studio;
+  const model = state.model;
+  if (!studio || !studio.room || studio.room.sceneLevel || !model || !model.materials) return;
+  for (const key of ['goldBright', 'goldDeep', 'socket']) {
+    const material = model.materials[key];
+    if (material && 'envMapIntensity' in material) material.envMapIntensity *= ENV_ROOM.intensity;
+  }
+}
+
+/**
  * Select an emblem palette. The model only re-tints its three logo materials, so
  * silhouette, relief, camera and triangle count stay exactly as built; the page
  * then re-renders, syncs the URL and updates its copy. Returns the resolved
@@ -489,6 +483,7 @@ function selectLogoPalette(value, options = {}) {
   }
   state.logoPalette = resolved;
   state.logoPaletteRequest = resolved.id;
+  reapplyEnvIntensityToLogo();
   syncPaletteUi();
   syncObjectFacts();
   if (options.syncUrl !== false) syncPaletteUrl(resolved.id);
@@ -511,8 +506,7 @@ class ShieldStudio {
     this.renderer = null;
     this.scene = null;
     this.camera = null;
-    this.envRT = null;
-    this.lights = {};
+    this.room = null;
     this.contactShadow = null;
     this.stageBox = { width: 1, height: 1 };
     this.cameraTarget = new THREE.Vector3();
@@ -563,11 +557,13 @@ class ShieldStudio {
     camera.name = 'shield-camera';
     this.camera = camera;
 
-    this.buildEnvironment();
-    this.buildLights();
+    this.room = await applyEnvRoom(THREE, renderer, scene, { intensity: ENV_ROOM.intensity });
     this.buildContactShadow();
 
     scene.add(this.model.root);
+    // r151: the material pass above ran before the shield existed, so re-apply
+    // the room intensity to the model's materials now that they are in the graph.
+    this.room.refresh(scene);
 
     if (typeof ResizeObserver === 'function') {
       this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -582,86 +578,6 @@ class ShieldStudio {
     this.boundLoop = this.boundLoop || ((now) => this.loop(now));
     this.raf = window.requestAnimationFrame(this.boundLoop);
     return this;
-  }
-
-  /** Soft neutral PMREM environment: gradient dome + a few large soft panels. */
-  buildEnvironment() {
-    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const scene = new THREE.Scene();
-    scene.name = 'shield-environment';
-
-    const dome = ENVIRONMENT.dome;
-    const smoothstep = (edge0, edge1, x) => {
-      const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-      return t * t * (3 - 2 * t);
-    };
-    const geometry = new THREE.SphereGeometry(dome.radius, 64, 40);
-    const position = geometry.getAttribute('position');
-    const colors = new Float32Array(position.count * 3);
-    for (let i = 0; i < position.count; i += 1) {
-      const x = position.getX(i) / dome.radius;
-      const y = position.getY(i) / dome.radius;
-      const z = position.getZ(i) / dome.radius;
-      let value = lerp(dome.floor, dome.sky, smoothstep(-0.85, 0.3, y));
-      value += dome.horizonGlow * Math.exp(-Math.pow((y - 0.02) / 0.3, 2));
-      value += dome.frontBoost * Math.pow(Math.max(0, z), 1.5);
-      const warm = Math.max(0, -x) * dome.warmTint;
-      const cool = Math.max(0, x) * dome.coolTint;
-      colors[i * 3] = Math.max(0, value + warm);
-      colors[i * 3 + 1] = Math.max(0, value + warm * 0.55 + cool * 0.25);
-      colors[i * 3 + 2] = Math.max(0, value - warm * 0.45 + cool);
-    }
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    const domeMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, toneMapped: false });
-    const domeMesh = new THREE.Mesh(geometry, domeMaterial);
-    domeMesh.name = 'env-dome';
-    scene.add(domeMesh);
-
-    for (let i = 0; i < ENVIRONMENT.panels.length; i += 1) {
-      const panel = ENVIRONMENT.panels[i];
-      const color = new THREE.Color().setRGB(panel.color[0], panel.color[1], panel.color[2]).multiplyScalar(panel.intensity);
-      const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(panel.size[0], panel.size[1]), material);
-      mesh.name = 'env-panel-' + i;
-      mesh.position.set(panel.position[0], panel.position[1], panel.position[2]);
-      mesh.lookAt(panel.lookAt[0], panel.lookAt[1], panel.lookAt[2]);
-      scene.add(mesh);
-    }
-
-    if (this.envRT) this.envRT.dispose();
-    this.envRT = pmremGenerator.fromScene(scene, ENVIRONMENT.sigma);
-    this.scene.environment = this.envRT.texture;
-    pmremGenerator.dispose();
-    scene.traverse((object) => {
-      if (object.isMesh) {
-        object.geometry.dispose();
-        if (object.material) object.material.dispose();
-      }
-    });
-  }
-
-  buildLights() {
-    const key = new THREE.DirectionalLight(LIGHTS.key.color, LIGHTS.key.intensity);
-    key.position.set(LIGHTS.key.position[0], LIGHTS.key.position[1], LIGHTS.key.position[2]);
-    key.target.position.set(LIGHTS.key.target[0], LIGHTS.key.target[1], LIGHTS.key.target[2]);
-    this.scene.add(key);
-    this.scene.add(key.target);
-    this.lights.key = key;
-
-    const fill = new THREE.DirectionalLight(LIGHTS.fill.color, LIGHTS.fill.intensity);
-    fill.position.set(LIGHTS.fill.position[0], LIGHTS.fill.position[1], LIGHTS.fill.position[2]);
-    fill.target.position.set(LIGHTS.fill.target[0], LIGHTS.fill.target[1], LIGHTS.fill.target[2]);
-    this.scene.add(fill);
-    this.scene.add(fill.target);
-    this.lights.fill = fill;
-
-    const rim = new THREE.DirectionalLight(LIGHTS.rim.color, LIGHTS.rim.intensity);
-    rim.position.set(LIGHTS.rim.position[0], LIGHTS.rim.position[1], LIGHTS.rim.position[2]);
-    rim.target.position.set(LIGHTS.rim.target[0], LIGHTS.rim.target[1], LIGHTS.rim.target[2]);
-    this.scene.add(rim);
-    this.scene.add(rim.target);
-    this.lights.rim = rim;
   }
 
   /** Baked soft contact shadow under the floating plate. */
@@ -1002,6 +918,11 @@ class ShieldStudio {
       drawCalls: info ? info.render.calls : 0,
       toneMappingExposure: RENDERER.exposure,
       shadowMapEnabled: Boolean(this.renderer && this.renderer.shadowMap.enabled),
+      // Rev21: image-based lighting only. The page has zero THREE light objects;
+      // every material is lit by the PMREM of the shared room photograph.
+      environmentIntensity: ENV_ROOM.intensity,
+      environment: ENV_ROOM.label,
+      lights: { directional: 0, point: 0, spot: 0, ambient: 0, hemisphere: 0, rectArea: 0 },
     };
   }
 
@@ -1026,9 +947,9 @@ class ShieldStudio {
       this.contactShadow.material.dispose();
       this.contactShadow = null;
     }
-    if (this.envRT) {
-      this.envRT.dispose();
-      this.envRT = null;
+    if (this.room) {
+      this.room.dispose();
+      this.room = null;
     }
     if (this.scene) this.scene.environment = null;
     if (this.renderer) {

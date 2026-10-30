@@ -1,17 +1,18 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="TEKO Logo Blocks ??a two-composition deterministic three.js studio on one canvas: a four-block silver stack with brand-gold edge bands (figure 4) and a fluted bank-icon plaque beside a logo plaque with a gold edge ring (figure 5). Drag to orbit, press 1 or 2 to switch composition, press R to reset.">
+<meta name="description" content="TEKO Logo Blocks — two-composition deterministic three.js studio on one canvas: a silver brand plate parade (catalogue 03) spreading along a 45° gather line, and a logo + bank link (catalogue 04) with a gold glow ring and dotted particle rays, both standing on a real satin columns-collection column laid horizontal. Drag to orbit, press 3-4 to switch composition, press R to reset.">
 <title>TEKO &mdash; Logo Blocks</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width='32'%20height='32'%20viewBox='0%200%2032%2032'%3E%3Crect%20x='3.5'%20y='3.5'%20width='25'%20height='25'%20rx='7.5'%20fill='%23141a24'%20stroke='%23c9d2dc'%20stroke-width='1.3'/%3E%3Crect%20x='8.5'%20y='8.5'%20width='15'%20height='15'%20rx='4.5'%20fill='none'%20stroke='%23ffd60a'%20stroke-width='1.5'/%3E%3Cpath%20d='M16%2011v10'%20stroke='%23e8eef5'%20stroke-width='1.9'%20stroke-linecap='round'/%3E%3Cpath%20d='M12%2016%2016%2011.4l4%204.6'%20fill='none'%20stroke='%23e8eef5'%20stroke-width='1.9'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preload" href="./assets/fonts/Lexend-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="./src/logo-blocks-styles.css">
+<link rel="stylesheet" href="./src/site-nav.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
-<body data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-qa-fallback="0" data-qa-scene="stack" data-qa-scenes="stack,bank" data-qa-pose="" data-qa-default-pose="" data-qa-triangles="0" data-qa-blocks="0" data-qa-logo="assets/logo-blocks/teko2_icon.svg" data-qa-logo-shapes="3" data-qa-bank-icon="0" data-qa-object-rect="" data-still="0" data-shot="0" data-reduced-motion="0" data-qa-mode="live" data-scene="stack">
+<body data-qa-ready="0" data-qa-errors="0" data-qa-warnings="0" data-qa-webgl="0" data-qa-fallback="0" data-qa-scene="plates" data-qa-scenes="plates,link" data-qa-pose="" data-qa-default-pose="" data-qa-triangles="0" data-qa-blocks="0" data-qa-logo="assets/logo-blocks/teko2_icon.svg" data-qa-logo-shapes="3" data-qa-bank-icon="0" data-qa-object-rect="" data-still="0" data-shot="0" data-reduced-motion="0" data-qa-mode="live" data-scene="plates">
 
   <div class="page" id="page">
 
@@ -29,21 +30,23 @@
         <span class="brand-product">Logo Blocks</span>
       </a>
 
-      <nav class="collection-nav" aria-label="Collections">
-        <a class="collection-link" href="./">Coin</a>
-        <a class="collection-link" href="./card.html">Metal Card</a>
-        <a class="collection-link" href="./columns.html">Columns</a>
-        <a class="collection-link" href="./phone.html">iPhone 15</a>
-        <a class="collection-link" href="./billing.html">Billing</a>
-        <a class="collection-link" href="./shield.html">Shield</a>
-        <a class="collection-link" href="./currency-blocks.html">Currency Blocks</a>
-        <a class="collection-link" href="./vault.html">Vault</a>
-        <a class="collection-link" href="./paperplane.html">Plane</a>
-        <span class="collection-link collection-link--current" aria-current="page">Logo blocks</span>
+      <nav class="site-nav" aria-label="Collections">
+        <a href="./">Coin</a>
+        <a href="./card.html">Metal Card</a>
+        <a href="./columns.html">Columns</a>
+        <a href="./phone.html">iPhone 15</a>
+        <a href="./billing.html">Billing</a>
+        <a href="./shield.html">Shield</a>
+        <a href="./currency-blocks.html">Currency Blocks</a>
+        <a href="./vault.html">Vault</a>
+        <a href="./paperplane.html">Plane</a>
+        <a href="./connection.html">Connection</a>
+        <span class="site-nav-current" aria-current="page">Logo Blocks</span>
+        <a href="./stacked-panel.html">Stacked Panel</a>
       </nav>
 
       <div class="header-side">
-        <p class="header-note">Two compositions <span class="header-dot" aria-hidden="true"></span> Gold edge accents</p>
+        <p class="header-note">Two compositions <span class="header-dot" aria-hidden="true"></span> Satin column platform</p>
       </div>
     </header>
 
@@ -52,25 +55,25 @@
 
         <div class="stage" id="stage">
           <div class="stage-aura" id="stage-aura" aria-hidden="true"></div>
-          <canvas id="stage-canvas" aria-label="Interactive 3D logo-block studio. Composition one is a stack of four silver rounded-square blocks on a dark reflective slab: the front block carries the TEKO arrow as a machined silver-and-graphite relief, and the exposed rear-block edges carry thin brand-gold accent bands. Composition two stands a bright fluted bank-icon plaque beside a polished logo plaque with a thin gold ring around its face. Drag to orbit within clamped angles; press 1 or 2 to switch composition; press R or double-click to reset the fixed three-quarter view."></canvas>
+          <canvas id="stage-canvas" aria-label="Interactive 3D logo-block studio. Composition 03 is a parade of seven silver brand plates: they slide in from the right, gather into a cluster turned 45 degrees, then spread along the same 45-degree line into a row, each carrying the TEKO arrow as a machined silver-and-graphite relief. Composition 04 links a logo block to a bank block with a theme-gold glow ring and 56 dotted particle rays. Both compositions stand on a real satin column from the Columns collection, laid on its side. Drag to orbit within clamped angles; press 3 or 4 to switch composition; press R or double-click to reset the fixed three-quarter view."></canvas>
 
           <div class="stage-overlay" aria-hidden="true">
             <div class="stage-eyebrow">
               <span class="stage-dot"></span>
-              <span id="stage-eyebrow-text">Composition 01 &middot; stacked blocks</span>
+              <span id="stage-eyebrow-text">Composition 03 &middot; brand plates</span>
             </div>
-            <div class="stage-index"><span id="stage-index">01</span><span class="stage-index-slash">/</span><span class="stage-index-total" id="stage-index-total">02</span></div>
+            <div class="stage-index"><span id="stage-index">03</span><span class="stage-index-slash">/</span><span class="stage-index-total" id="stage-index-total">04</span></div>
           </div>
 
           <div class="stage-caption" id="stage-caption" aria-live="polite">
-            <span class="stage-caption-code" id="stage-code">STK</span>
+            <span class="stage-caption-code" id="stage-code">PLT</span>
             <span class="stage-caption-text">
-              <span class="stage-caption-name" id="stage-name">Four-block stack</span>
-              <span class="stage-caption-detail" id="stage-detail">Silver relief &middot; gold edge bands</span>
+              <span class="stage-caption-name" id="stage-name">Brand plate parade</span>
+              <span class="stage-caption-detail" id="stage-detail">45&deg; gather &middot; 45&deg; spread</span>
             </span>
           </div>
 
-          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to orbit &middot; 1 / 2 switch</p>
+          <p class="stage-hint" id="stage-hint" aria-hidden="true">Drag to orbit &middot; 3 / 4 switch</p>
 
           <div class="stage-veil" id="stage-veil" aria-hidden="true"><span class="veil-spinner"></span><span id="veil-text">Rendering</span></div>
         </div>
@@ -86,21 +89,25 @@
           </button>
 
           <div class="scene-toggle" id="scene-toggle" role="group" aria-label="Composition">
-            <button class="scene-btn" id="btn-scene-stack" type="button" aria-pressed="true" aria-keyshortcuts="1" data-composition="stack">
-              <span class="scene-btn-index" aria-hidden="true">01</span>
-              <span class="scene-btn-label">Stack</span>
-              <kbd class="scene-btn-key">1</kbd>
+            <button class="scene-btn" id="btn-scene-plates" type="button" aria-pressed="true" aria-keyshortcuts="3" data-composition="plates">
+              <span class="scene-btn-index" aria-hidden="true">03</span>
+              <span class="scene-btn-label">Plates</span>
+              <kbd class="scene-btn-key">3</kbd>
             </button>
-            <button class="scene-btn" id="btn-scene-bank" type="button" aria-pressed="false" aria-keyshortcuts="2" data-composition="bank">
-              <span class="scene-btn-index" aria-hidden="true">02</span>
-              <span class="scene-btn-label">Bank</span>
-              <kbd class="scene-btn-key">2</kbd>
+            <button class="scene-btn" id="btn-scene-link" type="button" aria-pressed="false" aria-keyshortcuts="4" data-composition="link">
+              <span class="scene-btn-index" aria-hidden="true">04</span>
+              <span class="scene-btn-label">Link</span>
+              <kbd class="scene-btn-key">4</kbd>
             </button>
           </div>
 
+          <button class="btn btn-spread" id="btn-spread" type="button" aria-pressed="true">
+            <span>Spread on</span>
+          </button>
+
           <div class="control-spacer" aria-hidden="true"></div>
 
-          <p class="control-state" id="pose-state" aria-live="polite">24&deg; / 13&deg;</p>
+          <p class="control-state" id="pose-state" aria-live="polite">0&deg; / 10&deg;</p>
         </div>
 
       </section>
@@ -109,13 +116,13 @@
         <section class="info-card" id="info-card">
           <div class="info-topline">
             <span class="info-kicker">Object facts</span>
-            <span class="info-index" id="info-index">Stack / 01</span>
+            <span class="info-index" id="info-index">Plates / 03</span>
           </div>
 
           <div class="info-identity">
             <div class="info-names">
-              <h1 class="info-name" id="info-name">Four-block stack</h1>
-              <p class="info-region" id="info-region">Silver satin blocks &middot; machined TEKO arrow &middot; gold edges</p>
+              <h1 class="info-name" id="info-name">Silver Brand Plates</h1>
+              <p class="info-region" id="info-region">Seven upright silver plates &middot; silver-grey satin frame</p>
             </div>
             <span class="info-glyph" id="info-glyph" aria-hidden="true">
               <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -130,14 +137,14 @@
           <div class="rule"></div>
 
           <dl class="info-specs">
-            <div class="spec-row"><dt>Scene</dt><dd id="spec-scene">Stack &middot; fig 4</dd></div>
-            <div class="spec-row"><dt>Blocks</dt><dd id="spec-blocks">4 slabs &middot; 1.50 square</dd></div>
-            <div class="spec-row"><dt>Face</dt><dd id="spec-face">#8a8f96 satin silver</dd></div>
-            <div class="spec-row"><dt>Thickness</dt><dd id="spec-thickness">0.30 &middot; rim 0.085</dd></div>
+            <div class="spec-row"><dt>Scene</dt><dd id="spec-scene">Plates &middot; parade</dd></div>
+            <div class="spec-row"><dt>Blocks</dt><dd id="spec-blocks">7 plates &middot; 1.500 square</dd></div>
+            <div class="spec-row"><dt>Face</dt><dd id="spec-face">#cfd3d9 &middot; satin</dd></div>
+            <div class="spec-row"><dt>Thickness</dt><dd id="spec-thickness">0.300</dd></div>
             <div class="spec-row"><dt>Emblem</dt><dd id="spec-emblem">Silver + graphite relief</dd></div>
-            <div class="spec-row"><dt>Accent</dt><dd id="spec-accent">Gold bands &middot; #ffd60a / #7d5a00</dd></div>
-            <div class="spec-row"><dt>Surface</dt><dd id="spec-surface">Dark reflective slab</dd></div>
-            <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">24&deg; / 13&deg; three-quarter</dd></div>
+            <div class="spec-row"><dt>Accent</dt><dd id="spec-accent">None (silver only)</dd></div>
+            <div class="spec-row"><dt>Surface</dt><dd id="spec-surface">Satin column platform</dd></div>
+            <div class="spec-row"><dt>Camera</dt><dd id="spec-camera">0&deg; / 10&deg; three-quarter</dd></div>
             <div class="spec-row"><dt>Triangles</dt><dd id="spec-triangles">&mdash;</dd></div>
           </dl>
 
@@ -147,12 +154,11 @@
             <div class="info-topline"><span class="info-kicker">Model assets</span><span class="info-kicker info-kicker-dim">Local</span></div>
             <div class="asset-tags" id="asset-tags">
               <span class="asset-tag">teko2_icon.svg</span>
-              <span class="asset-tag asset-tag--metal">3 contours</span>
-              <span class="asset-tag">silver + graphite</span>
-              <span class="asset-tag asset-tag--gold">gold edge bands</span>
-              <span class="asset-tag">seeded studio</span>
+              <span class="asset-tag asset-tag--metal">7 plates</span>
+              <span class="asset-tag">45&deg; gather</span>
+              <span class="asset-tag">fixed camera</span>
             </div>
-            <p class="asset-note" id="asset-note">Logo copied byte-identically from <span class="mono">K:\HFWorkspace\icons</span> &middot; SVG parsed at runtime &middot; brand gold only on the edge accents &middot; no network</p>
+            <p class="asset-note" id="asset-note">Logo copied byte-identically from <span class="mono">K:\HFWorkspace\icons</span> &middot; SVG parsed at runtime &middot; satin platform reuses the Columns deliverable material &middot; no network</p>
           </div>
 
           <div class="info-foot">
@@ -165,21 +171,21 @@
           <div class="info-notes">
             <div class="note">
               <span class="note-kicker">Two compositions, one canvas</span>
-              <p class="note-body">Fig 4 stacks four silver blocks on a dark reflective slab; fig 5 stands a fluted bank-icon plaque beside a logo plaque on light concrete. Toggle, <kbd>1</kbd> / <kbd>2</kbd> or <span class="mono">?scene=bank</span> swaps studios and snaps to the fitted camera.</p>
+              <p class="note-body">Composition 03 spreads seven silver plates along one 45&deg; line; composition 04 links a logo block to a bank block with dotted gold rays. Toggle, <kbd>3</kbd> / <kbd>4</kbd> or <span class="mono">?scene=link</span> swaps studios and snaps to the fitted camera.</p>
             </div>
             <div class="note">
-              <span class="note-kicker">Silver mark, gold edge</span>
-              <p class="note-body">The TEKO arrow is a machined relief in polished silver and satin graphite, reading through light and shadow. Brand gold is only the edge accent &mdash; the stack&rsquo;s rear-block bands and the bank plaque&rsquo;s face ring; the mark is never gold-filled.</p>
+              <span class="note-kicker">Silver mark, gold glow</span>
+              <p class="note-body">The TEKO arrow is a machined relief in polished silver and satin graphite, reading through reflected light only. Brand gold is the link&rsquo;s thin glow ring and ray particles; the mark is never gold-filled.</p>
             </div>
             <div class="note">
-              <span class="note-kicker">Deterministic studio</span>
-              <p class="note-body">Flutes, bright dots, concrete speckle and reflections come from fixed constants and one seed, never time or an unseeded random source. <span class="mono">?still=1</span> and <span class="mono">?shot=1</span> reloads are pixel-identical; reduced motion snaps the orbit.</p>
+              <span class="note-kicker">Real columns platform</span>
+              <p class="note-body">The platform is the Columns deliverable&rsquo;s satin long column laid horizontal &mdash; same texture maps and material as <span class="mono">columns.html</span>, imported read-only. Every model rests exactly on its top face.</p>
             </div>
           </div>
           <ul class="legend" aria-label="Controls, keyboard shortcuts and URL flags">
             <li><kbd class="legend-key">Drag</kbd><span>Orbit &plusmn;16&deg;</span></li>
-            <li><kbd class="legend-key">1</kbd><span>Stack</span></li>
-            <li><kbd class="legend-key">2</kbd><span>Bank</span></li>
+            <li><kbd class="legend-key">3</kbd><span>Plates</span></li>
+            <li><kbd class="legend-key">4</kbd><span>Link</span></li>
             <li><kbd class="legend-key">R</kbd><span>Reset view</span></li>
             <li><kbd class="legend-key">?still=1</kbd><span>Frozen pose</span></li>
             <li><kbd class="legend-key">Reduced motion</kbd><span>Instant reset</span></li>
@@ -191,15 +197,13 @@
     <footer class="site-footer">
       <div class="footer-top">
         <span class="footer-label">Layers</span>
-        <div class="layer-rail" id="layer-rail" aria-label="Stack composition layers">
-          <span class="layer-chip"><span class="layer-swatch layer-swatch--block" aria-hidden="true"></span><span class="layer-name">Block</span><span class="layer-index">01</span></span>
+        <div class="layer-rail" id="layer-rail" aria-label="Brand plate layers">
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--block" aria-hidden="true"></span><span class="layer-name">Plate</span><span class="layer-index">01</span></span>
           <span class="layer-chip"><span class="layer-swatch layer-swatch--wall" aria-hidden="true"></span><span class="layer-name">Wall</span><span class="layer-index">02</span></span>
           <span class="layer-chip"><span class="layer-swatch layer-swatch--rim" aria-hidden="true"></span><span class="layer-name">Rim</span><span class="layer-index">03</span></span>
-          <span class="layer-chip"><span class="layer-swatch layer-swatch--face" aria-hidden="true"></span><span class="layer-name">Face</span><span class="layer-index">04</span></span>
-          <span class="layer-chip"><span class="layer-swatch layer-swatch--silver" aria-hidden="true"></span><span class="layer-name">Emblem silver</span><span class="layer-index">05</span></span>
-          <span class="layer-chip"><span class="layer-swatch layer-swatch--graphite" aria-hidden="true"></span><span class="layer-name">Emblem graphite</span><span class="layer-index">06</span></span>
-          <span class="layer-chip layer-chip--gold"><span class="layer-swatch layer-swatch--gold" aria-hidden="true"></span><span class="layer-name">Gold band</span><span class="layer-index">07</span></span>
-          <span class="layer-chip"><span class="layer-swatch layer-swatch--surface" aria-hidden="true"></span><span class="layer-name">Surface</span><span class="layer-index">08</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--silver" aria-hidden="true"></span><span class="layer-name">Emblem silver</span><span class="layer-index">04</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--graphite" aria-hidden="true"></span><span class="layer-name">Emblem graphite</span><span class="layer-index">05</span></span>
+          <span class="layer-chip"><span class="layer-swatch layer-swatch--surface" aria-hidden="true"></span><span class="layer-name">Satin platform</span><span class="layer-index">06</span></span>
         </div>
       </div>
       <div class="footer-bottom">
@@ -213,51 +217,38 @@
     <div class="fallback-inner">
       <p class="info-kicker">Static preview</p>
       <h2 class="fallback-title" id="fallback-title">3D preview unavailable</h2>
-      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. Below are static posters of both compositions: the four-block silver stack with brand-gold edge bands, and the fluted bank-icon plaque standing beside the logo plaque with its thin gold edge ring. The TEKO arrow is drawn from the local icon asset.</p>
+      <p class="fallback-message" id="fallback-message">This browser could not start the WebGL preview. Below are static posters of both compositions: the seven-plate silver parade gathered along one 45&deg; line, and the logo + bank link with its gold glow ring and dotted rays, both on the satin columns platform. The TEKO arrow is drawn from the local icon asset.</p>
 
       <div class="fallback-poster" id="fallback-poster" aria-hidden="true">
 
-        <svg class="poster poster-stack" viewBox="0 0 560 420" role="presentation" preserveAspectRatio="xMidYMid meet">
+        <svg class="poster poster-plates" viewBox="0 0 560 420" role="presentation" preserveAspectRatio="xMidYMid meet">
           <defs>
-            <linearGradient id="st-body" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="pl-body" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stop-color="#3d444f"></stop>
               <stop offset="0.52" stop-color="#23282f"></stop>
               <stop offset="1" stop-color="#11141a"></stop>
             </linearGradient>
-            <linearGradient id="st-rim" x1="0" y1="0" x2="0.9" y2="1">
+            <linearGradient id="pl-rim" x1="0" y1="0" x2="0.9" y2="1">
               <stop offset="0" stop-color="#f4f7fa"></stop>
               <stop offset="0.42" stop-color="#ced5dd"></stop>
               <stop offset="1" stop-color="#8b939d"></stop>
             </linearGradient>
-            <linearGradient id="st-face" x1="0.06" y1="0" x2="0.94" y2="1">
-              <stop offset="0" stop-color="#b9bfc7"></stop>
-              <stop offset="0.46" stop-color="#8a8f96"></stop>
-              <stop offset="1" stop-color="#5c626a"></stop>
+            <linearGradient id="pl-face" x1="0.06" y1="0" x2="0.94" y2="1">
+              <stop offset="0" stop-color="#c4c9d0"></stop>
+              <stop offset="0.46" stop-color="#a4a9b1"></stop>
+              <stop offset="1" stop-color="#71767e"></stop>
             </linearGradient>
-            <linearGradient id="st-floor" x1="0" y1="0" x2="0.3" y2="1">
+            <linearGradient id="pl-floor" x1="0" y1="0" x2="0.3" y2="1">
               <stop offset="0" stop-color="#2e343d"></stop>
               <stop offset="0.42" stop-color="#191d23"></stop>
               <stop offset="1" stop-color="#0b0d11"></stop>
             </linearGradient>
-            <linearGradient id="st-gold" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fff2a6"></stop>
-              <stop offset="0.5" stop-color="#ffd60a"></stop>
-              <stop offset="1" stop-color="#b98d00"></stop>
-            </linearGradient>
-            <linearGradient id="st-gold-deep" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#c9a33a"></stop>
-              <stop offset="0.5" stop-color="#7d5a00"></stop>
-              <stop offset="1" stop-color="#463300"></stop>
-            </linearGradient>
-            <radialGradient id="st-shadow" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stop-color="#000000" stop-opacity="0.62"></stop>
-              <stop offset="0.7" stop-color="#000000" stop-opacity="0.24"></stop>
+            <radialGradient id="pl-shadow" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#000000" stop-opacity="0.6"></stop>
+              <stop offset="0.7" stop-color="#000000" stop-opacity="0.22"></stop>
               <stop offset="1" stop-color="#000000" stop-opacity="0"></stop>
             </radialGradient>
-            <filter id="st-desat" x="-12%" y="-12%" width="124%" height="124%">
-              <feColorMatrix type="saturate" values="0"></feColorMatrix>
-            </filter>
-            <filter id="st-mark" x="-14%" y="-14%" width="128%" height="128%">
+            <filter id="pl-mark" x="-14%" y="-14%" width="128%" height="128%">
               <feColorMatrix type="saturate" values="0"></feColorMatrix>
               <feComponentTransfer>
                 <feFuncR type="linear" slope="0.72" intercept="0.04"></feFuncR>
@@ -266,164 +257,167 @@
               </feComponentTransfer>
               <feDropShadow dx="0" dy="1.6" stdDeviation="1.5" flood-color="#0a0c10" flood-opacity="0.55"></feDropShadow>
             </filter>
-            <filter id="st-mark-socket" x="-14%" y="-14%" width="128%" height="128%">
-              <feColorMatrix type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.11  0 0 0 0 0.13  0 0 0 1 0"></feColorMatrix>
-            </filter>
           </defs>
 
-          <!-- dark polished slab with a rounded front lip -->
-          <path d="M16 300 L544 282 L544 368 Q544 386 526 388 L36 400 Q16 398 16 380 Z" fill="url(#st-floor)"></path>
-          <path d="M16 300 L544 282" fill="none" stroke="#4e5763" stroke-width="1.3" opacity="0.85"></path>
-          <path d="M20 382 Q20 396 38 398 L524 386 Q540 384 540 370" fill="none" stroke="#69727f" stroke-width="1.5" opacity="0.7"></path>
-          <ellipse cx="330" cy="356" rx="214" ry="30" fill="url(#st-shadow)"></ellipse>
+          <!-- dark slab with a rounded front lip -->
+          <path d="M16 228 L544 282 L544 368 Q544 386 526 388 L36 400 Q16 398 16 380 Z" fill="url(#pl-floor)"></path>
+          <path d="M16 228 L544 282" fill="none" stroke="#4e5763" stroke-width="1.3" opacity="0.85"></path>
+          <ellipse cx="320" cy="352" rx="216" ry="30" fill="url(#pl-shadow)"></ellipse>
 
-          <!-- rear blocks 3..1, offset up-left: each exposes only its dark wall, a
-               thin rolled silver edge and its brand-gold accent band -->
-          <g transform="translate(108 76)">
-            <rect x="0" y="0" width="250" height="250" rx="44" fill="url(#st-body)"></rect>
-            <rect x="12" y="46" width="3.4" height="156" rx="1.7" fill="url(#st-gold-deep)"></rect>
-            <rect x="20" y="34" width="16" height="180" rx="8" fill="url(#st-rim)"></rect>
-            <rect x="22" y="4" width="170" height="2.6" rx="1.3" fill="url(#st-rim)" opacity="0.5"></rect>
+          <!-- seven plates gathered along the 45 degree line; the front-most plate
+               carries the local TEKO icon asset -->
+          <g transform="translate(78 96)">
+            <rect width="138" height="138" rx="26" fill="url(#pl-body)"></rect>
+            <rect x="11" y="11" width="116" height="116" rx="20" fill="url(#pl-rim)"></rect>
+            <rect x="15" y="15" width="108" height="108" rx="17" fill="url(#pl-face)"></rect>
+            <path d="M69 40v52" stroke="#5f646c" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M51 66 69 40l18 26" fill="none" stroke="#5f646c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
           </g>
-          <g transform="translate(156 84)">
-            <rect x="0" y="0" width="250" height="250" rx="44" fill="url(#st-body)"></rect>
-            <rect x="12" y="46" width="3.4" height="156" rx="1.7" fill="url(#st-gold)"></rect>
-            <rect x="20" y="34" width="16" height="180" rx="8" fill="url(#st-rim)"></rect>
-            <rect x="22" y="4" width="170" height="2.6" rx="1.3" fill="url(#st-rim)" opacity="0.5"></rect>
+          <g transform="translate(122 105)">
+            <rect width="138" height="138" rx="26" fill="url(#pl-body)"></rect>
+            <rect x="11" y="11" width="116" height="116" rx="20" fill="url(#pl-rim)"></rect>
+            <rect x="15" y="15" width="108" height="108" rx="17" fill="url(#pl-face)"></rect>
+            <path d="M69 40v52" stroke="#5f646c" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M51 66 69 40l18 26" fill="none" stroke="#5f646c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
           </g>
-          <g transform="translate(204 92)">
-            <rect x="0" y="0" width="250" height="250" rx="44" fill="url(#st-body)"></rect>
-            <rect x="12" y="46" width="3.4" height="156" rx="1.7" fill="url(#st-gold)"></rect>
-            <rect x="20" y="34" width="16" height="180" rx="8" fill="url(#st-rim)"></rect>
-            <rect x="22" y="4" width="170" height="2.6" rx="1.3" fill="url(#st-rim)" opacity="0.5"></rect>
+          <g transform="translate(166 114)">
+            <rect width="138" height="138" rx="26" fill="url(#pl-body)"></rect>
+            <rect x="11" y="11" width="116" height="116" rx="20" fill="url(#pl-rim)"></rect>
+            <rect x="15" y="15" width="108" height="108" rx="17" fill="url(#pl-face)"></rect>
+            <path d="M69 40v52" stroke="#5f646c" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M51 66 69 40l18 26" fill="none" stroke="#5f646c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
           </g>
-
-          <!-- front hero block: satin silver face, machined silver/graphite mark, gold lower edge line -->
-          <g transform="translate(252 100)">
-            <rect x="0" y="0" width="250" height="250" rx="44" fill="url(#st-body)"></rect>
-            <rect x="14" y="14" width="222" height="222" rx="32" fill="url(#st-rim)"></rect>
-            <rect x="18" y="18" width="214" height="214" rx="29" fill="url(#st-face)"></rect>
-            <path d="M34 18 H168 Q178 18 180 30 V72 Q148 36 34 56 Z" fill="#e2e7ed" opacity="0.14"></path>
-            <image href="./assets/logo-blocks/teko2_icon.png" x="33" y="34" width="184" height="184" filter="url(#st-mark-socket)"></image>
-            <image href="./assets/logo-blocks/teko2_icon.png" x="34" y="32" width="182" height="182" filter="url(#st-mark)"></image>
-            <rect x="44" y="233" width="162" height="3" rx="1.5" fill="url(#st-gold)"></rect>
+          <g transform="translate(210 123)">
+            <rect width="138" height="138" rx="26" fill="url(#pl-body)"></rect>
+            <rect x="11" y="11" width="116" height="116" rx="20" fill="url(#pl-rim)"></rect>
+            <rect x="15" y="15" width="108" height="108" rx="17" fill="url(#pl-face)"></rect>
+            <path d="M69 40v52" stroke="#5f646c" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M51 66 69 40l18 26" fill="none" stroke="#5f646c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </g>
+          <g transform="translate(254 132)">
+            <rect width="138" height="138" rx="26" fill="url(#pl-body)"></rect>
+            <rect x="11" y="11" width="116" height="116" rx="20" fill="url(#pl-rim)"></rect>
+            <rect x="15" y="15" width="108" height="108" rx="17" fill="url(#pl-face)"></rect>
+            <path d="M69 40v52" stroke="#5f646c" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M51 66 69 40l18 26" fill="none" stroke="#5f646c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </g>
+          <g transform="translate(298 141)">
+            <rect width="138" height="138" rx="26" fill="url(#pl-body)"></rect>
+            <rect x="11" y="11" width="116" height="116" rx="20" fill="url(#pl-rim)"></rect>
+            <rect x="15" y="15" width="108" height="108" rx="17" fill="url(#pl-face)"></rect>
+            <path d="M69 40v52" stroke="#5f646c" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M51 66 69 40l18 26" fill="none" stroke="#5f646c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </g>
+          <g transform="translate(342 150)">
+            <rect width="150" height="150" rx="28" fill="url(#pl-body)"></rect>
+            <rect x="12" y="12" width="126" height="126" rx="22" fill="url(#pl-rim)"></rect>
+            <rect x="17" y="17" width="116" height="116" rx="18" fill="url(#pl-face)"></rect>
+            <image href="./assets/logo-blocks/teko2_icon.png" x="27" y="27" width="96" height="96" filter="url(#pl-mark)"></image>
           </g>
         </svg>
 
-        <svg class="poster poster-bank" viewBox="0 0 560 420" role="presentation" preserveAspectRatio="xMidYMid meet">
+        <svg class="poster poster-link" viewBox="0 0 560 420" role="presentation" preserveAspectRatio="xMidYMid meet">
           <defs>
-            <linearGradient id="bk-concrete" x1="0" y1="0" x2="0.2" y2="1">
-              <stop offset="0" stop-color="#e4e4e1"></stop>
-              <stop offset="0.46" stop-color="#cfcfcb"></stop>
-              <stop offset="1" stop-color="#9b9b96"></stop>
+            <linearGradient id="lk-body" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#3d444f"></stop>
+              <stop offset="0.52" stop-color="#23282f"></stop>
+              <stop offset="1" stop-color="#11141a"></stop>
             </linearGradient>
-            <linearGradient id="bk-body" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#f1f4f8"></stop>
-              <stop offset="0.5" stop-color="#cfd4db"></stop>
-              <stop offset="1" stop-color="#9aa2ac"></stop>
+            <linearGradient id="lk-rim" x1="0" y1="0" x2="0.9" y2="1">
+              <stop offset="0" stop-color="#eef2f7"></stop>
+              <stop offset="0.42" stop-color="#c9cfd6"></stop>
+              <stop offset="1" stop-color="#8b939d"></stop>
             </linearGradient>
-            <linearGradient id="bk-face" x1="0.1" y1="0" x2="0.9" y2="1">
-              <stop offset="0" stop-color="#e9edf2"></stop>
-              <stop offset="0.52" stop-color="#cfd3d9"></stop>
-              <stop offset="1" stop-color="#a7adb6"></stop>
+            <linearGradient id="lk-face" x1="0.1" y1="0" x2="0.9" y2="1">
+              <stop offset="0" stop-color="#aeb4bc"></stop>
+              <stop offset="0.52" stop-color="#8d939b"></stop>
+              <stop offset="1" stop-color="#676d75"></stop>
             </linearGradient>
-            <linearGradient id="bk-silver" x1="0" y1="0" x2="0.6" y2="1">
-              <stop offset="0" stop-color="#ffffff"></stop>
-              <stop offset="0.55" stop-color="#dfe4ea"></stop>
-              <stop offset="1" stop-color="#a6aeb8"></stop>
+            <linearGradient id="lk-satin" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#d5d9de"></stop>
+              <stop offset="0.35" stop-color="#a9afb7"></stop>
+              <stop offset="1" stop-color="#5f656d"></stop>
             </linearGradient>
-            <linearGradient id="bk-gold" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="lk-gold" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stop-color="#fff2a6"></stop>
               <stop offset="0.5" stop-color="#ffd60a"></stop>
               <stop offset="1" stop-color="#c99a00"></stop>
             </linearGradient>
-            <pattern id="bk-flutes" width="5" height="8" patternUnits="userSpaceOnUse">
-              <rect x="0" y="0" width="5" height="8" fill="none"></rect>
-              <rect x="1.8" y="0" width="1.3" height="8" fill="#7f8791" opacity="0.55"></rect>
-              <rect x="3.4" y="0" width="1" height="8" fill="#ffffff" opacity="0.7"></rect>
-            </pattern>
-            <pattern id="bk-dots" width="17" height="17" patternUnits="userSpaceOnUse">
-              <circle cx="4" cy="4" r="1.5" fill="#fbfdff" opacity="0.85"></circle>
-              <circle cx="12.5" cy="12" r="1.2" fill="#fbfdff" opacity="0.7"></circle>
-            </pattern>
-            <pattern id="bk-speckle" width="46" height="46" patternUnits="userSpaceOnUse">
-              <circle cx="6" cy="9" r="1.3" fill="#8e8e88" opacity="0.3"></circle>
-              <circle cx="21" cy="4" r="0.9" fill="#f6f6f2" opacity="0.5"></circle>
-              <circle cx="34" cy="15" r="1.6" fill="#98988f" opacity="0.26"></circle>
-              <circle cx="12" cy="27" r="1" fill="#7f7f79" opacity="0.28"></circle>
-              <circle cx="29" cy="33" r="1.4" fill="#f6f6f2" opacity="0.42"></circle>
-              <circle cx="41" cy="39" r="1.1" fill="#8a8a84" opacity="0.3"></circle>
-            </pattern>
-            <radialGradient id="bk-shadow" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stop-color="#1b1d1f" stop-opacity="0.42"></stop>
-              <stop offset="0.72" stop-color="#1b1d1f" stop-opacity="0.16"></stop>
-              <stop offset="1" stop-color="#1b1d1f" stop-opacity="0"></stop>
+            <radialGradient id="lk-shadow" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#000000" stop-opacity="0.55"></stop>
+              <stop offset="0.7" stop-color="#000000" stop-opacity="0.2"></stop>
+              <stop offset="1" stop-color="#000000" stop-opacity="0"></stop>
             </radialGradient>
-            <filter id="bk-desat" x="-12%" y="-12%" width="124%" height="124%">
-              <feColorMatrix type="saturate" values="0"></feColorMatrix>
-            </filter>
-            <filter id="bk-mark" x="-14%" y="-14%" width="128%" height="128%">
+            <filter id="lk-mark" x="-14%" y="-14%" width="128%" height="128%">
               <feColorMatrix type="saturate" values="0"></feColorMatrix>
               <feComponentTransfer>
                 <feFuncR type="linear" slope="0.72" intercept="0.04"></feFuncR>
                 <feFuncG type="linear" slope="0.72" intercept="0.05"></feFuncG>
                 <feFuncB type="linear" slope="0.72" intercept="0.06"></feFuncB>
               </feComponentTransfer>
-              <feDropShadow dx="0" dy="1.5" stdDeviation="1.4" flood-color="#3a4046" flood-opacity="0.5"></feDropShadow>
-            </filter>
-            <filter id="bk-mark-socket" x="-14%" y="-14%" width="128%" height="128%">
-              <feColorMatrix type="matrix" values="0 0 0 0 0.29  0 0 0 0 0.3  0 0 0 0 0.32  0 0 0 1 0"></feColorMatrix>
+              <feDropShadow dx="0" dy="1.5" stdDeviation="1.4" flood-color="#0a0c10" flood-opacity="0.55"></feDropShadow>
             </filter>
           </defs>
 
-          <!-- light concrete slab with a rounded front lip -->
-          <path d="M0 268 L560 244 L560 420 L0 420 Z" fill="url(#bk-concrete)"></path>
-          <path d="M0 268 L560 244" fill="none" stroke="#f3f3f0" stroke-width="1.6" opacity="0.8"></path>
-          <path d="M0 268 L560 244 L560 420 L0 420 Z" fill="url(#bk-speckle)"></path>
-          <ellipse cx="212" cy="292" rx="124" ry="18" fill="url(#bk-shadow)"></ellipse>
-          <ellipse cx="356" cy="340" rx="132" ry="20" fill="url(#bk-shadow)"></ellipse>
-
-          <!-- left/back: fluted + dotted bank-icon plaque -->
-          <g transform="translate(212 188) rotate(-6) translate(-95 -95)">
-            <rect x="0" y="0" width="190" height="190" rx="36" fill="url(#bk-body)"></rect>
-            <rect x="9" y="9" width="172" height="172" rx="30" fill="url(#bk-face)"></rect>
-            <rect x="17" y="17" width="156" height="156" rx="26" fill="url(#bk-flutes)" opacity="0.75"></rect>
-            <rect x="17" y="17" width="156" height="156" rx="26" fill="url(#bk-dots)" opacity="0.6"></rect>
-            <g stroke="#8e96a0" stroke-width="1" stroke-linejoin="round">
-              <path d="M56 76 L95 50 L134 76 Z" fill="url(#bk-silver)"></path>
-              <rect x="50" y="76" width="90" height="7" rx="2.6" fill="url(#bk-silver)"></rect>
-              <rect x="59" y="83" width="12" height="5" rx="1.8" fill="url(#bk-silver)"></rect>
-              <rect x="77" y="83" width="12" height="5" rx="1.8" fill="url(#bk-silver)"></rect>
-              <rect x="95" y="83" width="12" height="5" rx="1.8" fill="url(#bk-silver)"></rect>
-              <rect x="113" y="83" width="12" height="5" rx="1.8" fill="url(#bk-silver)"></rect>
-              <rect x="60" y="88" width="10" height="42" rx="2.4" fill="url(#bk-silver)"></rect>
-              <rect x="78" y="88" width="10" height="42" rx="2.4" fill="url(#bk-silver)"></rect>
-              <rect x="96" y="88" width="10" height="42" rx="2.4" fill="url(#bk-silver)"></rect>
-              <rect x="114" y="88" width="10" height="42" rx="2.4" fill="url(#bk-silver)"></rect>
-              <rect x="52" y="130" width="86" height="7" rx="2.6" fill="url(#bk-silver)"></rect>
-              <rect x="44" y="137" width="102" height="8" rx="3" fill="url(#bk-silver)"></rect>
-            </g>
-            <rect x="5" y="5" width="180" height="180" rx="33" fill="none" stroke="#f6f9fc" stroke-width="1.6" opacity="0.55"></rect>
+          <!-- satin columns platform laid horizontal (length along the screen X axis) -->
+          <ellipse cx="280" cy="352" rx="252" ry="34" fill="url(#lk-shadow)"></ellipse>
+          <g transform="rotate(-2 280 322)">
+            <rect x="34" y="300" width="492" height="52" rx="20" fill="url(#lk-satin)"></rect>
+            <rect x="34" y="300" width="492" height="9" rx="4.5" fill="#e7ebef" opacity="0.8"></rect>
+            <rect x="34" y="330" width="492" height="22" rx="10" fill="#4c525a" opacity="0.55"></rect>
           </g>
 
-          <!-- right/front: polished logo plaque with the gold edge ring -->
-          <g transform="translate(356 236) rotate(4) translate(-95 -95)">
-            <rect x="0" y="0" width="190" height="190" rx="36" fill="url(#bk-body)"></rect>
-            <rect x="9" y="9" width="172" height="172" rx="30" fill="url(#bk-face)"></rect>
-            <rect x="16" y="16" width="158" height="158" rx="25" fill="none" stroke="url(#bk-gold)" stroke-width="3.4"></rect>
-            <image href="./assets/logo-blocks/teko2_icon.png" x="26" y="28" width="140" height="140" filter="url(#bk-mark-socket)"></image>
-            <image href="./assets/logo-blocks/teko2_icon.png" x="26" y="26" width="138" height="138" filter="url(#bk-mark)"></image>
-            <rect x="5" y="5" width="180" height="180" rx="33" fill="none" stroke="#f8fbfe" stroke-width="1.4" opacity="0.5"></rect>
+          <!-- dotted rays between the two tilted blocks -->
+          <g fill="url(#lk-gold)">
+            <circle cx="300" cy="236" r="2.6" opacity="0.9"></circle>
+            <circle cx="314" cy="228" r="3.4" opacity="0.95"></circle>
+            <circle cx="328" cy="220" r="4.2" opacity="1"></circle>
+            <circle cx="342" cy="212" r="4.6" opacity="1"></circle>
+            <circle cx="356" cy="204" r="4.6" opacity="1"></circle>
+            <circle cx="370" cy="196" r="4.2" opacity="0.95"></circle>
+            <circle cx="384" cy="188" r="3.4" opacity="0.9"></circle>
+            <circle cx="398" cy="180" r="2.6" opacity="0.85"></circle>
+            <circle cx="322" cy="250" r="2"></circle>
+            <circle cx="336" cy="242" r="2.6" opacity="0.9"></circle>
+            <circle cx="350" cy="234" r="3.2" opacity="0.95"></circle>
+            <circle cx="364" cy="226" r="3.6"></circle>
+            <circle cx="378" cy="218" r="3.2"></circle>
+            <circle cx="392" cy="210" r="2.6" opacity="0.9"></circle>
+          </g>
+
+          <!-- logo block: tilted 45 degrees, gold glow ring + local TEKO icon -->
+          <g transform="translate(352 224) rotate(45)">
+            <rect x="-84" y="-84" width="168" height="168" rx="30" fill="url(#lk-body)"></rect>
+            <rect x="-72" y="-72" width="144" height="144" rx="24" fill="url(#lk-rim)"></rect>
+            <rect x="-65" y="-65" width="130" height="130" rx="21" fill="url(#lk-face)"></rect>
+            <rect x="-58" y="-58" width="116" height="116" rx="18" fill="none" stroke="url(#lk-gold)" stroke-width="4"></rect>
+            <image href="./assets/logo-blocks/teko2_icon.png" x="-46" y="-46" width="92" height="92" filter="url(#lk-mark)"></image>
+          </g>
+
+          <!-- bank block: tilted 45 degrees, classical bank icon relief -->
+          <g transform="translate(196 252) rotate(45)">
+            <rect x="-78" y="-78" width="156" height="156" rx="28" fill="url(#lk-body)"></rect>
+            <rect x="-67" y="-67" width="134" height="134" rx="22" fill="url(#lk-rim)"></rect>
+            <rect x="-61" y="-61" width="122" height="122" rx="19" fill="url(#lk-face)"></rect>
+            <g stroke="#5d636b" stroke-width="2.6" stroke-linejoin="round" fill="#e3e8ee">
+              <path d="M-30 0 -0 -22 30 0 Z"></path>
+              <rect x="-34" y="0" width="68" height="7" rx="2.4"></rect>
+              <rect x="-26" y="9" width="10" height="37" rx="2.2"></rect>
+              <rect x="-8" y="9" width="10" height="37" rx="2.2"></rect>
+              <rect x="10" y="9" width="10" height="37" rx="2.2"></rect>
+              <rect x="-30" y="48" width="60" height="7" rx="2.4"></rect>
+            </g>
           </g>
         </svg>
 
       </div>
 
-      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The machined relief materials, seeded flutes and dots, concrete speckle and studio reflections are skipped in this static view; the plaques, gold edges and the TEKO icon asset are drawn in SVG.</p>
+      <p class="fallback-explain" id="fallback-explain">The interactive model needs WebGL. The machined relief materials, the satin column platform textures and the dotted ray particles are skipped in this static view; the plates, the tilted blocks, the gold glow and the TEKO icon asset are drawn in SVG.</p>
 
       <ul class="fallback-files" aria-label="Scene contents">
         <li><span class="fallback-file-role">Emblem</span><span class="mono">assets/logo-blocks/teko2_icon.svg</span></li>
         <li><span class="fallback-file-role">Model</span><span class="mono">src/logo-blocks-model.js (procedural)</span></li>
+        <li><span class="fallback-file-role">Platform</span><span class="mono">src/columns-model.js (read-only import)</span></li>
         <li><span class="fallback-file-role">Network</span><span class="mono">none &middot; all local</span></li>
       </ul>
     </div>
@@ -466,64 +460,72 @@
       <div class="fallback-inner">
         <p class="info-kicker">Static preview</p>
         <h2 class="fallback-title" id="noscript-title">JavaScript is required for the 3D preview</h2>
-        <p class="fallback-message">This page renders two logo-block compositions with JavaScript and WebGL: a four-block silver stack with brand-gold edge bands, and a fluted bank-icon plaque beside a logo plaque with a gold edge ring. The plaques, the machined TEKO arrow relief and the seeded studio are all procedural and local; enable JavaScript to see the interactive three.js scene.</p>
+        <p class="fallback-message">This page renders two logo-block compositions with JavaScript and WebGL: a parade of seven silver brand plates spreading along a 45&deg; gather line, and a logo block linked to a bank block with a gold glow ring and dotted particle rays, both standing on a satin column platform imported from the Columns collection. The plates, the machined TEKO arrow relief and the reflections are all local; enable JavaScript to see the interactive three.js scene.</p>
         <div class="noscript-posters" aria-hidden="true">
           <svg class="poster poster-noscript" viewBox="0 0 560 420" role="presentation">
-            <defs>
-              <filter id="ns-desat-1" x="-12%" y="-12%" width="124%" height="124%">
-                <feColorMatrix type="saturate" values="0"></feColorMatrix>
-                <feComponentTransfer>
-                  <feFuncR type="linear" slope="0.72" intercept="0.04"></feFuncR>
-                  <feFuncG type="linear" slope="0.72" intercept="0.05"></feFuncG>
-                  <feFuncB type="linear" slope="0.72" intercept="0.06"></feFuncB>
-                </feComponentTransfer>
-              </filter>
-              <filter id="ns-socket-1" x="-12%" y="-12%" width="124%" height="124%">
-                <feColorMatrix type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.11  0 0 0 0 0.13  0 0 0 1 0"></feColorMatrix>
-              </filter>
-            </defs>
             <path d="M16 300 L544 282 L544 368 Q544 386 526 388 L36 400 Q16 398 16 380 Z" fill="#1a1e24"></path>
-            <rect x="84" y="72" width="250" height="250" rx="44" fill="#262b32"></rect>
-            <rect x="140" y="80" width="250" height="250" rx="44" fill="#2b3038"></rect>
-            <rect x="196" y="88" width="250" height="250" rx="44" fill="#30353d"></rect>
-            <rect x="252" y="96" width="250" height="250" rx="44" fill="#343a43"></rect>
-            <rect x="270" y="114" width="214" height="214" rx="29" fill="#9aa0a8"></rect>
-            <rect x="292" y="306" width="170" height="3.4" rx="1.7" fill="#ffd60a"></rect>
-            <image href="./assets/logo-blocks/teko2_icon.png" x="285" y="132" width="184" height="184" filter="url(#ns-socket-1)"></image>
-            <image href="./assets/logo-blocks/teko2_icon.png" x="286" y="128" width="182" height="182" filter="url(#ns-desat-1)" opacity="0.9"></image>
+            <g transform="translate(70 98)">
+              <rect width="132" height="132" rx="25" fill="#262b32"></rect>
+              <rect x="10" y="10" width="112" height="112" rx="19" fill="#c6ccd3"></rect>
+              <rect x="16" y="16" width="100" height="100" rx="16" fill="#9aa0a8"></rect>
+            </g>
+            <g transform="translate(116 107)">
+              <rect width="132" height="132" rx="25" fill="#262b32"></rect>
+              <rect x="10" y="10" width="112" height="112" rx="19" fill="#c6ccd3"></rect>
+              <rect x="16" y="16" width="100" height="100" rx="16" fill="#9aa0a8"></rect>
+            </g>
+            <g transform="translate(162 116)">
+              <rect width="132" height="132" rx="25" fill="#262b32"></rect>
+              <rect x="10" y="10" width="112" height="112" rx="19" fill="#c6ccd3"></rect>
+              <rect x="16" y="16" width="100" height="100" rx="16" fill="#9aa0a8"></rect>
+            </g>
+            <g transform="translate(208 125)">
+              <rect width="132" height="132" rx="25" fill="#262b32"></rect>
+              <rect x="10" y="10" width="112" height="112" rx="19" fill="#c6ccd3"></rect>
+              <rect x="16" y="16" width="100" height="100" rx="16" fill="#9aa0a8"></rect>
+            </g>
+            <g transform="translate(254 134)">
+              <rect width="132" height="132" rx="25" fill="#262b32"></rect>
+              <rect x="10" y="10" width="112" height="112" rx="19" fill="#c6ccd3"></rect>
+              <rect x="16" y="16" width="100" height="100" rx="16" fill="#9aa0a8"></rect>
+            </g>
+            <g transform="translate(300 143)">
+              <rect width="132" height="132" rx="25" fill="#262b32"></rect>
+              <rect x="10" y="10" width="112" height="112" rx="19" fill="#c6ccd3"></rect>
+              <rect x="16" y="16" width="100" height="100" rx="16" fill="#9aa0a8"></rect>
+            </g>
+            <g transform="translate(346 152)">
+              <rect width="146" height="146" rx="27" fill="#262b32"></rect>
+              <rect x="11" y="11" width="124" height="124" rx="21" fill="#c6ccd3"></rect>
+              <rect x="17" y="17" width="112" height="112" rx="18" fill="#9aa0a8"></rect>
+              <image href="./assets/logo-blocks/teko2_icon.png" x="27" y="27" width="92" height="92" opacity="0.42"></image>
+            </g>
           </svg>
           <svg class="poster poster-noscript" viewBox="0 0 560 420" role="presentation">
-            <defs>
-              <filter id="ns-desat-2" x="-12%" y="-12%" width="124%" height="124%">
-                <feColorMatrix type="saturate" values="0"></feColorMatrix>
-                <feComponentTransfer>
-                  <feFuncR type="linear" slope="0.72" intercept="0.04"></feFuncR>
-                  <feFuncG type="linear" slope="0.72" intercept="0.05"></feFuncG>
-                  <feFuncB type="linear" slope="0.72" intercept="0.06"></feFuncB>
-                </feComponentTransfer>
-              </filter>
-              <filter id="ns-socket-2" x="-12%" y="-12%" width="124%" height="124%">
-                <feColorMatrix type="matrix" values="0 0 0 0 0.29  0 0 0 0 0.3  0 0 0 0 0.32  0 0 0 1 0"></feColorMatrix>
-              </filter>
-            </defs>
-            <path d="M0 268 L560 244 L560 420 L0 420 Z" fill="#d3d3cf"></path>
-            <g transform="translate(212 188) rotate(-6) translate(-95 -95)">
-              <rect x="0" y="0" width="190" height="190" rx="36" fill="#c6ccd3"></rect>
-              <rect x="9" y="9" width="172" height="172" rx="30" fill="#dfe3e8"></rect>
-              <path d="M56 76 L95 50 L134 76 Z" fill="#b6bec8"></path>
-              <rect x="50" y="76" width="90" height="7" rx="2.6" fill="#b6bec8"></rect>
-              <rect x="60" y="88" width="10" height="42" rx="2.4" fill="#b6bec8"></rect>
-              <rect x="78" y="88" width="10" height="42" rx="2.4" fill="#b6bec8"></rect>
-              <rect x="96" y="88" width="10" height="42" rx="2.4" fill="#b6bec8"></rect>
-              <rect x="114" y="88" width="10" height="42" rx="2.4" fill="#b6bec8"></rect>
-              <rect x="44" y="137" width="102" height="8" rx="3" fill="#b6bec8"></rect>
+            <ellipse cx="280" cy="352" rx="252" ry="34" fill="#101318"></ellipse>
+            <g transform="rotate(-2 280 322)">
+              <rect x="34" y="300" width="492" height="52" rx="20" fill="#9aa0a8"></rect>
+              <rect x="34" y="300" width="492" height="9" rx="4.5" fill="#e7ebef" opacity="0.8"></rect>
             </g>
-            <g transform="translate(356 236) rotate(4) translate(-95 -95)">
-              <rect x="0" y="0" width="190" height="190" rx="36" fill="#c6ccd3"></rect>
-              <rect x="9" y="9" width="172" height="172" rx="30" fill="#dfe3e8"></rect>
-              <rect x="16" y="16" width="158" height="158" rx="25" fill="none" stroke="#ffd60a" stroke-width="3.4"></rect>
-              <image href="./assets/logo-blocks/teko2_icon.png" x="26" y="28" width="140" height="140" filter="url(#ns-socket-2)"></image>
-              <image href="./assets/logo-blocks/teko2_icon.png" x="26" y="26" width="138" height="138" filter="url(#ns-desat-2)" opacity="0.9"></image>
+            <g transform="translate(352 224) rotate(45)">
+              <rect x="-84" y="-84" width="168" height="168" rx="30" fill="#262b32"></rect>
+              <rect x="-72" y="-72" width="144" height="144" rx="24" fill="#c6ccd3"></rect>
+              <rect x="-65" y="-65" width="130" height="130" rx="21" fill="#9aa0a8"></rect>
+              <rect x="-58" y="-58" width="116" height="116" rx="18" fill="none" stroke="#ffd60a" stroke-width="4"></rect>
+              <image href="./assets/logo-blocks/teko2_icon.png" x="-46" y="-46" width="92" height="92" opacity="0.42"></image>
+            </g>
+            <g transform="translate(196 252) rotate(45)">
+              <rect x="-78" y="-78" width="156" height="156" rx="28" fill="#262b32"></rect>
+              <rect x="-67" y="-67" width="134" height="134" rx="22" fill="#c6ccd3"></rect>
+              <rect x="-61" y="-61" width="122" height="122" rx="19" fill="#9aa0a8"></rect>
+              <g stroke="#5d636b" stroke-width="2.6" stroke-linejoin="round" fill="#e3e8ee">
+                <path d="M-30 0 -0 -22 30 0 Z"></path>
+                <rect x="-34" y="0" width="68" height="7" rx="2.4"></rect>
+                <rect x="-26" y="9" width="10" height="37" rx="2.2"></rect>
+                <rect x="-8" y="9" width="10" height="37" rx="2.2"></rect>
+                <rect x="10" y="9" width="10" height="37" rx="2.2"></rect>
+                <rect x="-30" y="48" width="60" height="7" rx="2.4"></rect>
+              </g>
             </g>
           </svg>
         </div>
@@ -582,15 +584,15 @@
       ready: false,
       errors: qa.errors,
       warnings: qa.warnings,
-      getScene: function () { return 'stack'; },
+      getScene: function () { return 'plates'; },
       setScene: function () { return false; },
       debug: function () {
         return {
           version: 'boot',
           ready: false,
           booting: true,
-          scene: 'stack',
-          scenes: ['stack', 'bank'],
+          scene: 'plates',
+          scenes: ['plates', 'link'],
           errors: qa.errors.slice(),
           warnings: qa.warnings.slice()
         };
