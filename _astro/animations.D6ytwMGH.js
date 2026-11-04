@@ -1,0 +1,1 @@
+var e={three:!1,slots:[`home-hero`,`home-fx`,`home-transfer`,`home-why`,`home-business-heap`,`home-sec-vault`,`home-sec-lock`,`home-sec-shield`]};function t(t){return e.three||t&&e.slots.includes(t)?!0:typeof document>`u`?!1:document.documentElement.dataset.animations===`on`}export{t};

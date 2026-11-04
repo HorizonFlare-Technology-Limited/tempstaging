@@ -720,4 +720,44 @@
     <xhtml:link rel="alternate" hreflang="fr-CA" href="https://tekotransfer.com/fr-CA/newsroom"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://tekotransfer.com/de/newsroom"/>
   </url>
+  <url>
+    <loc>https://tekotransfer.com/waitlist</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tekotransfer.com/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-HK" href="https://tekotransfer.com/zh-HK/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tekotransfer.com/zh-CN/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://tekotransfer.com/fr-CA/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://tekotransfer.com/de/waitlist"/>
+  </url>
+  <url>
+    <loc>https://tekotransfer.com/zh-HK/waitlist</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tekotransfer.com/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-HK" href="https://tekotransfer.com/zh-HK/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tekotransfer.com/zh-CN/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://tekotransfer.com/fr-CA/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://tekotransfer.com/de/waitlist"/>
+  </url>
+  <url>
+    <loc>https://tekotransfer.com/zh-CN/waitlist</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tekotransfer.com/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-HK" href="https://tekotransfer.com/zh-HK/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tekotransfer.com/zh-CN/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://tekotransfer.com/fr-CA/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://tekotransfer.com/de/waitlist"/>
+  </url>
+  <url>
+    <loc>https://tekotransfer.com/fr-CA/waitlist</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tekotransfer.com/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-HK" href="https://tekotransfer.com/zh-HK/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tekotransfer.com/zh-CN/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://tekotransfer.com/fr-CA/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://tekotransfer.com/de/waitlist"/>
+  </url>
+  <url>
+    <loc>https://tekotransfer.com/de/waitlist</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://tekotransfer.com/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-HK" href="https://tekotransfer.com/zh-HK/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tekotransfer.com/zh-CN/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="fr-CA" href="https://tekotransfer.com/fr-CA/waitlist"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://tekotransfer.com/de/waitlist"/>
+  </url>
 </urlset>
