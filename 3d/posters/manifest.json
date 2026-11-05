@@ -356,6 +356,10 @@
  "business-hero": [
   {
    "file": "business-hero@390.webp",
+   "aspect": 0.5309
+  },
+  {
+   "file": "business-hero@390.webp",
    "aspect": 0.9405
   },
   {
@@ -565,6 +569,10 @@
  ],
  "app-hero": [
   {
+   "file": "app-hero@390.webp",
+   "aspect": 0.6544
+  },
+  {
    "file": "app-hero@1024.webp",
    "aspect": 1.28
   },
@@ -671,6 +679,44 @@
   {
    "file": "news-hero@1920.webp",
    "aspect": 1.175
+  }
+ ],
+ "entry-receive--personal": [
+  {
+   "file": "entry-receive--personal@1920.webp",
+   "aspect": 0.7505
+  }
+ ],
+ "entry-receive--stack": [
+  {
+   "file": "entry-receive--stack@1024.webp",
+   "aspect": 0.7825
+  },
+  {
+   "file": "entry-receive--stack@1280.webp",
+   "aspect": 0.9903
+  },
+  {
+   "file": "entry-receive--stack@1440.webp",
+   "aspect": 1.1201
+  },
+  {
+   "file": "entry-receive--stack@1920.webp",
+   "aspect": 1.25
+  },
+  {
+   "file": "entry-receive--stack@390.webp",
+   "aspect": 1.3672
+  },
+  {
+   "file": "entry-receive--stack@768.webp",
+   "aspect": 2.7656
+  }
+ ],
+ "entry-receive--domore": [
+  {
+   "file": "entry-receive--domore@1920.webp",
+   "aspect": 1.5981
   }
  ]
 }
