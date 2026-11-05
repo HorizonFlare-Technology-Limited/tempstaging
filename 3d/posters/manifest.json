@@ -1,0 +1,424 @@
+{
+ "home-why": [
+  {
+   "file": "home-why@390.webp",
+   "aspect": 0.7991
+  }
+ ],
+ "home-fx": [
+  {
+   "file": "home-fx@1024.webp",
+   "aspect": 0.5064
+  },
+  {
+   "file": "home-fx@390.webp",
+   "aspect": 1
+  }
+ ],
+ "home-transfer": [
+  {
+   "file": "home-transfer@390.webp",
+   "aspect": 1.3325
+  }
+ ],
+ "entry-hold--personal": [
+  {
+   "file": "entry-hold--personal@390.webp",
+   "aspect": 0.7491
+  }
+ ],
+ "entry-send--personal": [
+  {
+   "file": "entry-send--personal@390.webp",
+   "aspect": 0.7491
+  }
+ ],
+ "entry-exchange--personal": [
+  {
+   "file": "entry-exchange--personal@390.webp",
+   "aspect": 0.7491
+  }
+ ],
+ "entry-spend--personal": [
+  {
+   "file": "entry-spend--personal@390.webp",
+   "aspect": 0.7491
+  }
+ ],
+ "home-business-heap": [
+  {
+   "file": "home-business-heap@390.webp",
+   "aspect": 1
+  },
+  {
+   "file": "home-business-heap@768.webp",
+   "aspect": 2
+  }
+ ],
+ "home-sec-vault": [
+  {
+   "file": "home-sec-vault@390.webp",
+   "aspect": 1
+  }
+ ],
+ "home-sec-lock": [
+  {
+   "file": "home-sec-lock@390.webp",
+   "aspect": 1
+  }
+ ],
+ "home-sec-shield": [
+  {
+   "file": "home-sec-shield@390.webp",
+   "aspect": 1
+  }
+ ],
+ "personal-hero": [
+  {
+   "file": "personal-hero@390.webp",
+   "aspect": 0.5503
+  },
+  {
+   "file": "personal-hero@768.webp",
+   "aspect": 0.893
+  },
+  {
+   "file": "personal-hero@1024.webp",
+   "aspect": 1.5059
+  }
+ ],
+ "entry-send--stack": [
+  {
+   "file": "entry-send--stack@1024.webp",
+   "aspect": 0.7825
+  },
+  {
+   "file": "entry-send--stack@390.webp",
+   "aspect": 1.3672
+  },
+  {
+   "file": "entry-send--stack@768.webp",
+   "aspect": 2.7656
+  }
+ ],
+ "entry-hold--stack": [
+  {
+   "file": "entry-hold--stack@1024.webp",
+   "aspect": 0.7825
+  },
+  {
+   "file": "entry-hold--stack@390.webp",
+   "aspect": 1.3672
+  },
+  {
+   "file": "entry-hold--stack@768.webp",
+   "aspect": 2.7656
+  }
+ ],
+ "entry-exchange--stack": [
+  {
+   "file": "entry-exchange--stack@1024.webp",
+   "aspect": 0.7825
+  },
+  {
+   "file": "entry-exchange--stack@390.webp",
+   "aspect": 1.3672
+  },
+  {
+   "file": "entry-exchange--stack@768.webp",
+   "aspect": 2.7656
+  }
+ ],
+ "entry-spend--stack": [
+  {
+   "file": "entry-spend--stack@1024.webp",
+   "aspect": 0.7825
+  },
+  {
+   "file": "entry-spend--stack@390.webp",
+   "aspect": 1.3672
+  },
+  {
+   "file": "entry-spend--stack@768.webp",
+   "aspect": 2.7656
+  }
+ ],
+ "light-sec-vault": [
+  {
+   "file": "light-sec-vault@390.webp",
+   "aspect": 1
+  }
+ ],
+ "light-sec-lock": [
+  {
+   "file": "light-sec-lock@390.webp",
+   "aspect": 1
+  }
+ ],
+ "light-sec-shield": [
+  {
+   "file": "light-sec-shield@390.webp",
+   "aspect": 1
+  }
+ ],
+ "page-fx": [
+  {
+   "file": "page-fx@390.webp",
+   "aspect": 0.7991
+  },
+  {
+   "file": "page-fx@1024.webp",
+   "aspect": 1
+  }
+ ],
+ "entry-hold--domore": [
+  {
+   "file": "entry-hold--domore@390.webp",
+   "aspect": 1.6006
+  }
+ ],
+ "entry-exchange--domore": [
+  {
+   "file": "entry-exchange--domore@390.webp",
+   "aspect": 1.6006
+  }
+ ],
+ "entry-spend--domore": [
+  {
+   "file": "entry-spend--domore@390.webp",
+   "aspect": 1.6006
+  }
+ ],
+ "receive-hero": [
+  {
+   "file": "receive-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "receive-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "light-sec-vault-lg": [
+  {
+   "file": "light-sec-vault-lg@390.webp",
+   "aspect": 1
+  }
+ ],
+ "entry-send--domore": [
+  {
+   "file": "entry-send--domore@390.webp",
+   "aspect": 1.6006
+  }
+ ],
+ "account-hero": [
+  {
+   "file": "account-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "account-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "exchange-hero": [
+  {
+   "file": "exchange-hero@1024.webp",
+   "aspect": 0.4533
+  },
+  {
+   "file": "exchange-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "card-hero": [
+  {
+   "file": "card-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "card-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "business-hero": [
+  {
+   "file": "business-hero@390.webp",
+   "aspect": 0.9405
+  },
+  {
+   "file": "business-hero@1024.webp",
+   "aspect": 1.28
+  },
+  {
+   "file": "business-hero@768.webp",
+   "aspect": 1.4865
+  }
+ ],
+ "entry-team-people--stack": [
+  {
+   "file": "entry-team-people--stack@1024.webp",
+   "aspect": 0.7825
+  },
+  {
+   "file": "entry-team-people--stack@390.webp",
+   "aspect": 1.3672
+  },
+  {
+   "file": "entry-team-people--stack@768.webp",
+   "aspect": 2.7656
+  }
+ ],
+ "dark-sec-vault": [
+  {
+   "file": "dark-sec-vault@390.webp",
+   "aspect": 1
+  }
+ ],
+ "dark-sec-lock": [
+  {
+   "file": "dark-sec-lock@390.webp",
+   "aspect": 1
+  }
+ ],
+ "dark-sec-shield": [
+  {
+   "file": "dark-sec-shield@390.webp",
+   "aspect": 1
+  }
+ ],
+ "biz-receive-hero": [
+  {
+   "file": "biz-receive-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "biz-receive-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "dark-sec-bell": [
+  {
+   "file": "dark-sec-bell@390.webp",
+   "aspect": 1
+  }
+ ],
+ "entry-team-people--domore": [
+  {
+   "file": "entry-team-people--domore@390.webp",
+   "aspect": 1.6006
+  }
+ ],
+ "biz-large-hero": [
+  {
+   "file": "biz-large-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "biz-large-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "dark-sec-radar": [
+  {
+   "file": "dark-sec-radar@390.webp",
+   "aspect": 1
+  }
+ ],
+ "biz-account-hero": [
+  {
+   "file": "biz-account-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "biz-account-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "dark-sec-freeze": [
+  {
+   "file": "dark-sec-freeze@390.webp",
+   "aspect": 1
+  }
+ ],
+ "biz-exchange-hero": [
+  {
+   "file": "biz-exchange-hero@1024.webp",
+   "aspect": 0.8958
+  },
+  {
+   "file": "biz-exchange-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "business-team-hero": [
+  {
+   "file": "business-team-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "business-team-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "dark-sec-seal": [
+  {
+   "file": "dark-sec-seal@390.webp",
+   "aspect": 1
+  }
+ ],
+ "app-hero": [
+  {
+   "file": "app-hero@1024.webp",
+   "aspect": 1.28
+  },
+  {
+   "file": "app-hero@390.webp",
+   "aspect": 1.413
+  },
+  {
+   "file": "app-hero@768.webp",
+   "aspect": 1.9794
+  }
+ ],
+ "security-hero": [
+  {
+   "file": "security-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
+   "file": "security-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "light-sec-shield-lg": [
+  {
+   "file": "light-sec-shield-lg@390.webp",
+   "aspect": 1
+  }
+ ],
+ "security-card": [
+  {
+   "file": "security-card@390.webp",
+   "aspect": 1
+  }
+ ],
+ "light-sec-team": [
+  {
+   "file": "light-sec-team@390.webp",
+   "aspect": 1
+  }
+ ],
+ "help-hero": [
+  {
+   "file": "help-hero@390.webp",
+   "aspect": 1
+  }
+ ],
+ "news-hero": [
+  {
+   "file": "news-hero@390.webp",
+   "aspect": 1
+  }
+ ]
+}

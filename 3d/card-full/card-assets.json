@@ -59,7 +59,7 @@
             },
             "band": {
               "bottom": 48.518,
-              "top": 22.0
+              "top": 22
             },
             "colors": {
               "band": [
@@ -107,7 +107,7 @@
               "opaquePixels": 33688
             },
             "band": {
-              "bottom": 49.0,
+              "bottom": 49,
               "top": 22.499
             },
             "colors": {
@@ -242,7 +242,7 @@
       },
       "treatment": {
         "body": {
-          "metalness": 1.0,
+          "metalness": 1,
           "microGrain": {
             "amplitudeLuma": 4.2,
             "roughnessAmplitude": 0.02,
@@ -256,7 +256,7 @@
         },
         "lockup": {
           "bevelSigmaPx": 1.1,
-          "engraveDepthPx": 2.0,
+          "engraveDepthPx": 2,
           "facetARoughness": 0.26,
           "facetBRoughness": 0.58,
           "facetReliefPx": 0.6,
@@ -274,14 +274,14 @@
         "normalConvention": "OpenGL +Y = +V (same encode_normal as today); tangent normal from the engraved/recessed height field",
         "signaturePanel": {
           "bevelSigmaPx": 1.8,
-          "metalness": 0.0,
+          "metalness": 0,
           "note": "subtle matte panel (dielectric), bevel normal on all four edges",
           "recessDepthPx": 1.8,
           "roughness": 0.62
         },
         "topBand": {
           "bevelSigmaPx": 2.2,
-          "metalness": 0.0,
+          "metalness": 0,
           "note": "matte recessed stripe (dielectric), bevel normal at both long edges",
           "recessDepthPx": 2.4,
           "roughness": 0.72
@@ -290,10 +290,10 @@
       "validation": {
         "dark": {
           "limits": {
-            "lockupInteriorMaxMeanAbsDelta": 2.0,
+            "lockupInteriorMaxMeanAbsDelta": 2,
             "lockupIouMin": 0.95,
-            "rectOffsetMaxPx": 1.0,
-            "regionMaxMeanAbsDelta": 2.0,
+            "rectOffsetMaxPx": 1,
+            "regionMaxMeanAbsDelta": 2,
             "silhouetteIouMin": 0.98
           },
           "lockupBoxMeanAbsDelta": 2.393,
@@ -331,19 +331,19 @@
             "panelRight": 0.041,
             "panelTop": 0.13
           },
-          "regionMaxMeanAbsDelta": 0.0,
+          "regionMaxMeanAbsDelta": 0,
           "regions": {
             "band": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 3843,
               "rect": [
@@ -354,16 +354,16 @@
               ]
             },
             "bodyLower": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 6000,
               "rect": [
@@ -374,16 +374,16 @@
               ]
             },
             "bodyTop": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 3111,
               "rect": [
@@ -394,16 +394,16 @@
               ]
             },
             "panel": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 2944,
               "rect": [
@@ -427,10 +427,10 @@
         },
         "light": {
           "limits": {
-            "lockupInteriorMaxMeanAbsDelta": 2.0,
+            "lockupInteriorMaxMeanAbsDelta": 2,
             "lockupIouMin": 0.95,
-            "rectOffsetMaxPx": 1.0,
-            "regionMaxMeanAbsDelta": 2.0,
+            "rectOffsetMaxPx": 1,
+            "regionMaxMeanAbsDelta": 2,
             "silhouetteIouMin": 0.98
           },
           "lockupBoxMeanAbsDelta": 2.4091,
@@ -468,19 +468,19 @@
             "panelRight": 0.027,
             "panelTop": 0.144
           },
-          "regionMaxMeanAbsDelta": 0.0,
+          "regionMaxMeanAbsDelta": 0,
           "regions": {
             "band": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 3843,
               "rect": [
@@ -491,16 +491,16 @@
               ]
             },
             "bodyLower": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 6000,
               "rect": [
@@ -511,16 +511,16 @@
               ]
             },
             "bodyTop": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 3111,
               "rect": [
@@ -531,16 +531,16 @@
               ]
             },
             "panel": {
-              "maxAbsDelta": 0.0,
+              "maxAbsDelta": 0,
               "meanAbsDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "meanSignedDelta": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
               ],
               "pixels": 2944,
               "rect": [
@@ -566,33 +566,30 @@
     },
     "cards": {
       "dark": {
-        "albedo": "back-dark-albedo.png",
+        "albedo": "back-dark-albedo.webp",
         "files": {
           "albedo": {
-            "bytes": 901693,
             "encoding": "sRGB",
-            "file": "back-dark-albedo.png",
+            "file": "back-dark-albedo.webp",
             "size": [
-              2048,
-              1402
+              1024,
+              701
             ]
           },
           "normal": {
-            "bytes": 2822691,
             "encoding": "linear RGB",
-            "file": "back-dark-normal.png",
+            "file": "back-dark-normal.webp",
             "size": [
-              2048,
-              1402
+              1024,
+              701
             ]
           },
           "orm": {
-            "bytes": 1052764,
             "encoding": "linear RGBA",
-            "file": "back-dark-orm.png",
+            "file": "back-dark-orm.webp",
             "size": [
-              2048,
-              1402
+              1024,
+              701
             ]
           }
         },
@@ -608,9 +605,9 @@
         },
         "materialNote": "recommended back-material tuning for src/card-model.js (lead/model agent owns the final numbers); ORM is absolute, so the model uses roughness:1 + metalness:1 and reads the channels directly",
         "measured": {
-          "albedoMax": 255.0,
+          "albedoMax": 255,
           "albedoMean": 69.69,
-          "albedoMin": 31.0,
+          "albedoMin": 31,
           "bandRoughness": 0.72,
           "bodyFlatPixels": 2016678,
           "dielectricFraction": 0.2806,
@@ -645,46 +642,43 @@
           },
           "panelRoughness": 0.62
         },
-        "normal": "back-dark-normal.png",
-        "orm": "back-dark-orm.png",
+        "normal": "back-dark-normal.webp",
+        "orm": "back-dark-orm.webp",
         "treatmentCheck": {
-          "bandMetalness": 0.0,
+          "bandMetalness": 0,
           "bandRoughness": 0.72,
-          "bodyMetalness": 1.0,
+          "bodyMetalness": 1,
           "bodyRoughness": 0.3203,
           "facetARoughness": 0.26,
-          "panelMetalness": 0.0,
+          "panelMetalness": 0,
           "panelRoughness": 0.62
         }
       },
       "light": {
-        "albedo": "back-light-albedo.png",
+        "albedo": "back-light-albedo.webp",
         "files": {
           "albedo": {
-            "bytes": 901663,
             "encoding": "sRGB",
-            "file": "back-light-albedo.png",
+            "file": "back-light-albedo.webp",
             "size": [
-              2048,
-              1402
+              1024,
+              701
             ]
           },
           "normal": {
-            "bytes": 2822304,
             "encoding": "linear RGB",
-            "file": "back-light-normal.png",
+            "file": "back-light-normal.webp",
             "size": [
-              2048,
-              1402
+              1024,
+              701
             ]
           },
           "orm": {
-            "bytes": 1053435,
             "encoding": "linear RGBA",
-            "file": "back-light-orm.png",
+            "file": "back-light-orm.webp",
             "size": [
-              2048,
-              1402
+              1024,
+              701
             ]
           }
         },
@@ -702,7 +696,7 @@
         "measured": {
           "albedoMax": 238.48,
           "albedoMean": 191.72,
-          "albedoMin": 0.0,
+          "albedoMin": 0,
           "bandRoughness": 0.72,
           "bodyFlatPixels": 2016683,
           "dielectricFraction": 0.2806,
@@ -737,15 +731,15 @@
           },
           "panelRoughness": 0.62
         },
-        "normal": "back-light-normal.png",
-        "orm": "back-light-orm.png",
+        "normal": "back-light-normal.webp",
+        "orm": "back-light-orm.webp",
         "treatmentCheck": {
-          "bandMetalness": 0.0,
+          "bandMetalness": 0,
           "bandRoughness": 0.72,
-          "bodyMetalness": 1.0,
+          "bodyMetalness": 1,
           "bodyRoughness": 0.4203,
           "facetARoughness": 0.26,
-          "panelMetalness": 0.0,
+          "panelMetalness": 0,
           "panelRoughness": 0.62
         }
       }
@@ -786,7 +780,7 @@
         1024,
         701
       ],
-      "steelBaseSrgb": 114.0
+      "steelBaseSrgb": 114
     },
     "mode": {
       "metalness": "absolute",
@@ -799,8 +793,8 @@
       "normalEncoding": "linear",
       "ormEncoding": "linear",
       "repeat": [
-        1.0,
-        1.0
+        1,
+        1
       ],
       "roughnessChannel": "g",
       "uMirrored": true
@@ -828,15 +822,15 @@
       "id": "dark",
       "label": "Dark",
       "metalnessMap": {
-        "field": 1.0,
+        "field": 1,
         "ink": 0.06,
         "method": "dielectric print mask from the max-channel distance to the measured card background",
         "note": "material.metalness (0.92) * RGB: flat card field stays metal, chip / logos / Teko mark / text render as printed dielectric ink; the alpha channel is the ink specular-intensity mask",
         "rampDistance": [
-          5.0,
-          22.0
+          5,
+          22
         ],
-        "specularField": 1.0,
+        "specularField": 1,
         "specularInk": 0.12,
         "stats": {
           "inkFraction": 0.0741,
@@ -844,31 +838,31 @@
         }
       },
       "sleekOverlay": {
-        "amplitudeLuma": 0.0,
+        "amplitudeLuma": 0,
         "inkAttenuation": 0.76,
         "inkSaturationFull": 0.36,
         "inkSaturationStart": 0.1,
         "method": "flattened sleek.jpg residual added in sRGB space (mean-preserving)",
         "stats": {
           "bakedStripes": false,
-          "fieldLuma": 48.0,
-          "fieldLumaP5": 48.0,
-          "fieldLumaP95": 48.0,
+          "fieldLuma": 48,
+          "fieldLumaP5": 48,
+          "fieldLumaP95": 48,
           "fieldLumaStd": 0.0006,
           "fieldRgb": [
-            48.0,
-            48.0,
-            48.0
+            48,
+            48,
+            48
           ],
-          "flatLumaAfter": 48.0,
+          "flatLumaAfter": 48,
           "flatLumaBefore": 49.221,
           "flatLumaDelta": -1.221,
           "flatPixels": 543354,
-          "inkMaxAbsDelta": 0.0,
+          "inkMaxAbsDelta": 0,
           "inkPixels": 43809,
           "mode": "smooth-black-metal",
-          "overlayAmplitudeLuma": 0.0,
-          "residualStdLuma": 0.0
+          "overlayAmplitudeLuma": 0,
+          "residualStdLuma": 0
         }
       },
       "source": "novocard-default-dark.png",
@@ -877,7 +871,7 @@
     },
     {
       "background": "#e6e7e8",
-      "face": "face-light.png",
+      "face": "face-light.webp",
       "faceFinish": "gloss-print-sleek",
       "faceMetalness": "face-metalness-light.png",
       "faceNormal": null,
@@ -896,10 +890,10 @@
         "method": "dielectric print mask from the max-channel distance to the measured card background",
         "note": "material.metalness (0.92) * RGB: flat card field stays metal, chip / logos / Teko mark / text render as printed dielectric ink; the alpha channel is the ink specular-intensity mask",
         "rampDistance": [
-          5.0,
-          22.0
+          5,
+          22
         ],
-        "specularField": 1.0,
+        "specularField": 1,
         "specularInk": 0.12,
         "stats": {
           "inkFraction": 0.0747,
@@ -907,19 +901,19 @@
         }
       },
       "sleekOverlay": {
-        "amplitudeLuma": 0.0,
+        "amplitudeLuma": 0,
         "inkAttenuation": 0.76,
         "inkSaturationFull": 0.36,
         "inkSaturationStart": 0.1,
         "method": "flattened sleek.jpg residual added in sRGB space (mean-preserving)",
         "stats": {
-          "amplitudeLuma": 0.0,
+          "amplitudeLuma": 0,
           "flatLumaAfter": 228.071,
           "flatLumaBefore": 228.071,
-          "flatLumaDelta": 0.0,
+          "flatLumaDelta": 0,
           "flatPixels": 553217,
           "mode": "gloss-print-sleek",
-          "residualStdLuma": 0.0,
+          "residualStdLuma": 0,
           "streakStdLuma": 5.479
         }
       },
@@ -940,10 +934,10 @@
       637
     ],
     "cornerRadiusMeasurementsPx": {
-      "dark": 34.0,
+      "dark": 34,
       "light": 34.25
     },
-    "cornerRadiusPx": 34.0,
+    "cornerRadiusPx": 34,
     "crop": {
       "height": 636,
       "width": 929,
@@ -972,54 +966,54 @@
     "effectiveMetalnessField": 0.92,
     "effectiveRoughnessField": 0.28,
     "effectiveRoughnessInk": 0.5,
-    "fieldLuma": 48.0,
+    "fieldLuma": 48,
     "fieldRgb": [
-      48.0,
-      48.0,
-      48.0
+      48,
+      48,
+      48
     ],
-    "metalnessMapField": 1.0,
+    "metalnessMapField": 1,
     "metalnessScalar": 0.92,
     "mode": "smooth-black-metal",
     "modelClearcoat": 0.42,
     "modelClearcoatRoughness": 0.15,
     "modelEnvMapIntensity": 2.45,
     "normalMap": "face-dark-normal.png",
-    "normalScale": 0.0,
+    "normalScale": 0,
     "note": "only the non-ink field changes: flat near-black neutral albedo, smooth flat normal, per-pixel roughness (field 0.28 effective / ink 0.50 effective); the printed artwork keeps the exact source values (inkMaxAbsDelta 0). 2.4.1 lifted the field albedo 26 -> 38 sRGB, the field effective roughness 0.15 -> 0.21, the dark-front envMapIntensity to 1.7 and clearcoat to 0.35; the 2.4.2 capture tune then lifted them again to 48 sRGB / 0.28 / 2.45 / 0.42 ccRough 0.15 because the 45-degree dark-studio reflection still rendered the field near black (20-22 luma)",
-    "overlayAmplitudeLuma": 0.0,
+    "overlayAmplitudeLuma": 0,
     "revision": "5 (R5.1)",
     "roughnessMap": "face-dark-rough.png",
     "roughnessMapField": 0.56,
-    "roughnessMapInk": 1.0,
+    "roughnessMapInk": 1,
     "roughnessScalar": 0.5,
     "stats": {
       "bakedStripes": false,
-      "fieldLuma": 48.0,
-      "fieldLumaP5": 48.0,
-      "fieldLumaP95": 48.0,
+      "fieldLuma": 48,
+      "fieldLumaP5": 48,
+      "fieldLumaP95": 48,
       "fieldLumaStd": 0.0006,
       "fieldRgb": [
-        48.0,
-        48.0,
-        48.0
+        48,
+        48,
+        48
       ],
-      "flatLumaAfter": 48.0,
+      "flatLumaAfter": 48,
       "flatLumaBefore": 49.221,
       "flatLumaDelta": -1.221,
       "flatPixels": 543354,
-      "inkMaxAbsDelta": 0.0,
+      "inkMaxAbsDelta": 0,
       "inkPixels": 43809,
       "mode": "smooth-black-metal",
-      "overlayAmplitudeLuma": 0.0,
-      "residualStdLuma": 0.0
+      "overlayAmplitudeLuma": 0,
+      "residualStdLuma": 0
     }
   },
   "determinism": "no timestamps, no randomness; PNG bytes are a pure function of the inputs",
   "faceOverlay": {
     "amplitudesLuma": {
-      "dark": 0.0,
-      "light": 0.0
+      "dark": 0,
+      "light": 0
     },
     "inkAttenuation": 0.76,
     "method": "flattened sleek residual, mean-preserving (light card only; the dark card's smooth black metal field has amplitude 0)",
@@ -1105,7 +1099,7 @@
     ],
     "sleek": {
       "measured": {
-        "channelSpreadMax": 5.0,
+        "channelSpreadMax": 5,
         "columnMeans": {
           "max": 232.04,
           "min": 108.34,
@@ -1131,7 +1125,7 @@
         },
         "highPass12Std": 2.522,
         "luma": {
-          "max": 255.0,
+          "max": 255,
           "mean": 167.11,
           "min": 89.93
         },
@@ -1168,8 +1162,8 @@
   "sampling": {
     "back": {
       "repeat": [
-        1.0,
-        1.0
+        1,
+        1
       ],
       "uMirrored": true
     },
@@ -1199,23 +1193,23 @@
   "schemaVersion": 2,
   "sleek": {
     "flatten": {
-      "fieldColumnMeanP2P": 0.0,
+      "fieldColumnMeanP2P": 0,
       "fieldRowMeanP2P": 1.4403,
-      "fieldStd": 1.0,
-      "illuminationSigma": 64.0,
+      "fieldStd": 1,
+      "illuminationSigma": 64,
       "method": "multiplicative flat-field: luma / G64(luma), then residual - G40(residual); column means removed; zero-mean unit-std field",
-      "residualHighPassSigma": 40.0,
+      "residualHighPassSigma": 40,
       "sourceIlluminationColumnP2P": 73.86
     },
     "measured": {
       "albedoColumnMeansP2P": 0.995,
-      "albedoMax": 184.0,
+      "albedoMax": 184,
       "albedoMean": 176.02,
       "albedoP99_5": 183.43,
       "neutralGray": true,
       "normalXYp995": 0.22,
       "residualP99AbsLuma": 7.49,
-      "residualPeakLuma": 8.0,
+      "residualPeakLuma": 8,
       "residualStdLuma": 3.821,
       "roughMean": 0.9201,
       "softClipWidth": 1.6,
@@ -1224,22 +1218,22 @@
     "source": "source/sleek.jpg",
     "sourceSha256": "3f242d710ae12e3a57644010c80d25ee344aadb05c27aae8e0a864ec055164f1",
     "targets": {
-      "albedoColumnMeansP2P": 15.0,
-      "albedoMax": 210.0,
-      "albedoP99_5": 200.0,
+      "albedoColumnMeansP2P": 15,
+      "albedoMax": 210,
+      "albedoP99_5": 200,
       "neutralGray": true,
       "residualAmplitudeLuma": [
-        3.0,
-        6.0
+        3,
+        6
       ]
     }
   },
   "sleekMaps": {
     "metal": {
-      "baseGray": 176.0,
+      "baseGray": 176,
       "file": "sleek-metal.png",
       "note": "neutral gray; no baked highlight band",
-      "residualAmplitude": 5.0
+      "residualAmplitude": 5
     },
     "normal": {
       "convention": "OpenGL (+Y = +V), texture flipY on",
@@ -1265,7 +1259,7 @@
     },
     {
       "encoding": "sRGB",
-      "file": "face-light.png",
+      "file": "face-light.webp",
       "height": 636,
       "mapping": "uv 0..1 over the front plate",
       "role": "front albedo, card 'light' (artwork + flattened sleek overlay)",
@@ -1373,57 +1367,51 @@
     },
     {
       "encoding": "sRGB",
-      "file": "back-dark-albedo.png",
-      "height": 1402,
+      "file": "back-dark-albedo.webp",
+      "height": 701,
       "mapping": "uv 0..1 over the back plate (u mirrored by the model)",
       "role": "back artwork albedo, card 'dark' (Rev 6 reconstructed: #303137 metal body + micro grain, matte recessed #231f20 band, matte #e6e7e8 panel, engraved white lock-up; no baked highlights)",
-      "sha256": "c8053474581056741d57661030df8b9ad17f10484912f5672540a7a1248c247d",
-      "width": 2048
+      "width": 1024
     },
     {
       "encoding": "linear",
-      "file": "back-dark-orm.png",
-      "height": 1402,
+      "file": "back-dark-orm.webp",
+      "height": 701,
       "mapping": "uv 0..1; three.js samples roughness .g / metalness .b from this RGBA texture",
       "role": "back ORM, card 'dark' (R=255/AO unused, G=absolute roughness, B=absolute metalness, A=255)",
-      "sha256": "33a1b6cdd287753c2c9fe10b7d6e44653c42292991d63e4e75faebf4cb0653eb",
-      "width": 2048
+      "width": 1024
     },
     {
       "encoding": "linear",
-      "file": "back-dark-normal.png",
-      "height": 1402,
+      "file": "back-dark-normal.webp",
+      "height": 701,
       "mapping": "uv 0..1; OpenGL +Y = +V (flipY upload)",
       "role": "back tangent normal, card 'dark' (engraved lock-up bevel + recessed band/panel + sleek micro grain; flat body)",
-      "sha256": "4cbe850e3e1223b483749e2bc20931d35bbf79ebe9d36cb43b55a8508469efbc",
-      "width": 2048
+      "width": 1024
     },
     {
       "encoding": "sRGB",
-      "file": "back-light-albedo.png",
-      "height": 1402,
+      "file": "back-light-albedo.webp",
+      "height": 701,
       "mapping": "uv 0..1 over the back plate (u mirrored by the model)",
       "role": "back artwork albedo, card 'light' (Rev 6 reconstructed: #e6e7e8 metal body + micro grain, matte recessed #231f20 band, matte #d0d2d3 panel, engraved black lock-up; no baked highlights)",
-      "sha256": "98ce86b932897b810774f803e3df4d31485c55293abbdd77c36d4c106d880bf9",
-      "width": 2048
+      "width": 1024
     },
     {
       "encoding": "linear",
-      "file": "back-light-orm.png",
-      "height": 1402,
+      "file": "back-light-orm.webp",
+      "height": 701,
       "mapping": "uv 0..1; three.js samples roughness .g / metalness .b from this RGBA texture",
       "role": "back ORM, card 'light' (R=255/AO unused, G=absolute roughness, B=absolute metalness, A=255)",
-      "sha256": "55fafed6d2cad370dd4c1bd228db737c005b002579288d4a60ba63b6ec58c2dd",
-      "width": 2048
+      "width": 1024
     },
     {
       "encoding": "linear",
-      "file": "back-light-normal.png",
-      "height": 1402,
+      "file": "back-light-normal.webp",
+      "height": 701,
       "mapping": "uv 0..1; OpenGL +Y = +V (flipY upload)",
       "role": "back tangent normal, card 'light' (engraved lock-up bevel + recessed band/panel + sleek micro grain; flat body)",
-      "sha256": "e2503ed03c32729909056678fbd74cae745159c79e64953e698bbd7b3536b094",
-      "width": 2048
+      "width": 1024
     },
     {
       "encoding": "linear",
@@ -1440,7 +1428,7 @@
   "tuning": {
     "backEnvMapIntensity": 0.32,
     "backRoughness": 0.47,
-    "backSteelBaseSrgb": 114.0,
+    "backSteelBaseSrgb": 114,
     "bevel": 0.016,
     "cornerSegments": 40,
     "edgeClearcoat": 0.42,
@@ -1450,7 +1438,7 @@
       "light": 1.45
     },
     "edgeMaterial": "mirror-chrome",
-    "edgeMetalness": 1.0,
+    "edgeMetalness": 1,
     "edgeNormalScale": 0,
     "edgeRoughness": 0.04,
     "filletSegments": 22,
@@ -1460,7 +1448,7 @@
       "light": 0.506
     },
     "frontFieldMetalnessMap": {
-      "dark": 1.0,
+      "dark": 1,
       "light": 0.55
     },
     "frontRoughness": 0.32,
