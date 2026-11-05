@@ -1,8 +1,8 @@
 {
  "home-why": [
   {
-   "file": "home-why@390.webp",
-   "aspect": 0.7991
+   "file": "home-why@1920.webp",
+   "aspect": 0.8
   }
  ],
  "home-fx": [
@@ -55,7 +55,7 @@
    "aspect": 1
   },
   {
-   "file": "home-business-heap@768.webp",
+   "file": "home-business-heap@1920.webp",
    "aspect": 2
   }
  ],
@@ -651,7 +651,7 @@
    "aspect": 0.875
   },
   {
-   "file": "help-hero@390.webp",
+   "file": "help-hero@768.webp",
    "aspect": 1
   },
   {
