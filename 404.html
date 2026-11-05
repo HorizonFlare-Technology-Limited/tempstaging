@@ -15,6 +15,9 @@
         } catch (e) { return; }
         if (!best || gap > 0.03) return;
         if (img.getAttribute("data-poster-eager")) img.setAttribute("fetchpriority", "high");
+        /* a poster that fails to load is dropped, so the stage shows its scene as soon as it is
+           ready instead of waiting for a match with a broken image */
+        img.addEventListener("error", function () { img.removeAttribute("src"); }, { once: true });
         img.src = best.s;
       });
     </script><script type="module" src="/tempstaging/_astro/Base.astro_astro_type_script_index_0_lang.maJ-KNk7.js"></script></body></html>

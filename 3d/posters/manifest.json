@@ -11,6 +11,10 @@
    "aspect": 0.5064
   },
   {
+   "file": "home-fx@1280.webp",
+   "aspect": 0.6376
+  },
+  {
    "file": "home-fx@390.webp",
    "aspect": 1
   }
@@ -85,12 +89,20 @@
   {
    "file": "personal-hero@1024.webp",
    "aspect": 1.5059
+  },
+  {
+   "file": "personal-hero@1280.webp",
+   "aspect": 1.7729
   }
  ],
  "entry-send--stack": [
   {
    "file": "entry-send--stack@1024.webp",
    "aspect": 0.7825
+  },
+  {
+   "file": "entry-send--stack@1280.webp",
+   "aspect": 0.9903
   },
   {
    "file": "entry-send--stack@390.webp",
@@ -107,6 +119,10 @@
    "aspect": 0.7825
   },
   {
+   "file": "entry-hold--stack@1280.webp",
+   "aspect": 0.9903
+  },
+  {
    "file": "entry-hold--stack@390.webp",
    "aspect": 1.3672
   },
@@ -121,6 +137,10 @@
    "aspect": 0.7825
   },
   {
+   "file": "entry-exchange--stack@1280.webp",
+   "aspect": 0.9903
+  },
+  {
    "file": "entry-exchange--stack@390.webp",
    "aspect": 1.3672
   },
@@ -133,6 +153,10 @@
   {
    "file": "entry-spend--stack@1024.webp",
    "aspect": 0.7825
+  },
+  {
+   "file": "entry-spend--stack@1280.webp",
+   "aspect": 0.9903
   },
   {
    "file": "entry-spend--stack@390.webp",
@@ -195,6 +219,10 @@
    "aspect": 0.615
   },
   {
+   "file": "receive-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
    "file": "receive-hero@390.webp",
    "aspect": 1
   }
@@ -217,6 +245,10 @@
    "aspect": 0.615
   },
   {
+   "file": "account-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
    "file": "account-hero@390.webp",
    "aspect": 1
   }
@@ -227,6 +259,10 @@
    "aspect": 0.4533
   },
   {
+   "file": "exchange-hero@1280.webp",
+   "aspect": 0.5683
+  },
+  {
    "file": "exchange-hero@390.webp",
    "aspect": 1
   }
@@ -235,6 +271,10 @@
   {
    "file": "card-hero@1024.webp",
    "aspect": 0.615
+  },
+  {
+   "file": "card-hero@1280.webp",
+   "aspect": 0.775
   },
   {
    "file": "card-hero@390.webp",
@@ -253,12 +293,20 @@
   {
    "file": "business-hero@768.webp",
    "aspect": 1.4865
+  },
+  {
+   "file": "business-hero@1280.webp",
+   "aspect": 1.6
   }
  ],
  "entry-team-people--stack": [
   {
    "file": "entry-team-people--stack@1024.webp",
    "aspect": 0.7825
+  },
+  {
+   "file": "entry-team-people--stack@1280.webp",
+   "aspect": 0.9903
   },
   {
    "file": "entry-team-people--stack@390.webp",
@@ -411,11 +459,19 @@
  ],
  "help-hero": [
   {
+   "file": "help-hero@1024.webp",
+   "aspect": 0.615
+  },
+  {
    "file": "help-hero@390.webp",
    "aspect": 1
   }
  ],
  "news-hero": [
+  {
+   "file": "news-hero@1024.webp",
+   "aspect": 0.615
+  },
   {
    "file": "news-hero@390.webp",
    "aspect": 1
