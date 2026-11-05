@@ -93,6 +93,14 @@
   {
    "file": "personal-hero@1280.webp",
    "aspect": 1.7729
+  },
+  {
+   "file": "personal-hero@1440.webp",
+   "aspect": 1.9048
+  },
+  {
+   "file": "personal-hero@1920.webp",
+   "aspect": 2.1176
   }
  ],
  "entry-send--stack": [
@@ -103,6 +111,14 @@
   {
    "file": "entry-send--stack@1280.webp",
    "aspect": 0.9903
+  },
+  {
+   "file": "entry-send--stack@1440.webp",
+   "aspect": 1.1201
+  },
+  {
+   "file": "entry-send--stack@1920.webp",
+   "aspect": 1.25
   },
   {
    "file": "entry-send--stack@390.webp",
@@ -123,6 +139,14 @@
    "aspect": 0.9903
   },
   {
+   "file": "entry-hold--stack@1440.webp",
+   "aspect": 1.1201
+  },
+  {
+   "file": "entry-hold--stack@1920.webp",
+   "aspect": 1.25
+  },
+  {
    "file": "entry-hold--stack@390.webp",
    "aspect": 1.3672
   },
@@ -141,6 +165,14 @@
    "aspect": 0.9903
   },
   {
+   "file": "entry-exchange--stack@1440.webp",
+   "aspect": 1.1201
+  },
+  {
+   "file": "entry-exchange--stack@1920.webp",
+   "aspect": 1.25
+  },
+  {
    "file": "entry-exchange--stack@390.webp",
    "aspect": 1.3672
   },
@@ -157,6 +189,14 @@
   {
    "file": "entry-spend--stack@1280.webp",
    "aspect": 0.9903
+  },
+  {
+   "file": "entry-spend--stack@1440.webp",
+   "aspect": 1.1201
+  },
+  {
+   "file": "entry-spend--stack@1920.webp",
+   "aspect": 1.25
   },
   {
    "file": "entry-spend--stack@390.webp",
@@ -223,8 +263,16 @@
    "aspect": 0.775
   },
   {
+   "file": "receive-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "receive-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "receive-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "light-sec-vault-lg": [
@@ -249,8 +297,16 @@
    "aspect": 0.775
   },
   {
+   "file": "account-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "account-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "account-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "exchange-hero": [
@@ -261,6 +317,14 @@
   {
    "file": "exchange-hero@1280.webp",
    "aspect": 0.5683
+  },
+  {
+   "file": "exchange-hero@1440.webp",
+   "aspect": 0.64
+  },
+  {
+   "file": "exchange-hero@1920.webp",
+   "aspect": 0.9125
   },
   {
    "file": "exchange-hero@390.webp",
@@ -277,8 +341,16 @@
    "aspect": 0.775
   },
   {
+   "file": "card-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "card-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "card-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "business-hero": [
@@ -297,6 +369,14 @@
   {
    "file": "business-hero@1280.webp",
    "aspect": 1.6
+  },
+  {
+   "file": "business-hero@1440.webp",
+   "aspect": 1.8
+  },
+  {
+   "file": "business-hero@1920.webp",
+   "aspect": 2.4
   }
  ],
  "entry-team-people--stack": [
@@ -307,6 +387,14 @@
   {
    "file": "entry-team-people--stack@1280.webp",
    "aspect": 0.9903
+  },
+  {
+   "file": "entry-team-people--stack@1440.webp",
+   "aspect": 1.1201
+  },
+  {
+   "file": "entry-team-people--stack@1920.webp",
+   "aspect": 1.25
   },
   {
    "file": "entry-team-people--stack@390.webp",
@@ -341,8 +429,20 @@
    "aspect": 0.615
   },
   {
+   "file": "biz-receive-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "biz-receive-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "biz-receive-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "biz-receive-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "dark-sec-bell": [
@@ -363,8 +463,20 @@
    "aspect": 0.615
   },
   {
+   "file": "biz-large-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "biz-large-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "biz-large-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "biz-large-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "dark-sec-radar": [
@@ -379,8 +491,20 @@
    "aspect": 0.615
   },
   {
+   "file": "biz-account-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "biz-account-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "biz-account-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "biz-account-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "dark-sec-freeze": [
@@ -397,6 +521,18 @@
   {
    "file": "biz-exchange-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "biz-exchange-hero@1280.webp",
+   "aspect": 1.12
+  },
+  {
+   "file": "biz-exchange-hero@1440.webp",
+   "aspect": 1.26
+  },
+  {
+   "file": "biz-exchange-hero@1920.webp",
+   "aspect": 1.68
   }
  ],
  "business-team-hero": [
@@ -405,8 +541,20 @@
    "aspect": 0.615
   },
   {
+   "file": "business-team-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "business-team-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "business-team-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "business-team-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "dark-sec-seal": [
@@ -425,8 +573,20 @@
    "aspect": 1.413
   },
   {
+   "file": "app-hero@1280.webp",
+   "aspect": 1.6
+  },
+  {
+   "file": "app-hero@1440.webp",
+   "aspect": 1.8
+  },
+  {
    "file": "app-hero@768.webp",
    "aspect": 1.9794
+  },
+  {
+   "file": "app-hero@1920.webp",
+   "aspect": 2.4
   }
  ],
  "security-hero": [
@@ -435,8 +595,20 @@
    "aspect": 0.615
   },
   {
+   "file": "security-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "security-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "security-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "security-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "light-sec-shield-lg": [
@@ -463,8 +635,20 @@
    "aspect": 0.615
   },
   {
+   "file": "help-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "help-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "help-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "help-hero@1920.webp",
+   "aspect": 1.175
   }
  ],
  "news-hero": [
@@ -473,8 +657,20 @@
    "aspect": 0.615
   },
   {
+   "file": "news-hero@1280.webp",
+   "aspect": 0.775
+  },
+  {
+   "file": "news-hero@1440.webp",
+   "aspect": 0.875
+  },
+  {
    "file": "news-hero@390.webp",
    "aspect": 1
+  },
+  {
+   "file": "news-hero@1920.webp",
+   "aspect": 1.175
   }
  ]
 }
