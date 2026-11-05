@@ -718,5 +718,27 @@
    "file": "entry-receive--domore@1920.webp",
    "aspect": 1.5981
   }
+ ],
+ "home-hero": [
+  {
+   "file": "home-hero@1024.webp",
+   "aspect": 0.7854
+  },
+  {
+   "file": "home-hero@1280.webp",
+   "aspect": 0.9512
+  },
+  {
+   "file": "home-hero@1440.webp",
+   "aspect": 0.9694
+  },
+  {
+   "file": "home-hero@768.webp",
+   "aspect": 1
+  },
+  {
+   "file": "home-hero@1920.webp",
+   "aspect": 1.1939
+  }
  ]
 }
