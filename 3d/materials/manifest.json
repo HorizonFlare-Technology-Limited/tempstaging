@@ -981,7 +981,7 @@
       },
       "channels": {
         "albedo": {
-          "file": "satin/albedo.png",
+          "file": "satin/albedo.webp",
           "width": 1024,
           "height": 1024,
           "colorSpace": "srgb",
